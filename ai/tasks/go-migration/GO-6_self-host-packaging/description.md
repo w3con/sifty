@@ -6,7 +6,7 @@
 
 ## Why this work exists
 
-The project is source-available and self-hostable. The owner sells a hosted offering for non-technical users; technical users may download, self-host and modify it for their own use, but not offer it to others as a competing commercial service. For that to work the public repository must be easy to install, well documented, and approachable for a programmer who wants to change it. The multi-runtime stack makes a bare manual install painful: a Go backend, Node workers (`.mjs`), the Python jobspy scraping library, and optionally a local model runtime (ollama). This card establishes the self-host story, the documentation set, and the license.
+The project is source-available and self-hostable. The owner sells a hosted offering for non-technical users; technical users may download, self-host and modify it for their own use, but not offer it to others as a competing commercial service. For that to work the public repository must be easy to install, well documented, and approachable for a programmer who wants to change it. The multi-runtime stack makes a bare manual install painful: a Go backend, Node workers (`.mjs`), the Python jobspy scraping library, and optionally a local model runtime (ollama). This card establishes the self-host story and the documentation set. The Elastic License 2.0 was delivered in GO-10; this card now covers packaging and docs only.
 
 ## Decisions already made
 
@@ -15,7 +15,6 @@ The project is source-available and self-hostable. The owner sells a hosted offe
 
 ## What this card delivers
 
-- `sifty/LICENSE` replaced with Elastic License 2.0, the copyright line kept, and the source-available terms referenced from the README; any per-file or packaging license notices updated to match.
 - A container image and a `docker compose` setup that builds the frontend, runs the Go backend serving it, and starts the workers, creating the application's own data directory; ollama is an optional compose service. `docker compose up` yields a running application on a documented port.
 - A documentation set under `sifty/docs`: a quickstart from clone to running, an architecture overview (backend, frontend, workers, the assessment and preparation pipelines, the data store), a configuration reference (the YAML files, credentials by environment reference, the stage models), and a short contributor guide naming the extension points (notably the source abstraction from COL-1).
 - A developer setup path documented for running without containers (toolchain prerequisites, building the frontend, running the backend and workers).
@@ -38,7 +37,6 @@ The project is source-available and self-hostable. The owner sells a hosted offe
 
 ## Acceptance criteria
 
-- `sifty/LICENSE` is Elastic License 2.0 and the README describes the project as source-available with the self-host and no-managed-service terms.
 - `docker compose up` builds and runs the complete application (backend serving the frontend, workers up, own data directory), with ollama as an optional service.
 - `sifty/docs` holds a quickstart, an architecture overview, a configuration reference and a contributor guide; a non-container developer setup is documented.
 - No application behaviour changed; credentials remain environment references; the public-subtree rules hold in the added files.

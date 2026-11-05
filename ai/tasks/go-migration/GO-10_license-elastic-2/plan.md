@@ -36,7 +36,7 @@ The application's behaviour. The GO-6 packaging, documentation and developer-set
 
 - [x] 1.1 — Fetch the canonical Elastic License 2.0 text and write it verbatim to `LICENSE` at the repo root with the line `Copyright (c) 2026 Alex Tikonoff`; a check greps for the "Elastic License 2.0" and "Limitations" headings.
 - [x] 1.2 — Add a short License section to the README and `AGENTS.md` (source-available under Elastic License 2.0; self-host and modify for own use; not as a service to third parties; see `LICENSE`), and set `app/package.json` `license` to `LicenseRef-Elastic-2.0`; a check greps all three.
-- [ ] 1.3 — Update `ai/tasks/go-migration/GO-6_self-host-packaging/description.md` to note the licence was delivered in GO-10 and that GO-6 now covers packaging and docs only; a check greps the note.
+- [x] 1.3 — Update `ai/tasks/go-migration/GO-6_self-host-packaging/description.md` to note the licence was delivered in GO-10 and that GO-6 now covers packaging and docs only; a check greps the note.
 
 ## Gate evidence
 

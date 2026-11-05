@@ -36,3 +36,13 @@ AGENTS.md:65:This project is source-available under the Elastic License 2.0. You
 app/package.json:5:  "license": "LicenseRef-Elastic-2.0",
 ```
 
+
+## 2026-11-05 — 1.3 — update GO-6 description to note license delivered in GO-10
+
+Check: `grep -n 'GO-10' ai/tasks/go-migration/GO-6_self-host-packaging/description.md`
+Exit: 0
+
+```
+9:The project is source-available and self-hostable. The owner sells a hosted offering for non-technical users; technical users may download, self-host and modify it for their own use, but not offer it to others as a competing commercial service. For that to work the public repository must be easy to install, well documented, and approachable for a programmer who wants to change it. The multi-runtime stack makes a bare manual install painful: a Go backend, Node workers (`.mjs`), the Python jobspy scraping library, and optionally a local model runtime (ollama). This card establishes the self-host story and the documentation set. The Elastic License 2.0 was delivered in GO-10; this card now covers packaging and docs only.
+```
+

@@ -39,7 +39,7 @@ Replace the top workflow navigation with four tabs — Collection, Triage, Prepa
 *Gate: `tsc --noEmit` and `vite build` both pass.*
 
 - [x] 4.1 — Remove the Sources and stop-words sections from the Settings drawer nav; keep Context, Configuration, Queue, and the block-rule panel (removed in NAVIGATION-3).
-- [ ] 4.2 — Run `tsc --noEmit` and `vite build`; record output.
+- [x] 4.2 — Run `tsc --noEmit` and `vite build`; record output.
 
 ## Acceptance criteria
 

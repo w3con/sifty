@@ -39,3 +39,7 @@ bin/__pycache__/
 # deploy build artifacts (never commit compiled binaries)
 bin/sifty.prev
 bin/sifty.new
+bin/sifty-staging
+bin/sifty-staging.new
+bin/sifty-staging.prev
+app/dist-staging/

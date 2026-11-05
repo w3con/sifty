@@ -36,7 +36,7 @@ The application's behaviour (collection, scoring, serving). The harness one-card
 
 *Gate: `bin/sift-deploy --help` shows per-env binary and dist keys; the two builds land in different paths.*
 
-- [ ] 1.1 — In `bin/work.config` and `bin/sift-deploy`, give each environment its own binary and its own dist (prod: `bin/sifty` + `app/dist`; staging: `bin/sifty-staging` + `app/dist-staging`); remove the shared `SIFTY_DIST_DIR`; both staging outputs are git-ignored.
+- [x] 1.1 — In `bin/work.config` and `bin/sift-deploy`, give each environment its own binary and its own dist (prod: `bin/sifty` + `app/dist`; staging: `bin/sifty-staging` + `app/dist-staging`); remove the shared `SIFTY_DIST_DIR`; both staging outputs are git-ignored.
 - [ ] 1.2 — `bin/sift-deploy --env staging` builds the current checkout into the staging binary + staging dist and serves them on 8081, leaving `bin/sifty` and `app/dist` (what prod serves) byte-for-byte unchanged; a check compares their hashes before and after.
 
 **2 — Staging shows the branch; prod stays main**

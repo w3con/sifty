@@ -3,17 +3,21 @@
 #
 # Usage: sift-deploy --env staging|prod [--build-only] [--help]
 #
+# Each environment owns its own binary and its own frontend bundle.
+# A staging deploy never touches bin/sifty or app/dist (what prod serves).
+#
 # Per-env config (bin/work.config or environment variables):
-#   SIFTY_PROD_PORT          prod HTTP port           (default 8080)
-#   SIFTY_PROD_DATA_DIR      prod data directory      (default <repo>/data)
-#   SIFTY_PROD_BINARY        path to prod binary      (default <repo>/bin/sifty)
-#   SIFTY_PROD_LOG           prod server log path     (default <repo>/data/prod-server.log)
-#   SIFTY_STAGING_PORT       staging HTTP port        (default 8081)
-#   SIFTY_STAGING_DATA_DIR   staging data directory   (default <repo>/data-staging)
-#   SIFTY_STAGING_BINARY     path to staging binary   (default <repo>/bin/sifty)
-#   SIFTY_STAGING_LOG        staging server log path  (default <repo>/data-staging/staging-server.log)
-#   SIFTY_DIST_DIR           React dist dir (shared)  (default <repo>/app/dist)
-#   SIFTY_WORKERS_DIR        workers dir (shared)     (default <repo>/sifty/workers)
+#   SIFTY_PROD_PORT          prod HTTP port                (default 8080)
+#   SIFTY_PROD_DATA_DIR      prod data directory           (default <repo>/data)
+#   SIFTY_PROD_BINARY        path to prod binary           (default <repo>/bin/sifty)
+#   SIFTY_PROD_DIST          prod React dist dir           (default <repo>/app/dist)
+#   SIFTY_PROD_LOG           prod server log path          (default <repo>/data/prod-server.log)
+#   SIFTY_STAGING_PORT       staging HTTP port             (default 8081)
+#   SIFTY_STAGING_DATA_DIR   staging data directory        (default <repo>/data-staging)
+#   SIFTY_STAGING_BINARY     path to staging binary        (default <repo>/bin/sifty-staging)
+#   SIFTY_STAGING_DIST       staging React dist dir        (default <repo>/app/dist-staging)
+#   SIFTY_STAGING_LOG        staging server log path       (default <repo>/data-staging/staging-server.log)
+#   SIFTY_WORKERS_DIR        workers dir (shared)          (default <repo>/sifty/workers)
 #
 # Every run appends a line to <data_dir>/deploy.log with timestamp, env, binary
 # hash and smoke result. On build, start, or smoke failure the previous binary
@@ -75,14 +79,19 @@ Options:
 Per-env config keys (bin/work.config or environment variables):
   SIFTY_PROD_PORT / SIFTY_STAGING_PORT         HTTP port (defaults: 8080 / 8081)
   SIFTY_PROD_DATA_DIR / SIFTY_STAGING_DATA_DIR data directory
-  SIFTY_PROD_BINARY / SIFTY_STAGING_BINARY     path to the sifty binary
+  SIFTY_PROD_BINARY / SIFTY_STAGING_BINARY     path to the sifty binary (each env owns its own)
+  SIFTY_PROD_DIST / SIFTY_STAGING_DIST         React dist dir (each env owns its own)
   SIFTY_PROD_LOG / SIFTY_STAGING_LOG           server log path
-  SIFTY_DIST_DIR                               React dist dir (shared)
   SIFTY_WORKERS_DIR                            workers dir (shared)
 
-Build:
-  (a) cd sifty && go build -o <repo>/bin/sifty.new ./cmd/sifty
-  (b) npm --prefix app ci && npm --prefix app run build  → app/dist/
+Build (prod):
+  (a) cd sifty && go build -o <repo>/bin/sifty.new ./cmd/sifty  → bin/sifty
+  (b) npm --prefix app ci && npm --prefix app run build          → app/dist/
+
+Build (staging):
+  (a) cd sifty && go build -o <repo>/bin/sifty-staging.new ./cmd/sifty  → bin/sifty-staging
+  (b) npm --prefix app ci && BUILD_OUTDIR=../dist-staging vite build     → app/dist-staging/
+  Staging build never touches bin/sifty or app/dist.
 
 Deploy (non-build-only):
   1. For staging: refresh data-staging from a consistent prod snapshot.
@@ -107,7 +116,6 @@ done
     || die "--env must be 'staging' or 'prod', got: $ENV"
 
 # --- Per-env config resolution ---
-DIST_DIR="${SIFTY_DIST_DIR:-$APP_HOME/app/dist}"
 WORKERS_DIR="${SIFTY_WORKERS_DIR:-$APP_HOME/sifty/workers}"
 
 case "$ENV" in
@@ -115,12 +123,14 @@ case "$ENV" in
         PORT="${SIFTY_PROD_PORT:-8080}"
         DATA_DIR="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}"
         BINARY="${SIFTY_PROD_BINARY:-$APP_HOME/bin/sifty}"
+        DIST_DIR="${SIFTY_PROD_DIST:-$APP_HOME/app/dist}"
         SERVER_LOG="${SIFTY_PROD_LOG:-$DATA_DIR/prod-server.log}"
         ;;
     staging)
         PORT="${SIFTY_STAGING_PORT:-8081}"
         DATA_DIR="${SIFTY_STAGING_DATA_DIR:-$APP_HOME/data-staging}"
-        BINARY="${SIFTY_STAGING_BINARY:-$APP_HOME/bin/sifty}"
+        BINARY="${SIFTY_STAGING_BINARY:-$APP_HOME/bin/sifty-staging}"
+        DIST_DIR="${SIFTY_STAGING_DIST:-$APP_HOME/app/dist-staging}"
         SERVER_LOG="${SIFTY_STAGING_LOG:-$DATA_DIR/staging-server.log}"
         ;;
 esac
@@ -129,7 +139,7 @@ DEPLOY_LOG="$DATA_DIR/deploy.log"
 PREV_BINARY="${BINARY}.prev"
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 BACKUP_DB="${DATA_DIR}/store.sqlite.backup.${TIMESTAMP}"
-NEW_BINARY="$APP_HOME/bin/sifty.new"
+NEW_BINARY="${BINARY}.new"
 
 log "env=$ENV port=$PORT data=$DATA_DIR binary=$BINARY"
 
@@ -138,7 +148,7 @@ log "env=$ENV port=$PORT data=$DATA_DIR binary=$BINARY"
 # =============================================================================
 
 log "--- BUILD ---"
-log "Building Go binary (sifty/cmd/sifty → bin/sifty.new)..."
+log "Building Go binary (sifty/cmd/sifty → ${NEW_BINARY##*/})..."
 (cd "$APP_HOME/sifty" && go build -o "$NEW_BINARY" ./cmd/sifty) \
     || die "Go build failed"
 
@@ -151,9 +161,18 @@ else
     die "npm install failed"
 fi
 
-log "Building frontend (npm run build → app/dist/)..."
-npm --prefix "$APP_HOME/app" run build \
-    || die "Frontend build failed"
+# For staging, build into app/dist-staging (via BUILD_OUTDIR=../dist-staging, relative to
+# vite's root dir app/web/). Prod builds into app/dist using the default in vite.config.ts.
+# A staging build never touches app/dist or bin/sifty.
+if [[ "$ENV" == "staging" ]]; then
+    log "Building frontend (npm run build → app/dist-staging/)..."
+    BUILD_OUTDIR=../dist-staging npm --prefix "$APP_HOME/app" run build \
+        || die "Frontend build failed"
+else
+    log "Building frontend (npm run build → app/dist/)..."
+    npm --prefix "$APP_HOME/app" run build \
+        || die "Frontend build failed"
+fi
 
 BINARY_HASH="$(shasum -a 256 "$NEW_BINARY" | cut -d' ' -f1)"
 log "Build complete. binary hash: ${BINARY_HASH:0:16}..."

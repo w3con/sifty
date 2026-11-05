@@ -34,7 +34,7 @@ Extend the search-term model in `config/search.yaml` from two flat OR lists into
 
 - [x] 3.1 — Provide API read/write for the search expressions and for the exclusion terms.
 - [x] 3.2 — Provide API read/write for the source sites list: add a site, remove a site, toggle its enabled flag in `config/search.yaml`.
-- [ ] 3.3 — Add tests for the migration, the exclusion/expression endpoints and the sites endpoint; run `go test -race ./...` and record output.
+- [x] 3.3 — Add tests for the migration, the exclusion/expression endpoints and the sites endpoint; run `go test -race ./...` and record output.
 
 ## Acceptance criteria
 

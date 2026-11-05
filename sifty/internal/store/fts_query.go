@@ -5,6 +5,73 @@ import (
 	"unicode"
 )
 
+// SearchGroup is one OR or AND term group for FTS query construction.
+// Set Or for a phrase-or query (any phrase must appear in the indexed text).
+// Set And to require every phrase to appear anywhere in the indexed text.
+// When Or is non-empty it takes precedence over And.
+// Groups produced by BuildFTSQueryExprs are ORed at the top level.
+type SearchGroup struct {
+	Or  []string
+	And []string
+}
+
+// BuildFTSQueryExprs compiles OR/AND expression groups into an FTS5 MATCH query.
+// Each group contributes one sub-expression; groups are ORed at the top level.
+// Within an Or group, phrases are joined with OR; within an And group they are joined with AND.
+// Duplicate phrases within a group (after case-folding) are silently dropped.
+// An empty return value ("") means no terms survived sanitisation.
+func BuildFTSQueryExprs(groups []SearchGroup) string {
+	var parts []string
+	for _, g := range groups {
+		var expr string
+		if len(g.Or) > 0 {
+			phrases := buildPhrases(g.Or)
+			switch len(phrases) {
+			case 0:
+				// nothing
+			case 1:
+				expr = phrases[0]
+			default:
+				expr = "(" + strings.Join(phrases, " OR ") + ")"
+			}
+		} else if len(g.And) > 0 {
+			phrases := buildPhrases(g.And)
+			switch len(phrases) {
+			case 0:
+				// nothing
+			case 1:
+				expr = phrases[0]
+			default:
+				expr = "(" + strings.Join(phrases, " AND ") + ")"
+			}
+		}
+		if expr != "" {
+			parts = append(parts, expr)
+		}
+	}
+	return strings.Join(parts, " OR ")
+}
+
+// buildPhrases sanitises and deduplicates a list of search terms, wrapping each in double-quotes.
+// Terms that collapse to empty after sanitisation and case-insensitive duplicates are dropped.
+func buildPhrases(terms []string) []string {
+	seen := make(map[string]bool)
+	var phrases []string
+	for _, t := range terms {
+		clean := sanitiseFTS5(t)
+		if clean == "" {
+			continue
+		}
+		key := strings.ToLower(clean)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		phrases = append(phrases, `"`+clean+`"`)
+	}
+	return phrases
+}
+
 // BuildFTSQuery constructs a sanitised FTS5 MATCH query from a list of search terms.
 //
 // Each term is wrapped in double-quotes (phrase match) so that multi-word phrases like

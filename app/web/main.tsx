@@ -8,6 +8,7 @@ import {Filters} from './CatalogueFilters';
 import {emptySelection,filterCatalogue,migrateSelection,selectionCount,sortCatalogue,type CatalogueSelection} from './filters';
 import {emptyQuick,nextUndecided,quickMatch,shortcutGuard,visibleInStage,type QuickFilters,type View} from './workflow';
 import {Settings} from './Settings';
+import {Collection} from './Collection';
 import {RoleContent} from './RoleContent';
 import {ApplicationConfirmation} from './ApplicationConfirmation';
 import {DeleteRole} from './DeleteRole';
@@ -118,7 +119,8 @@ function App(){
       <div className="search"><span aria-hidden="true"><Icon name="search" size={15}/></span><input ref={search} id="find" aria-label="Search catalogue" placeholder="Search company, role, tech" value={query} onChange={e=>setQuery(e.target.value)}/><kbd>/</kbd></div>
       <div className="header-spacer"/><button className="settings-button" onClick={()=>setSettings('settings')}><Icon name="settings" size={15}/> Settings</button>
     </header>
-    <div className="workspace">
+    {view==='collection'&&<Collection onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}} onError={setError}/>}
+    {view!=='collection'&&<div className="workspace">
       <aside className="catalogue" aria-label="Vacancies"><div className="list-toolbar"><button aria-pressed={unread} onClick={()=>setUnread(!unread)}>Unread</button><div className="filter-box" ref={filterBox}><button aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(!filtersOpen)}><Icon name="filters" size={14}/> Filters {activeCount>0&&<span className="filter-count">{activeCount}</span>}</button>{filtersOpen&&<div className="filter-popover"><div className="quick-filters">{([['web3','Web3 / blockchain only'],['remote','Remote only'],['strong','Strong fit (75+)'],['hideExpired','Hide expired'],['management','Management title']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={quick[key]} onChange={e=>setQuick({...quick,[key]:e.target.checked})}/>{label}</label>)}</div><p className="muted">Management matches CTO, Head, Director, Manager or Lead in the title, excluding lead generation. Responsibilities are not inferred.</p><Filters jobs={live} options={options} selection={selection} setSelection={setSelection} rows={queue?.rows??[]} shown={filtered.length} reset={resetFilters}/></div>}</div><label className="sort-control"><span className="sr-only">Sort roles</span><select aria-label="Sort roles" value={sort} onChange={e=>setSort(e.target.value as 'fit'|'newest')}><option value="fit">Best fit</option><option value="newest">Newest</option></select></label></div>
         {unread&&<p className="unread-note">Opening marks a role read. It stays here until you choose another role.</p>}
         {view==='applied'&&<p className="archive-retention">Applications are permanently deleted 30 days after the confirmed application date. Entries without a valid date are kept.</p>}
@@ -138,7 +140,7 @@ function App(){
           <RoleContent key={job.id} job={job} queue={queue} onQueue={setQueue} refresh={refresh} onError={setError} onNotice={setNotice}/>
         </>:<div className="empty"><h1>{filtered.length?'Select a role':'No role selected'}</h1><p>{filtered.length?'Choose a role to review its evidence.':'This stage has no visible roles. Change stage or filters, or collect jobs in Sources.'}</p></div>}
       </div></main>
-    </div>
+    </div>}
     <footer className="queue-bar" aria-label="Assessment queue">
       <div className="assessment-control">{assessmentOn===null?<span role="status">Loading assessment setting…</span>:<button type="button" role="switch" aria-label="Assess vacancies" aria-checked={assessmentOn} aria-describedby="assessment-switch-state" disabled={savingAssessment} onClick={toggleAssessment}><span className="switch-track" aria-hidden="true"><span/></span>Assess vacancies</button>}<span id="assessment-switch-state" role="status">{savingAssessment?'Saving…':assessmentOn===false?(queue?.counts.running?'Off · current inference finishing':'Off'):assessmentOn===true?'On':''}</span></div>
       <div className="queue-status"><button className="queue-action" onClick={()=>setSettings('queue')} title={runtime?.reason??'Inspect assessment queue and errors'}>{runtime?.paused?'Paused · details':'Queue'}</button><span className={queue?.counts.running?'running':''}>● {queue?.counts.running??0} running</span><span>{queue?.counts.pending??0} pending</span><button onClick={()=>setSettings('queue')}>{queue?.counts.failed??0} failed</button><span className="warning">{queue?.counts['missing-description']??0} missing desc.</span><span>{queue?.counts.done??0} current</span><span className="queue-provider"><Icon name="target" size={13}/> Assessment: {stageModel('assessment')} <span className="queue-sep">·</span> <Icon name="pencil" size={13}/> Application: {stageModel('preparation')}{queue?.rows.filter((r:any)=>r.status==='running').map((r:any)=>` · #${r.jobId??r.job_id} ${Math.floor((r.elapsedMs??((r.finished??Date.now())-r.started))/1000)}s`)}</span></div>

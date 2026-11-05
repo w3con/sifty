@@ -10,23 +10,18 @@ fast-forward-only merge work/<id> into the current branch, write done.md, remove
 the worktree and delete the branch. Reject path: write rejected.md with the
 reason, remove the worktree and delete the branch; nothing is merged.
 
-After a successful ff merge of an app-touching card (one that changed files under
-sifty/ or app/), runs bin/sift-deploy --env staging automatically and prints the
-staging URL. A staging deploy failure is reported loudly but does not undo the
-merge (the work is in; the deploy state is the fact that matters).
+No staging deploy is run after the merge. Staging previews in-progress work from
+its own worktree; finishing a card only merges to main. To update production, run
+bin/sift-promote on the owner's word.
 
 Never pushes unless WORK_PUSH=1 is set (off by default).
 """
 import argparse
 import os
-import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import _work_lib as w
-
-# Glob patterns that mark a card as app-touching and trigger a staging deploy.
-APP_PATH_PREFIXES = ("sifty/", "app/")
 
 
 def write_terminal(card_dir, name, body):
@@ -48,34 +43,6 @@ def commit_card(card_dir, message):
     cp = w.run(["git", "commit", "-q", "-m", message], cwd=w.repo_root())
     if cp.returncode != 0:
         w.die("git commit failed: %s" % (cp.stderr or cp.stdout).strip())
-
-
-def card_is_app_touching(prev_head):
-    """Return True when the merge just added files under sifty/ or app/."""
-    cp = w.run(["git", "diff", "--name-only", "%s..HEAD" % prev_head],
-               cwd=w.repo_root())
-    if cp.returncode != 0:
-        return False
-    for line in cp.stdout.splitlines():
-        for prefix in APP_PATH_PREFIXES:
-            if line.startswith(prefix):
-                return True
-    return False
-
-
-def run_staging_deploy():
-    """Run bin/sift-deploy --env staging; return (exit_code, combined_output)."""
-    deploy_cmd = os.path.join(w.repo_root(), "bin", "sift-deploy")
-    if not os.path.isfile(deploy_cmd):
-        return 1, "bin/sift-deploy not found at %s" % deploy_cmd
-    proc = subprocess.run(
-        [deploy_cmd, "--env", "staging"],
-        cwd=w.repo_root(),
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    return proc.returncode, proc.stdout or ""
 
 
 def main():
@@ -114,10 +81,6 @@ def main():
             w.refuse(["acceptance checks failed (exit %d) — not merging. "
                       "Fix the work or pass --force." % code])
 
-    # Record HEAD before the merge so we can detect which files changed.
-    prev_head_cp = w.run(["git", "rev-parse", "HEAD"], cwd=w.repo_root())
-    prev_head = prev_head_cp.stdout.strip() if prev_head_cp.returncode == 0 else ""
-
     # Fast-forward-only merge into the current (base) branch.
     base = w.git_current_branch()
     merge = w.run(["git", "merge", "--ff-only", branch], cwd=w.repo_root())
@@ -138,28 +101,6 @@ def main():
         if push.returncode != 0:
             w.info("WARNING: push failed: %s" % push.stderr.strip())
     w.info("finished %s" % args.id)
-
-    # ── Staging deploy (app-touching cards only) ──────────────────────────────
-    # A staging deploy is triggered only when the merged work touched sifty/ or
-    # app/. Docs-only and harness-only cards deploy nothing. The deploy runs
-    # after the merge; a failure is reported loudly but does not undo the merge.
-    if prev_head and card_is_app_touching(prev_head):
-        w.info("")
-        w.info("App-touching card — deploying to staging...")
-        deploy_code, deploy_out = run_staging_deploy()
-        if deploy_out:
-            sys.stdout.write(deploy_out)
-            if not deploy_out.endswith("\n"):
-                sys.stdout.write("\n")
-        if deploy_code == 0:
-            staging_port = w.config_get("SIFTY_STAGING_PORT", "8081")
-            w.info("Staging deploy succeeded. URL: http://localhost:%s" % staging_port)
-        else:
-            w.info("WARNING: staging deploy FAILED (exit %d). "
-                   "The merge is complete; staging may be in a rollback state. "
-                   "Run 'bin/sift-deploy --env staging' to retry." % deploy_code)
-    else:
-        w.info("No app files changed — skipping staging deploy.")
 
     # The roadmap holds the card sequence and status as curated prose; it cannot be
     # updated mechanically, so the finish step reminds the coordinator to do it by hand.

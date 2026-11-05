@@ -82,3 +82,22 @@ OPS-3-STAGING-MARKER
 prod binary hash: aba2ff830ec7eb2ca62f8e6b54e46fe274dbfa7edffe8684a810f130899fcabf
 ```
 
+
+## 2026-11-05 — 2.2 work-finish no longer starts or stops any server
+
+Check: `bash -c 'echo "sift-deploy calls in work-finish:"; grep -c sift-deploy bin/work-finish && echo "ERROR: found sift-deploy" || echo "0 (none — good)"; echo; echo "subprocess import:"; grep -c "import subprocess" bin/work-finish && echo "ERROR: subprocess imported" || echo "0 (removed — good)"; echo; echo "8080 PID: $(lsof -nP -iTCP:8080 -sTCP:LISTEN -t 2>/dev/null)"; echo "8081 PID: $(lsof -nP -iTCP:8081 -sTCP:LISTEN -t 2>/dev/null)"'`
+Exit: 0
+
+```
+sift-deploy calls in work-finish:
+0
+0 (none — good)
+
+subprocess import:
+0
+0 (removed — good)
+
+8080 PID: 36564
+8081 PID: 46634
+```
+

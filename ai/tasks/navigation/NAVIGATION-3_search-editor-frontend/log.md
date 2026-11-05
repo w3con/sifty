@@ -41,3 +41,13 @@ Exit: 0
 
 ```
 
+
+## 2026-11-06 — 2.3 — Remove Dismissed & blocked panel and block-rule/source-block controls from Settings
+
+Check: `cd app && ./node_modules/.bin/tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

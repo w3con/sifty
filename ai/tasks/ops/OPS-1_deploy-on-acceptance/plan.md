@@ -57,7 +57,7 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 *Gate: both environments start and answer on their ports.*
 
-- [ ] 2.1 — Define `staging` and `prod` in `bin/work.config`: prod on port 8080, staging on port 8081, each with its persistent data directory at the home chosen by the move decision (see OPS-2 / pending owner confirmation).
+- [x] 2.1 — Define `staging` and `prod` in `bin/work.config`: prod on port 8080, staging on port 8081, each with its persistent data directory at the home chosen by the move decision (see OPS-2 / pending owner confirmation).
 - [ ] 2.2 — Move the production data from `/tmp/claude-501/sift-data` to the persistent prod path once, and point the running production server at it; the collected corpus and its config survive the move.
 - [ ] 2.3 — Staging deploy first refreshes `~/.local/share/sifty-staging` from a production snapshot, so staging always reviews the new build against current real data.
 

@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+# bin/sift-accept — acceptance check for a sifty card.
+#
+# Run by work-accept / work-finish as the WORK_ACCEPT_CMD. Detects whether the
+# card touched application code (sifty/** or app/**) and runs the appropriate
+# suite:
+#
+#   App-touching card  → go test -race ./...  +  tsc --noEmit  +  vite build
+#   Harness/docs card  → bin/work-test (the harness self-test)
+#
+# A card is considered app-touching when any committed file on this branch
+# (relative to the common ancestor with the base branch) is under sifty/ or
+# app/. The base branch defaults to main; set SIFTY_BASE_BRANCH to override.
+#
+# Exit 0 = pass. Exit non-zero = fail (card is rejected before merge).
+
+set -euo pipefail
+
+log()  { echo "sift-accept: $*"; }
+die()  { echo "sift-accept: FAIL: $*" >&2; exit 1; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
+    || die "not inside a git repository"
+
+BASE_BRANCH="${SIFTY_BASE_BRANCH:-main}"
+
+# Find the merge base between HEAD and the base branch.
+MERGE_BASE="$(git -C "$APP_HOME" merge-base "$BASE_BRANCH" HEAD 2>/dev/null \
+    || git -C "$APP_HOME" merge-base origin/"$BASE_BRANCH" HEAD 2>/dev/null \
+    || echo "")"
+
+if [[ -z "$MERGE_BASE" ]]; then
+    log "Cannot find merge base with $BASE_BRANCH; running full app suite to be safe."
+    APP_TOUCHING=1
+else
+    # List files changed on this branch since the merge base.
+    CHANGED="$(git -C "$APP_HOME" diff --name-only "$MERGE_BASE" HEAD 2>/dev/null || true)"
+    if echo "$CHANGED" | grep -qE '^(sifty|app)/'; then
+        APP_TOUCHING=1
+        log "App-touching card detected (files changed under sifty/ or app/)."
+    else
+        APP_TOUCHING=0
+        log "No app files changed; running harness self-test only."
+    fi
+fi
+
+PASS=0
+
+if [[ "$APP_TOUCHING" -eq 1 ]]; then
+    log "--- Go tests (go test -race ./...) ---"
+    if (cd "$APP_HOME/sifty" && go test -race ./... 2>&1); then
+        log "Go tests: PASS"
+    else
+        die "Go tests failed"
+    fi
+
+    log "--- TypeScript check (tsc --noEmit) ---"
+    if npm --prefix "$APP_HOME/app" run build 2>&1; then
+        log "tsc + vite build: PASS"
+    else
+        die "tsc --noEmit or vite build failed"
+    fi
+
+    PASS=1
+else
+    log "--- Harness self-test (bin/work-test) ---"
+    if python3 "$APP_HOME/bin/work-test" 2>&1; then
+        log "Harness self-test: PASS"
+        PASS=1
+    else
+        die "Harness self-test failed"
+    fi
+fi
+
+[[ "$PASS" -eq 1 ]] || die "Acceptance check did not complete"
+log "Acceptance checks passed."

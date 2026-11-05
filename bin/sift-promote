@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# bin/sift-promote — deploy current main to the production environment.
+#
+# This is the ONLY script that touches production. It is run by the owner
+# on their explicit confirmation; no automatic path ever calls it.
+#
+# What it does:
+#   1. Verify the current branch is main (or --force to override).
+#   2. Run bin/sift-deploy --env prod with full backup and rollback.
+#
+# Usage:
+#   sift-promote [--force] [--help]
+#
+# A staging deploy never promotes. Production is updated only by this command.
+
+set -euo pipefail
+
+die()  { echo "sift-promote: ERROR: $*" >&2; exit 1; }
+log()  { echo "sift-promote: $*"; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
+    || die "not inside a git repository"
+
+FORCE=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --force) FORCE=1; shift ;;
+        --help|-h)
+            cat <<'HELP'
+sift-promote — deploy current main to the production environment.
+
+Usage:
+  sift-promote [--force]
+  sift-promote --help
+
+This is the only command that updates production (port 8080). It runs
+bin/sift-deploy --env prod, which backs up prod data, swaps the binary,
+restarts the server, runs the health and smoke check, and rolls back on
+any failure.
+
+Options:
+  --force   Skip the branch check (allow promote from non-main branches).
+  --help    Print this help and exit.
+
+A staging deploy never promotes to production. Run bin/sift-deploy --env
+staging instead to deploy to staging (port 8081).
+HELP
+            exit 0
+            ;;
+        *) die "unknown argument: $1 (run with --help for usage)" ;;
+    esac
+done
+
+# Verify we are on main (unless --force)
+CURRENT_BRANCH="$(git -C "$APP_HOME" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+if [[ "$FORCE" -ne 1 && "$CURRENT_BRANCH" != "main" ]]; then
+    die "current branch is '$CURRENT_BRANCH', not main. " \
+        "Switch to main before promoting, or pass --force to override."
+fi
+
+log "Promoting main to production (port ${SIFTY_PROD_PORT:-8080})..."
+log "This deploys the binary at HEAD of main to the live server."
+log ""
+
+exec "$APP_HOME/bin/sift-deploy" --env prod

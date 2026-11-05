@@ -89,3 +89,14 @@ sift-deploy: Build complete. binary hash: 9215bf49fd501af1...
 sift-deploy: build-only: binary installed at /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-1/bin/sifty; no server touched.
 ```
 
+
+## 2026-11-05 — 2.1 — Define staging and prod in bin/work.config
+
+Check: `grep -E 'SIFTY_(PROD|STAGING)_PORT' bin/work.config`
+Exit: 0
+
+```
+SIFTY_PROD_PORT=8080
+SIFTY_STAGING_PORT=8081
+```
+

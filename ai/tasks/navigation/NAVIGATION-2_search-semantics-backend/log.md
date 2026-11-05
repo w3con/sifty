@@ -46,3 +46,14 @@ ok  	github.com/w3con/sifty/internal/store	(cached)
 ok  	github.com/w3con/sifty/internal/background	(cached)
 ```
 
+
+## 2026-11-05 — 2.2
+
+Check: `cd sifty && go test -race ./internal/store/... ./internal/background/...`
+Exit: 0
+
+```
+ok  	github.com/w3con/sifty/internal/store	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+```
+

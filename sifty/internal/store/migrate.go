@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const targetVersion = 13
+const targetVersion = 14
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
 // needed to produce the complete Sifty schema at user_version 10. Every statement is idempotent,
@@ -318,6 +318,25 @@ func migrate(db *sql.DB) error {
 		}
 		if _, err := db.Exec("PRAGMA user_version=13"); err != nil {
 			return fmt.Errorf("set user_version=13: %w", err)
+		}
+	}
+
+	// Phase 3 — v14: unify exclusions by migrating company block rules into stop_words and
+	// retiring source block rules (source control moves to the search.yaml enabled flag).
+	if version < 14 {
+		// Copy every company block rule into stop_words (INSERT OR IGNORE skips duplicates).
+		if _, err := db.Exec(`
+			INSERT OR IGNORE INTO stop_words(word, created_at)
+			SELECT value, created_at FROM block_rules WHERE kind='company'
+		`); err != nil {
+			return fmt.Errorf("migrate company block rules to stop_words: %w", err)
+		}
+		// Remove all source block rules; source enable/disable is now the search.yaml enabled flag.
+		if _, err := db.Exec(`DELETE FROM block_rules WHERE kind='source'`); err != nil {
+			return fmt.Errorf("remove source block rules: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=14"); err != nil {
+			return fmt.Errorf("set user_version=14: %w", err)
 		}
 	}
 

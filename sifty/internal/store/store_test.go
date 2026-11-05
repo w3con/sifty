@@ -63,7 +63,7 @@ var expectedColumns = map[string][]string{
 }
 
 // TestSchema_FreshDatabase opens a brand-new database and verifies it converges on the
-// documented schema at user_version 12 with all tables and columns.
+// documented schema at user_version 14 with all tables and columns.
 func TestSchema_FreshDatabase(t *testing.T) {
 	s, err := store.Open(filepath.Join(t.TempDir(), "fresh.sqlite"))
 	if err != nil {
@@ -74,7 +74,7 @@ func TestSchema_FreshDatabase(t *testing.T) {
 }
 
 // TestSchema_ExistingDatabase copies the owner's live database to a temporary directory
-// and opens it with the Go store. The migration must be a no-op (user_version already 12),
+// and opens it with the Go store. The migration runs to user_version 14,
 // and the schema must match the documented shape.
 //
 // Set SIFTY_OWNER_DB to the path of a local jobs database to run this test; it is skipped
@@ -105,7 +105,7 @@ func TestSchema_ExistingDatabase(t *testing.T) {
 	checkSchema(t, s.DB, "owner's existing database")
 }
 
-// checkSchema asserts that db is at user_version 12 in WAL mode and contains all documented
+// checkSchema asserts that db is at user_version 14 in WAL mode and contains all documented
 // tables and columns.
 func checkSchema(t *testing.T, db *sql.DB, label string) {
 	t.Helper()
@@ -114,8 +114,8 @@ func checkSchema(t *testing.T, db *sql.DB, label string) {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("[%s] PRAGMA user_version: %v", label, err)
 	}
-	if version != 13 {
-		t.Errorf("[%s] user_version = %d, want 13", label, version)
+	if version != 14 {
+		t.Errorf("[%s] user_version = %d, want 14", label, version)
 	}
 
 	var mode string

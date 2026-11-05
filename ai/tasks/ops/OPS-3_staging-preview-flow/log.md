@@ -117,3 +117,25 @@ staging dist: dfd073b79bc775737753a907e264bc732a7f76cbc0deeef41f66090ee9f2a1bb
 8081 health: 200
 ```
 
+
+## 2026-11-05 — 3.1 AGENTS.md and ROADMAP.md updated; stale wording removed
+
+Check: `bash -c 'echo "=== AGENTS.md: auto-deploy wording ==="; grep -c "auto-deploys to staging" AGENTS.md && echo "FAIL: stale wording found" || echo "0 (none — good)"; echo; echo "=== AGENTS.md: owns-its-own-binary line ==="; grep -c "owns its own" AGENTS.md; echo; echo "=== ROADMAP.md: auto-deploy wording ==="; grep -c "auto-deploys to staging" ai/ROADMAP.md && echo "FAIL: stale wording found" || echo "0 (none — good)"; echo; echo "=== ROADMAP.md: OPS-3 entry ==="; grep -c "OPS-3" ai/ROADMAP.md'`
+Exit: 0
+
+```
+=== AGENTS.md: auto-deploy wording ===
+0
+0 (none — good)
+
+=== AGENTS.md: owns-its-own-binary line ===
+1
+
+=== ROADMAP.md: auto-deploy wording ===
+0
+0 (none — good)
+
+=== ROADMAP.md: OPS-3 entry ===
+3
+```
+

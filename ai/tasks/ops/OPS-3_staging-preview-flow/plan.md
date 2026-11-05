@@ -51,7 +51,7 @@ The application's behaviour (collection, scoring, serving). The harness one-card
 
 *Gate: the documented commands run from a clean shell.*
 
-- [ ] 3.1 — Update `AGENTS.md` and `ai/ROADMAP.md` to describe the corrected loop (staging = manual preview of an in-progress branch with its own build; finishing only merges to main; production advances only via `bin/sift-promote` on the owner's word); remove the "acceptance auto-deploys to staging" wording.
+- [x] 3.1 — Update `AGENTS.md` and `ai/ROADMAP.md` to describe the corrected loop (staging = manual preview of an in-progress branch with its own build; finishing only merges to main; production advances only via `bin/sift-promote` on the owner's word); remove the "acceptance auto-deploys to staging" wording.
 
 ## Gate evidence
 

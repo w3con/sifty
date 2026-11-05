@@ -17,11 +17,12 @@ Updated: 2026-11-05.
 
 **Goal (owner, 2026-11-04): the owner needs to be finding work, not spending another week-plus building this app.** The sequence is cut to the minimum that makes the tool usable for the owner's own daily search. The core loop already works today — collection flows (COL-1/COL-3), assessment runs, descriptions are readable, the owner decides and applies on the listing site by hand. Productization (retire the old TypeScript backend, packaging, MCP, CLI parity) and the large, currently-broken application-preparation build are deferred until the owner asks, or until shipping the app to others becomes the goal.
 
-The 2026-11-05 session shipped TRI-1, TRI-2, COL-6, ASM-3, ASM-4, OPS-2 and OPS-1. The application runs on port 8080 against `./data`; staging is on port 8081 against `./data-staging`. To build: `make build`. To deploy to staging: `bin/sift-deploy --env staging`. To promote to production on the owner's word: `bin/sift-promote`. See `AGENTS.md` for the full two-environment deploy loop. After the deploy loop comes the navigation restructure.
+The 2026-11-05 session shipped TRI-1, TRI-2, COL-6, ASM-3, ASM-4, OPS-2, OPS-1, and OPS-3. The application runs on port 8080 against `./data`; staging is on port 8081 against `./data-staging`. To build: `make build`. To preview an in-progress branch on staging: create a worktree for it and run `bin/sift-deploy --env staging` from that worktree. To promote to production on the owner's word: `bin/sift-promote`. Finishing a card merges to main only; no staging deploy runs automatically. See `AGENTS.md` for the full two-environment deploy loop. After the deploy loop correction comes the navigation restructure.
 
 ### Scheduled (minimal, for the owner's own use)
 
-1. **OPS-1 — done.** The two-environment deploy loop: `bin/work-finish` for an app-touching card rebuilds the Go binary and frontend, runs `go test -race ./...` + tsc + vite, and auto-deploys to staging (`http://localhost:8081`). Production is updated only by `bin/sift-promote` on the owner's word, with data backup and rollback. See `AGENTS.md` for the full loop documentation.
+1. **OPS-1 — done.** The two-environment deploy loop: `bin/sift-deploy --env staging|prod`, `bin/sift-promote`, `bin/sift-accept`. See `AGENTS.md` for the full loop documentation.
+2. **OPS-3 — done.** Corrected the loop so staging previews in-progress work: each env owns its own binary and bundle; staging deploy never touches prod artifacts; `bin/work-finish` no longer auto-deploys staging; production advances only via `bin/sift-promote`.
 2. **Navigation restructure** — to be founded. Single **Collection** tab (Sources + Search sections), single **Archived** tab (Applied/Dismissed toggle), Pre-selected→Selected, and relocation of the TRI-1/TRI-2 block-rule management and the COL-6 stop-word management into Collection→Search. Owner's design settled 2026-11-05; still needs its interview and `plan.md`. **After ASM-4**, because it displays the fit number and "Best fit" sort that ASM-4 changes.
 3. **COL-5** — preserve heading/list structure in the job description view (our CSS, new `description_html` field, plain `job.Description` untouched). Cheap readability win for daily scanning; optional, skippable. Needs `plan.md` before execution.
 
@@ -52,9 +53,10 @@ Blocked on the owner: **SET-1** (first-time knowledge-base answer preparation) h
 - Also on `main`: non-assessed roles open on the Job-description tab (`RoleContent.tsx`).
 - **ASM-4 — done, merged.** Fast weighted ranking via SQLite FTS5 `bm25()`: an instant 0–100 match score and "Best fit" sort; the mass LLM queue removed, the LLM runs only when a role is moved to Selected plus a manual "assess now". Verified on a copy of live data (2496 roles, 1642 scored across the full range).
 - **OPS-2 — done, merged.** The whole application relocated from the FCTO knowledge-base repository to this standalone home: one build command (`make build`), production on port 8080 against `./data`, data git-ignored and off `/tmp`. The CV and portfolio website stay in FCTO. OPS-1 (deploy loop) is the next card.
-- **OPS-1 — done, merged to main.** Two-environment deploy loop: `bin/sift-deploy --env staging|prod`, `bin/sift-promote`, `bin/sift-accept`. Acceptance auto-deploys to staging; production updates only on the owner's `bin/sift-promote`. See `AGENTS.md` for full documentation.
-- **Running app** — port 8080 against `./data` (prod), port 8081 against `./data-staging` (staging). To deploy: `bin/sift-deploy --env staging` or `bin/sift-promote` for prod. `make run` and `make run-staging` remain valid for manual starts.
-- **Process:** `bin/work-finish` now prints a reminder to update this roadmap after each card (added 2026-11-05, because the roadmap went stale across the session).
+- **OPS-1 — done, merged to main.** Two-environment deploy loop: `bin/sift-deploy --env staging|prod`, `bin/sift-promote`, `bin/sift-accept`. See `AGENTS.md` for full documentation.
+- **OPS-3 — done, merged to main.** Corrected the deploy loop: each env owns its own binary (`bin/sifty` / `bin/sifty-staging`) and bundle (`app/dist` / `app/dist-staging`); staging shows an in-progress branch from its worktree; `bin/work-finish` no longer auto-deploys staging; production advances only via `bin/sift-promote`.
+- **Running app** — port 8080 against `./data` (prod, binary `bin/sifty`), port 8081 against `./data-staging` (staging, binary `bin/sifty-staging`). To preview a branch on staging: `bin/sift-deploy --env staging` from a worktree for that branch. To promote prod: `bin/sift-promote`.
+- **Process:** `bin/work-finish` prints a reminder to update this roadmap after each card.
 
 ### Earlier
 

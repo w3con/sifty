@@ -66,3 +66,19 @@ PASS prod binary unchanged
 PASS prod dist unchanged
 ```
 
+
+## 2026-11-05 — 2.1 isolation proof: marker on 8081, absent on 8080
+
+Check: `bash -c 'echo "=== 8081 (staging) ==="; curl -s http://127.0.0.1:8081/ | grep -o OPS-3-STAGING-MARKER || echo "(not found)"; echo; echo "=== 8080 (prod) ==="; curl -s http://127.0.0.1:8080/ | grep -o OPS-3-STAGING-MARKER || echo "(not found)"; echo; echo "prod binary hash: $(shasum -a 256 /Volumes/SSD/Dev/tknff/sifty/bin/sifty | cut -d" " -f1)"'`
+Exit: 0
+
+```
+=== 8081 (staging) ===
+OPS-3-STAGING-MARKER
+
+=== 8080 (prod) ===
+(not found)
+
+prod binary hash: aba2ff830ec7eb2ca62f8e6b54e46fe274dbfa7edffe8684a810f130899fcabf
+```
+

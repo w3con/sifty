@@ -32,7 +32,7 @@ In the Collection→Search section placed by NAVIGATION-1, build an editor for t
 
 *Gate: `tsc --noEmit` and `vite build` pass; staging check done.*
 
-- [ ] 3.1 — Run `tsc --noEmit` and `vite build`; record output.
+- [x] 3.1 — Run `tsc --noEmit` and `vite build`; record output.
 - [ ] 3.2 — On staging, confirm search terms, exclusion words and source sites can be added, removed and persist across a reload.
 
 ## Acceptance criteria

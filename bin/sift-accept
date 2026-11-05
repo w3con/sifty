@@ -55,6 +55,12 @@ if [[ "$APP_TOUCHING" -eq 1 ]]; then
         die "Go tests failed"
     fi
 
+    log "--- Frontend dependencies (npm ci) ---"
+    if ! npm --prefix "$APP_HOME/app" ci --silent 2>/dev/null; then
+        npm --prefix "$APP_HOME/app" install --silent 2>/dev/null \
+            || die "frontend dependency install failed"
+    fi
+
     log "--- TypeScript check (tsc --noEmit) ---"
     if npm --prefix "$APP_HOME/app" run build 2>&1; then
         log "tsc + vite build: PASS"

@@ -65,10 +65,10 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 *Gate: `bin/work-test`; finish a throwaway app card and a docs card.*
 
-- [ ] 3.1 — After a successful fast-forward merge, `work-finish` runs `bin/sift-deploy --env staging` when the merged card touched `sifty/**` or `app/**`, and never for a docs-only or harness-only card; it reports the staging URL.
-- [ ] 3.2 — Make the acceptance check test the application: `work-accept` / `WORK_ACCEPT_CMD` runs `go test -race ./...`, `tsc --noEmit`, and `vite build` for an app-touching card; an app card with a failing Go test is rejected.
-- [ ] 3.3 — `bin/sift-promote` deploys the current `main` to the production environment with prod backup and rollback; it is the only path that touches production and is run on the owner's confirmation. A staging deploy never promotes.
-- [ ] 3.4 — A staging deploy failure fails the finish loudly, after the merge, reporting the rollback state, so a broken deploy is never silent.
+- [x] 3.1 — After a successful fast-forward merge, `work-finish` runs `bin/sift-deploy --env staging` when the merged card touched `sifty/**` or `app/**`, and never for a docs-only or harness-only card; it reports the staging URL.
+- [x] 3.2 — Make the acceptance check test the application: `work-accept` / `WORK_ACCEPT_CMD` runs `go test -race ./...`, `tsc --noEmit`, and `vite build` for an app-touching card; an app card with a failing Go test is rejected.
+- [x] 3.3 — `bin/sift-promote` deploys the current `main` to the production environment with prod backup and rollback; it is the only path that touches production and is run on the owner's confirmation. A staging deploy never promotes.
+- [x] 3.4 — A staging deploy failure fails the finish loudly, after the merge, reporting the rollback state, so a broken deploy is never silent.
 
 **4 — Documentation**
 

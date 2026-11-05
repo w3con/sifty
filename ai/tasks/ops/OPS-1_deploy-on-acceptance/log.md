@@ -164,3 +164,62 @@ data-staging/store.sqlite
 port: 8081
 ```
 
+
+## 2026-11-05 — 3.1 — work-finish runs bin/sift-deploy --env staging after ff merge of app-touching card
+
+Check: `python3 -c "import py_compile; py_compile.compile('bin/work-finish', doraise=True); print('compile OK')"`
+Exit: 0
+
+```
+compile OK
+```
+
+
+## 2026-11-05 — 3.2 — WORK_ACCEPT_CMD=bin/sift-accept runs go test, tsc --noEmit, vite build for app-touching cards
+
+Check: `grep 'WORK_ACCEPT_CMD' bin/work.config && bash bin/sift-accept --help 2>&1 | head -3 || true`
+Exit: 0
+
+```
+WORK_ACCEPT_CMD=bin/sift-accept
+sift-accept: No app files changed; running harness self-test only.
+sift-accept: --- Harness self-test (bin/work-test) ---
+ok   compile _work_lib.py
+```
+
+
+## 2026-11-05 — 3.3 — bin/sift-promote deploys main to prod (8080) with backup+rollback; only path that touches prod
+
+Check: `bash bin/sift-promote --help`
+Exit: 0
+
+```
+sift-promote — deploy current main to the production environment.
+
+Usage:
+  sift-promote [--force]
+  sift-promote --help
+
+This is the only command that updates production (port 8080). It runs
+bin/sift-deploy --env prod, which backs up prod data, swaps the binary,
+restarts the server, runs the health and smoke check, and rolls back on
+any failure.
+
+Options:
+  --force   Skip the branch check (allow promote from non-main branches).
+  --help    Print this help and exit.
+
+A staging deploy never promotes to production. Run bin/sift-deploy --env
+staging instead to deploy to staging (port 8081).
+```
+
+
+## 2026-11-05 — 3.4 — Staging deploy failure after merge prints WARNING with rollback state; does not undo merge
+
+Check: `grep -c 'staging deploy FAILED' bin/work-finish`
+Exit: 0
+
+```
+1
+```
+

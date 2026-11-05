@@ -24,15 +24,40 @@ type Source struct {
 // IsEnabled reports whether the source is active; a source defaults to enabled.
 func (s Source) IsEnabled() bool { return s.Enabled == nil || *s.Enabled }
 
+// SearchExpression is one OR or AND term group within the search configuration.
+// Set Or for a phrase-or query (any term must appear); set And to require all phrases to be
+// present in the indexed text. When both Or and And are set, Or takes precedence.
+// Groups are combined with OR at the top level by BuildFTSQueryExprs.
+type SearchExpression struct {
+	Or  []string `yaml:"or,omitempty"  json:"or,omitempty"`
+	And []string `yaml:"and,omitempty" json:"and,omitempty"`
+}
+
 // Search is the search configuration (sites and query terms).
 type Search struct {
 	Version int      `yaml:"version" json:"version"`
 	Sites   []Source `yaml:"sites"   json:"sites"`
 	Search  struct {
-		Titles   []string `yaml:"titles"   json:"titles"`
-		Keywords []string `yaml:"keywords" json:"keywords"`
+		Titles      []string           `yaml:"titles"      json:"titles"`
+		Keywords    []string           `yaml:"keywords"    json:"keywords"`
+		Expressions []SearchExpression `yaml:"expressions" json:"expressions"`
 	} `yaml:"search" json:"search"`
 	Preferences map[string]any `yaml:"preferences" json:"preferences"`
+}
+
+// EffectiveExpressions returns the search expressions to use for collection and ranking.
+// When Expressions is non-empty, it is returned as-is (the owner has opted into the new model).
+// Otherwise the existing flat Titles and Keywords lists are synthesised into a single OR group,
+// preserving backward compatibility with configs that pre-date the expression model.
+func (s *Search) EffectiveExpressions() []SearchExpression {
+	if len(s.Search.Expressions) > 0 {
+		return s.Search.Expressions
+	}
+	flat := append(append([]string{}, s.Search.Titles...), s.Search.Keywords...)
+	if len(flat) == 0 {
+		return nil
+	}
+	return []SearchExpression{{Or: flat}}
 }
 
 // Runtime is the collection and assessment runtime configuration.

@@ -60,6 +60,10 @@ This repository runs a two-environment deploy loop for the sifty application. Ea
 
 **Staging data:** each staging deploy copies a consistent snapshot of the prod database (`sqlite3 <prod>/store.sqlite ".backup <staging>/store.sqlite"`) so the owner reviews new work against real-shaped data, without touching the live database.
 
+## License
+
+This project is source-available under the Elastic License 2.0. You may download, modify and self-host it for your own use. You may not offer it to third parties as a hosted or managed service. See `LICENSE` for the full terms.
+
 ## Not relied on
 
 The mechanism depends on no Claude-Code-only feature: no PreToolUse gate, no slash command, no skill, no Agent tool, no `@`-import, and no hardcoded `claude -p`. A `CLAUDE.md`, where kept, is a thin twin pointing back to this file.

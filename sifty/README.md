@@ -32,4 +32,4 @@ The TypeScript workers live under `workers/`. They are invoked by the Go core ov
 
 ## License
 
-MIT. See `LICENSE`.
+Sifty is source-available under the [Elastic License 2.0](../LICENSE). You may download, modify and self-host it for your own use. You may not offer it to third parties as a hosted or managed service. See `LICENSE` for the full terms.

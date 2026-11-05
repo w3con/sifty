@@ -1,6 +1,6 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {api,listBlockRules,listSources,addSourceBlock,removeBlockRule as apiRemoveBlockRule,listStopWords,addStopWord,removeStopWord,previewStopWord} from './api';
-import type {BlockRule,Job,StopWord} from '../src/core';
+import {api,listBlockRules,listSources,addSourceBlock,removeBlockRule as apiRemoveBlockRule} from './api';
+import type {BlockRule,Job} from '../src/core';
 
 export function Settings({panel,setPanel,queue,onError,onRulesChanged}:{panel:string;setPanel:(s:string|null)=>void;queue:any;onError:(s:string)=>void;onRulesChanged:()=>void}){
   const dialog=useRef<HTMLDialogElement>(null),revision=useRef(0);
@@ -10,10 +10,8 @@ export function Settings({panel,setPanel,queue,onError,onRulesChanged}:{panel:st
   const [checks,setChecks]=useState<Record<string,string>>({});
   const [stageProviders,setStageProviders]=useState<{stages:Record<string,string>;providers:{name:string;model:string}[]}|null>(null);
   const [blockRules,setBlockRules]=useState<BlockRule[]>([]),[dismissed,setDismissed]=useState<Job[]>([]),[sourceList,setSourceList]=useState<{name:string;roles:number;blocked:boolean}[]>([]);
-  const [stopWords,setStopWords]=useState<StopWord[]>([]),[stopDraft,setStopDraft]=useState(''),[stopPreview,setStopPreview]=useState<{word:string;count:number}|null>(null);
-  useEffect(()=>{const word=stopDraft.trim();if(!word){setStopPreview(null);return;}let alive=true;const t=setTimeout(()=>{previewStopWord(word).then(p=>{if(alive)setStopPreview({...p,word});}).catch(e=>{if(alive)setError(e.message);});},250);return()=>{alive=false;clearTimeout(t);};},[stopDraft]);
   useEffect(()=>{const previous=document.activeElement as HTMLElement|null,element=dialog.current;element?.showModal();return()=>{element?.close();if(previous?.isConnected)previous.focus();};},[]);
-  useEffect(()=>{if(panel==='context')api('context').then(setContext).catch(e=>setError(e.message));if(panel==='settings'){api('providers').then(setProviders).catch(e=>setError(e.message));api('stage-providers').then(setStageProviders).catch(e=>setError(e.message));}if(panel==='dismissed'){listBlockRules().then(setBlockRules).catch(e=>setError(e.message));listSources().then(setSourceList).catch(e=>setError(e.message));listStopWords().then(setStopWords).catch(e=>setError(e.message));api('jobs?status=no').then((js:Job[])=>setDismissed(js.slice(0,50))).catch(e=>setError(e.message));}},[panel]);
+  useEffect(()=>{if(panel==='context')api('context').then(setContext).catch(e=>setError(e.message));if(panel==='settings'){api('providers').then(setProviders).catch(e=>setError(e.message));api('stage-providers').then(setStageProviders).catch(e=>setError(e.message));}if(panel==='dismissed'){listBlockRules().then(setBlockRules).catch(e=>setError(e.message));listSources().then(setSourceList).catch(e=>setError(e.message));api('jobs?status=no').then((js:Job[])=>setDismissed(js.slice(0,50))).catch(e=>setError(e.message));}},[panel]);
   useEffect(()=>{if(panel!=='settings')return;let active=true;const v=++revision.current;api(`config/${configName}`).then(r=>{if(active&&v===revision.current){setConfigText(r.content);setDirty(false);}}).catch(e=>setError(e.message));return()=>{active=false;};},[panel,configName]);
   async function action(label:string,fn:()=>Promise<any>){setBusy(label);setError('');setNotice('');try{const r=await fn();setNotice(`${label} finished.`);return r;}catch(e:any){setError(e.message);}finally{setBusy('');}}
 
@@ -29,15 +27,6 @@ export function Settings({panel,setPanel,queue,onError,onRulesChanged}:{panel:st
       <h2>Block a source</h2>
       <p className="muted">A role is hidden only when every source it was found on is blocked.</p>
       {sourceList.length===0?<p className="muted">No sources in the collected roles yet.</p>:<ul className="block-rules-list">{sourceList.map(s=><li key={s.name}><span className="rule-value">{s.name}</span><span className="muted">{s.roles} {s.roles===1?'role':'roles'}</span>{s.blocked?<span className="muted">Blocked</span>:<button disabled={!!busy} onClick={async()=>{setBusy('block source');setError('');try{await addSourceBlock(s.name);const[rules,srcs]=await Promise.all([listBlockRules(),listSources()]);setBlockRules(rules);setSourceList(srcs);onRulesChanged();}catch(e:any){setError(e.message);}finally{setBusy('');}}}>Block</button>}</li>)}</ul>}
-      <h2>Stop-words</h2>
-      <p className="muted">A stop-word hides every role whose title contains it (case-insensitive, anywhere in the title, so a short fragment such as “admin” also matches “administrator”) and skips matching postings when collecting. Removing it brings the roles back.</p>
-      <form className="stop-word-form" onSubmit={async e=>{e.preventDefault();const word=stopDraft.trim();if(!word)return;setBusy('add stop-word');setError('');try{await addStopWord(word);setStopDraft('');setStopPreview(null);setStopWords(await listStopWords());onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}}>
-        <label htmlFor="stop-word">Stop-word</label>
-        <input id="stop-word" value={stopDraft} onChange={e=>setStopDraft(e.target.value)} placeholder="e.g. risk engineer"/>
-        <button className="primary" disabled={!!busy||!stopDraft.trim()}>Add stop-word</button>
-        <span className="muted" role="status">{stopPreview&&stopPreview.word===stopDraft.trim()?`Would hide ${stopPreview.count} stored ${stopPreview.count===1?'role':'roles'}`:''}</span>
-      </form>
-      {stopWords.length===0?<p className="muted">No active stop-words.</p>:<ul className="block-rules-list">{stopWords.map(w=><li key={w.id}><span className="rule-value">{w.word}</span><button disabled={!!busy} onClick={async()=>{setBusy('remove stop-word');setError('');try{await removeStopWord(w.id);setStopWords(await listStopWords());onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}}>Remove</button></li>)}</ul>}
       <h2>Recently dismissed roles</h2>
       <p className="muted">Roles dismissed in this stage. Restoring moves a role back to Triage.</p>
       {dismissed.length===0?<p className="muted">No dismissed roles.</p>:<ul className="dismissed-list">{dismissed.map(j=><li key={j.id}><span className="dismissed-company">{j.company}</span><span className="dismissed-title">{j.title}</span><button disabled={!!busy} onClick={async()=>{setBusy('restore');setError('');try{await api(`jobs/${j.id}`,'PATCH',{stage:'triage'});setDismissed(ds=>ds.filter(d=>d.id!==j.id));}catch(e:any){setError(e.message);}finally{setBusy('');}}}>Restore</button></li>)}</ul>}

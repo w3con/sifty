@@ -31,3 +31,13 @@ Exit: 0
 
 ```
 
+
+## 2026-11-06 — 2.2 — Add site add/remove/enable controls to Collection→Sources with coverage display retained
+
+Check: `cd app && ./node_modules/.bin/tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

@@ -26,7 +26,7 @@ In the Collection→Search section placed by NAVIGATION-1, build an editor for t
 - [x] 2.1 — Replace the stop-words panel with a unified exclusion-words list (add/remove) wired to the exclusion endpoint.
 - [x] 2.2 — In Collection→Sources, add controls to add, remove and enable/disable a source site, wired to the NAVIGATION-2 sites endpoint, keeping the coverage display.
 - [x] 2.3 — Remove the company block-rule list and the source-block control, and remove the "Dismissed & blocked" panel from the Settings drawer; confirm no source control remains in Settings.
-- [ ] 2.4 — Remove the always-on bottom status footer; move its queue counts and the "Assess vacancies" toggle into the Settings→Queue section.
+- [x] 2.4 — Remove the always-on bottom status footer; move its queue counts and the "Assess vacancies" toggle into the Settings→Queue section.
 
 ### Phase 3 — Verify
 

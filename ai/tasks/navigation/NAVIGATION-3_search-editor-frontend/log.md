@@ -51,3 +51,13 @@ Exit: 0
 
 ```
 
+
+## 2026-11-06 — 2.4 — Remove always-on footer; move queue counts and Assess vacancies toggle to Settings→Queue
+
+Check: `cd app && ./node_modules/.bin/tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

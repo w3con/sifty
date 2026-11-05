@@ -18,6 +18,10 @@ Development work is managed by the `bin/work-*` commands and the card-folder con
 
 `ai/shared` is a git submodule holding the shared agent tooling (`github.com:w3con/ai`); `ai/bin`, `ai/harness` and `ai/templates` are relative symlinks into it. On a fresh clone: `git submodule update --init ai/shared`.
 
+### Subagent model
+
+Every subagent spawned for this project — executors and read-only agents alike — runs on Sonnet 4.6 (`claude-sonnet-4-6`). Never Haiku, never Sonnet 5.5. It is pinned by `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` in `.claude/settings.json` (and in `app/.claude/settings.json`); do not pass a per-spawn model argument that overrides it.
+
 ## Go module
 
 Module path: `github.com/w3con/sifty` (unchanged from origin in FCTO repository).

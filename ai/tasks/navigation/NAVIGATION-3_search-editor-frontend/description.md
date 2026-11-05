@@ -18,10 +18,10 @@ Interview answers from the owner (2026-11-05), recorded by the coordinator:
 
 - Customer and daily user: the owner, for his own daily job search.
 - Pain and timing: search terms and exclusions can only be changed by editing YAML or through two overlapping panels; the owner wants to edit them where collection lives. Raised now as the frontend half of the search work, depending on NAVIGATION-2.
-- Ideal result: in Collection→Search, add and remove search terms and group them by OR and AND, and keep one list of exclusion words that hides by title or company; the old block-rule and stop-word UIs are gone.
+- Ideal result: in Collection→Search, add and remove search terms and group them by OR and AND, and keep one list of exclusion words that hides by title or company; in Collection→Sources, add, remove and enable/disable source sites; the old block-rule, source-block and stop-word UIs are gone, the Settings drawer has no source control, and the always-on bottom status footer is gone with the queue living only in Settings→Queue.
 - Rules the solution obeys: the repository work-management harness; depends on NAVIGATION-2's endpoints; frontend only.
 - Tried before: hand-editing `config/search.yaml`; the separate stop-words and block-rule panels in Settings.
-- What it touches: the Collection→Search section and the Settings drawer in `app/web` (`main.tsx`, `Settings.tsx`, the API client), building on the Search section stub placed by NAVIGATION-1.
+- What it touches: the Collection→Search and Collection→Sources sections, the bottom status footer and the Settings drawer in `app/web` (`main.tsx`, `Settings.tsx`, `Collection.tsx`, `Sources.tsx`, the API client), building on the sections placed by NAVIGATION-1 and the endpoints from NAVIGATION-2.
 
 The owner's musing about selecting an industry or a title category is deliberately not in scope: source taxonomies differ, so a single cross-source category picker cannot be guessed reliably. It is left as a possible later refinement, not built here.
 

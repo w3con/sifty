@@ -18,10 +18,10 @@ Interview answers from the owner (2026-11-05), recorded by the coordinator:
 
 - Customer and daily user: the owner, for his own daily job search.
 - Pain and timing: search terms cannot express AND; moderation is split across two mechanisms that do the same job. Raised now as the backend half of the navigation work, which the owner chose to split from the frontend.
-- Ideal result: search terms compose with OR and AND; one exclusion list covers both titles and companies; a source is controlled purely by whether it is in the Sources list.
+- Ideal result: search terms compose with OR and AND; one exclusion list covers both titles and companies; a source is controlled purely by whether it is in the Sources list, and that list can be edited through the API (add, remove, enable/disable a site) so the owner never hand-edits the sites in `config/search.yaml`.
 - Rules the solution obeys: the repository work-management harness; backend changes are explicitly allowed for this card; keep tests race-clean.
 - Tried before: hand-editing `config/search.yaml` and the two separate moderation UIs are the current state; no prior unification attempt.
-- What it touches: `config.Search` and its parsing (`internal/config`), `store.BuildFTSQuery` and its callers in `internal/background/collect.go` and `internal/server/routes.go`, the stop-word matching (`store.TitleMatchesStopWords`, `ListStopWords`), the block-rule storage and migrations, and the source-block code path.
+- What it touches: `config.Search` and its parsing (`internal/config`), `store.BuildFTSQuery` and its callers in `internal/background/collect.go` and `internal/server/routes.go`, the stop-word matching (`store.TitleMatchesStopWords`, `ListStopWords`), the block-rule storage and migrations, the source-block code path, and the HTTP API surface for the search expressions, the exclusion terms and the source sites list.
 
 Grounding read by the coordinator: `config.Search` holds `Search.Titles` and `Search.Keywords` as flat `[]string` (`internal/config/config.go`); both are flattened and OR-combined by `store.BuildFTSQuery(append(titles, keywords...))`, called at collection (`collect.go:87`) and at rescore/ranking (`routes.go:500`) — so the term model is shared with ASM-4 and this card must keep ranking working. Stop-words match title only (`collect.go` → `store.TitleMatchesStopWords`). Block rules are a separate table (company-normalised and source kinds), surfaced today in the Settings "Dismissed & blocked" panel.
 

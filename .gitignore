@@ -35,3 +35,7 @@ bin/__pycache__/
 # Local AI cache
 .ai/docs/
 .ai/logs/
+
+# deploy build artifacts (never commit compiled binaries)
+bin/sifty.prev
+bin/sifty.new

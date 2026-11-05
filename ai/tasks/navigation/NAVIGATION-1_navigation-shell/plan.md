@@ -24,7 +24,7 @@ Replace the top workflow navigation with four tabs — Collection, Triage, Prepa
 *Gate: `tsc --noEmit` passes; Collection shows both sections and Collect works via the existing endpoint.*
 
 - [x] 2.1 — Add a Collection view (`view==='collection'`) with Sources and Search sections (a sub-nav or stacked layout).
-- [ ] 2.2 — Move the Sources list and "Collect jobs" button out of the Settings drawer into Collection→Sources.
+- [x] 2.2 — Move the Sources list and "Collect jobs" button out of the Settings drawer into Collection→Sources.
 - [ ] 2.3 — Move the stop-words panel out of the Settings drawer into Collection→Search, unchanged, on the existing endpoints.
 
 ### Phase 3 — Archive toggle

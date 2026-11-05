@@ -1,0 +1,49 @@
+{
+  "job": {
+    "id": 1,
+    "title": "Chief Technology Officer",
+    "company": "Acme",
+    "description": "We need a CTO with Go experience and team leadership. Kubernetes required.",
+    "descriptionStatus": "available structured description",
+    "location": "Remote"
+  },
+  "sources": [
+    {
+      "id": "cv",
+      "reference": "cv",
+      "retrievedAt": "2026-10-01T00:00:00.000Z",
+      "hash": "h1",
+      "status": "available",
+      "category": "experience",
+      "scope": "CV",
+      "text": "Led backend teams building Go services at scale.\n\nShipped Rust tooling and mentored engineers."
+    }
+  ],
+  "preferences": {},
+  "reviewNotes": [],
+  "rawModelOutput": {
+    "score": 72,
+    "summary": "Strong Go and leadership background; Kubernetes not evidenced.",
+    "evidence": [
+      {
+        "claim": "Has Go backend leadership experience",
+        "evidenceId": "E1"
+      }
+    ],
+    "gaps": [
+      "Kubernetes depth unclear"
+    ],
+    "confirmedMismatches": [
+      {
+        "reason": "Kubernetes not documented in candidate evidence",
+        "evidenceId": "E2",
+        "jobRequirement": "Kubernetes required",
+        "kind": "explicit-absence"
+      }
+    ],
+    "candidateUnknowns": [],
+    "employerUnknowns": [
+      "Team size not stated"
+    ]
+  }
+}

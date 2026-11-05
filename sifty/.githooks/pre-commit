@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# pre-commit — refuses a commit whose staged changes carry a forbidden form.
+# Delegates to the vendored leak scanner, resolved relative to this hook's own location so a
+# relative core.hooksPath works from the primary checkout and any linked worktree.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$HOOK_DIR/../scripts/leakcheck/commit-diff-check"

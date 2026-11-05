@@ -1,0 +1,16 @@
+{
+  "description": "PATCH /api/jobs/:id \u2014 move stage",
+  "method": "PATCH",
+  "path": "/api/jobs/1",
+  "requestBody": {
+    "status": "saved"
+  },
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "id",
+    "stage",
+    "status"
+  ],
+  "source": "synthetic"
+}

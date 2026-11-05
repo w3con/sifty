@@ -1,0 +1,40 @@
+{
+  "description": "GET /api/jobs \u2014 list all roles",
+  "method": "GET",
+  "path": "/api/jobs",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic",
+  "exampleItem": {
+    "id": 1,
+    "title": "Senior Software Engineer",
+    "company": "Acme Corp",
+    "tags": [],
+    "stage": "triage",
+    "status": "new",
+    "seen": false,
+    "seenAt": null,
+    "appliedAt": null,
+    "originalUrl": "https://example.com/jobs/1",
+    "applyUrl": null,
+    "location": "Remote",
+    "score": null,
+    "assessment": null,
+    "assessmentError": null,
+    "assessmentStage": "pending",
+    "descriptionStatus": "full",
+    "description": "We are looking for a senior Go engineer.",
+    "sources": [
+      {
+        "name": "manual",
+        "url": "https://example.com/jobs/1",
+        "seen": "2026-11-02T08:00:00Z"
+      }
+    ],
+    "lastSeen": "2026-11-02T08:00:00Z",
+    "web3": false,
+    "archived": false
+  }
+}

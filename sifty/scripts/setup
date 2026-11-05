@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# setup — wire a fresh clone: point git at the in-repository hooks and make the hooks and the
+# leak scanner executable. core.hooksPath is local config and is not cloned, so every clone
+# runs this once. The path is relative, so it resolves correctly from the primary checkout and
+# from any linked worktree, on any machine.
+set -euo pipefail
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+git config core.hooksPath .githooks
+chmod +x .githooks/* scripts/leakcheck/commit-diff-check scripts/leakcheck/commit-msg-check \
+    scripts/leakcheck/range-check scripts/leakcheck/tree-check \
+    scripts/leakcheck/leak_census.py scripts/leakcheck/leakcheck-selftest 2>/dev/null || true
+
+echo "setup: core.hooksPath = $(git config --get core.hooksPath)"
+echo "setup: leak-check hooks installed (pre-commit, commit-msg, pre-push)"

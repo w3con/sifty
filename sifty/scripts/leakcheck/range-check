@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""range-check — runs commit-msg-check and commit-diff-check against every commit in a range, so
+a form committed with --no-verify is still caught before it is pushed.
+
+Usage:
+    range-check <range> [--repo PATH]   check every commit `git rev-list <range>` lists
+    range-check [--repo PATH]           read git's pre-push protocol from stdin (as a pre-push hook)
+
+Exit codes: 0 every commit clean; 1 refused, commit by commit; 2 bad invocation.
+"""
+import argparse
+import os
+import subprocess
+import sys
+import tempfile
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+MSG_CHECK = os.path.join(SCRIPT_DIR, "commit-msg-check")
+DIFF_CHECK = os.path.join(SCRIPT_DIR, "commit-diff-check")
+ZERO_SHA = "0" * 40
+
+
+def git(args, cwd):
+    result = subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True)
+    return result.stdout, result.returncode
+
+
+def rev_list(repo_root, range_expr):
+    out, code = git(["rev-list", "--reverse", range_expr], repo_root)
+    if code != 0:
+        print(f"range-check: `git rev-list {range_expr}` failed in {repo_root}", file=sys.stderr)
+        return None
+    return [line for line in out.splitlines() if line.strip()]
+
+
+def commits_for_new_ref(repo_root, local_sha):
+    out, code = git(["rev-list", local_sha, "--not", "--remotes"], repo_root)
+    if code != 0:
+        return [local_sha]
+    commits = [line for line in out.splitlines() if line.strip()]
+    return list(reversed(commits)) if commits else []
+
+
+def commits_from_stdin(repo_root):
+    commits = []
+    seen = set()
+    for line in sys.stdin:
+        parts = line.split()
+        if len(parts) != 4:
+            continue
+        _local_ref, local_sha, _remote_ref, remote_sha = parts
+        if local_sha == ZERO_SHA:
+            continue
+        if remote_sha == ZERO_SHA:
+            these = commits_for_new_ref(repo_root, local_sha)
+        else:
+            these = rev_list(repo_root, f"{remote_sha}..{local_sha}") or []
+        for sha in these:
+            if sha not in seen:
+                seen.add(sha)
+                commits.append(sha)
+    return commits
+
+
+def check_one_commit(repo_root, sha):
+    problems = []
+    msg_out, _ = git(["log", "-1", "--format=%B", sha], repo_root)
+    with tempfile.NamedTemporaryFile("w", suffix=".msg", delete=False) as fh:
+        fh.write(msg_out)
+        msg_path = fh.name
+    try:
+        result = subprocess.run([MSG_CHECK, msg_path, "--repo", repo_root, "--commit", sha],
+                                 capture_output=True, text=True)
+        if result.returncode == 1:
+            problems.append(result.stderr)
+        elif result.returncode not in (0, 1):
+            problems.append(f"commit-msg-check failed to run on {sha}:\n{result.stderr}")
+    finally:
+        os.unlink(msg_path)
+
+    result = subprocess.run([DIFF_CHECK, "--repo", repo_root, "--commit", sha],
+                             capture_output=True, text=True)
+    if result.returncode == 1:
+        problems.append(result.stderr)
+    elif result.returncode not in (0, 1):
+        problems.append(f"commit-diff-check failed to run on {sha}:\n{result.stderr}")
+    return problems
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="range-check", description=__doc__,
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("range", nargs="?")
+    parser.add_argument("--repo")
+    args = parser.parse_args()
+
+    if args.repo:
+        repo_root = os.path.abspath(args.repo)
+    else:
+        result = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                                 capture_output=True, text=True)
+        if result.returncode != 0:
+            print("range-check: could not resolve a repository; pass --repo", file=sys.stderr)
+            return 2
+        repo_root = result.stdout.strip()
+
+    if args.range:
+        commits = rev_list(repo_root, args.range)
+        if commits is None:
+            return 2
+    else:
+        commits = commits_from_stdin(repo_root)
+
+    all_problems = []
+    for sha in commits:
+        problems = check_one_commit(repo_root, sha)
+        if problems:
+            all_problems.append(f"commit {sha[:12]}:\n" + "\n".join(problems))
+
+    if all_problems:
+        print(f"range-check: refused — {len(all_problems)} of {len(commits)} commit(s) carry "
+              f"a form this repository must not push:", file=sys.stderr)
+        print("\n\n".join(all_problems), file=sys.stderr)
+        return 1
+
+    print(f"range-check: {len(commits)} commit(s) checked, clean")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

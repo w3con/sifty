@@ -1,0 +1,58 @@
+{
+  "language": "en",
+  "selectedFile": "cv.pdf",
+  "answers": [
+    {
+      "id": "q-cover",
+      "value": "I have led Go backend teams and shipped Rust tooling.",
+      "unknowns": [],
+      "evidence": [
+        {
+          "sourceId": "cv",
+          "quote": "Led backend teams building Go services at scale."
+        }
+      ]
+    },
+    {
+      "id": "q-relocate",
+      "value": "Yes",
+      "unknowns": [],
+      "evidence": [
+        {
+          "sourceId": "cv",
+          "quote": "Shipped Rust tooling and mentored engineers."
+        }
+      ]
+    },
+    {
+      "id": "q-skills",
+      "value": [
+        "Go",
+        "Rust"
+      ],
+      "unknowns": [],
+      "evidence": [
+        {
+          "sourceId": "profile",
+          "quote": "Open to relocation within Europe."
+        }
+      ]
+    },
+    {
+      "id": "q-salary",
+      "value": "",
+      "unknowns": [
+        "No supporting candidate evidence; owner clarification required."
+      ],
+      "evidence": []
+    },
+    {
+      "id": "q-start",
+      "value": "",
+      "unknowns": [
+        "No draft returned for this field; owner review required."
+      ],
+      "evidence": []
+    }
+  ]
+}

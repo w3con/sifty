@@ -1,0 +1,14 @@
+{
+  "description": "PUT /api/stage-providers — set a stage's provider by name",
+  "method": "PUT",
+  "path": "/api/stage-providers",
+  "requestBody": {"stage": "preparation", "provider": "p"},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "stage",
+    "provider",
+    "stages"
+  ],
+  "source": "synthetic"
+}

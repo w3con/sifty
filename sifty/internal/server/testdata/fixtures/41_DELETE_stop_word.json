@@ -1,0 +1,10 @@
+{
+  "description": "DELETE /api/stop-words/:id — remove a stop-word, revealing the roles it hid",
+  "method": "DELETE",
+  "path": "/api/stop-words/1",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["removed"],
+  "source": "synthetic"
+}

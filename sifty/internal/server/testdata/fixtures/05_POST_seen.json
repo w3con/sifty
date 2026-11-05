@@ -1,0 +1,13 @@
+{
+  "description": "POST /api/jobs/:id/seen \u2014 mark seen",
+  "method": "POST",
+  "path": "/api/jobs/1/seen",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "id",
+    "seen"
+  ],
+  "source": "synthetic"
+}

@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/stop-words — add a stop-word (case-insensitive substring of the role title)",
+  "method": "POST",
+  "path": "/api/stop-words",
+  "requestBody": {"word": "risk engineer"},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["id", "word", "createdAt"],
+  "source": "synthetic"
+}

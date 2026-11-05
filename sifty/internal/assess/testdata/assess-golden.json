@@ -1,0 +1,22 @@
+{
+  "score": 72,
+  "summary": "Strong Go and leadership background; Kubernetes not evidenced.",
+  "evidence": [
+    {
+      "claim": "Has Go backend leadership experience",
+      "sourceId": "cv",
+      "quote": "Led backend teams building Go services at scale."
+    }
+  ],
+  "gaps": [
+    "Kubernetes depth unclear"
+  ],
+  "confirmedMismatches": [],
+  "candidateUnknowns": [
+    "Unconfirmed: Kubernetes not documented in candidate evidence",
+    "Kubernetes depth unclear"
+  ],
+  "employerUnknowns": [
+    "Team size not stated"
+  ]
+}

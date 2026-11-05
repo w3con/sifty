@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>eu.fcto.jobs</string>
+  <key>ProgramArguments</key><array>
+    <string>/usr/bin/caffeinate</string><string>-i</string>
+    <string>__NODE__</string>
+    <string>__ROOT__/app/node_modules/tsx/dist/cli.mjs</string>
+    <string>__ROOT__/app/src/cli.ts</string>
+    <string>daily</string><string>--due</string>
+  </array>
+  <key>WorkingDirectory</key><string>__ROOT__</string>
+  <key>EnvironmentVariables</key><dict>
+    <key>PATH</key><string>__HOME__/.opencode/bin:__HOME__/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>__HOUR__</integer><key>Minute</key><integer>__MINUTE__</integer></dict>
+  <key>RunAtLoad</key><true/>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>__ROOT__/.local/logs/daily.log</string>
+  <key>StandardErrorPath</key><string>__ROOT__/.local/logs/daily-error.log</string>
+</dict></plist>

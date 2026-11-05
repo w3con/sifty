@@ -1,0 +1,67 @@
+/* Versioned enhancement of the approved reference design; retain its deployed assets. */
+@import url('/assets/portfolio-20261013.css');
+
+.hero{position:relative}
+footer .social-icon{width:16px;height:16px;flex:none;margin-right:8px}
+@media(min-width:1200px){
+  .hero{grid-template-columns:minmax(0,1fr) minmax(0,550px)}
+}
+
+/* The figure includes the original screenshot AND caption. Layout stays stable. */
+.hero-visual{transform-origin:center center}
+@media screen and (min-width:861px) and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  .hero-visual{
+    transform:perspective(900px) rotateY(-18deg) rotateX(12deg);
+    transition:transform .6s cubic-bezier(.22,1,.36,1);
+  }
+  .hero-visual>a{box-shadow:8px 32px 80px #0003;transition:box-shadow .6s ease}
+  .hero-visual:hover>a{box-shadow:12px 40px 90px #0004}
+}
+
+/* Only small service/practice cards move. Large containers stay stationary. */
+@media screen and (hover:hover) and (pointer:fine){
+  :is(.service-grid article,.practice dl>div){
+    transition:transform .18s ease-out,box-shadow .22s ease,background-color .22s ease;
+  }
+  .service-grid article:hover{
+    box-shadow:0 8px 22px #0B0C0E0D;
+  }
+  .practice dl{overflow:visible}
+  .practice dl>div:hover{background:#1B1E22;box-shadow:0 6px 18px #0002}
+  .practice dl>div:first-child{border-top-left-radius:20px}
+  .practice dl>div:nth-child(2){border-top-right-radius:20px}
+  .practice dl>div:nth-last-child(2){border-bottom-left-radius:20px}
+  .practice dl>div:last-child{border-bottom-right-radius:20px}
+  /* Child image/subpanels react through surfaces, never add a second lift. */
+  :is(.validite>figure,.passport-detail,.pilier>figure){
+    border-radius:14px;transition:box-shadow .22s ease,background-color .22s ease;
+  }
+  .validite>figure:hover{background:#E7EAE2}
+  .passport-detail figure a,.pilier>figure a{display:block;border-radius:12px;transition:box-shadow .22s ease}
+  .passport-detail figure a:hover{box-shadow:0 4px 14px #0B0C0E12}
+}
+@media screen and (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){
+  :is(.service-grid article,.practice dl>div):hover{transform:translateY(-2px)}
+}
+@media(max-width:359px){
+  .practice dl>div:nth-child(2){border-top-right-radius:0}
+  .practice dl>div:nth-last-child(2){border-bottom-left-radius:0}
+  .practice dl>div:first-child{border-top-right-radius:20px}
+  .practice dl>div:last-child{border-bottom-left-radius:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  .hero-visual,:is(.service-grid article,.case,.practice dl>div,.timeline>article,.capability-grid>div){transform:none;transition:none}
+  .hero-visual>a,:is(.validite>figure,.passport-detail,.pilier>figure),.passport-detail figure a,.pilier>figure a{transition:none}
+  .button:active{transform:none}
+}
+@media print{
+  .hero-visual,:is(.service-grid article,.case,.practice dl>div,.timeline>article,.capability-grid>div){transform:none;transition:none;box-shadow:none}
+}
+
+/* Explicit no-frame correction, including imported responsive/print rules.
+   The only borders permitted are the main professional list separators.
+   Keyboard focus outlines are intentionally independent and unchanged. */
+body *,body *::before,body *::after{border:0!important}
+.history>.timeline{border-top:1px solid var(--ink)!important}
+.history>.timeline>article{border-bottom:1px solid #D9DCD5!important}
+.navigation::after,footer::before{content:none}

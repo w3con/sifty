@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/block-rules — create a source block rule directly (Settings)",
+  "method": "POST",
+  "path": "/api/block-rules",
+  "requestBody": {"kind": "source", "value": "LinkedIn"},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["id", "kind", "value", "createdAt"],
+  "source": "synthetic"
+}

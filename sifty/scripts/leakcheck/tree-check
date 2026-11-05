@@ -1,0 +1,155 @@
+#!/usr/bin/env python3
+"""tree-check — scans every tracked file of a repository against the census at
+scripts/leakcheck/census.md, the sweep the three change-shaped checks cannot be: a form that
+entered the tree before the hooks were installed is nobody's added line any more.
+
+Usage:
+    tree-check [<repo-path>] [--ref <git-ref>] [--subtree <prefix>]
+
+With no argument it scans the working tree. `--ref` scans a committed tree instead.
+`--subtree <prefix>` limits the scan to files whose path starts with <prefix>.
+
+Files under a census-declared public subtree are always checked with the full public rules,
+regardless of the repository's own origin remote, so a private repository that hosts public
+code can be swept with this tool and get the same result as the public repository would.
+
+Exit code 0 when clean, 1 when any form is found, 2 on a usage or repository error.
+"""
+import os
+import subprocess
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+import leak_census  # noqa: E402
+
+SKIP_SUFFIXES = (".lock", ".sha256", ".gpg", ".png", ".jpg", ".jpeg", ".gif", ".ico",
+                 ".pdf", ".wasm", ".bin", ".woff", ".woff2")
+ENV_SHAPED_FILES = (".env.example",)
+LEAKCHECK_DIR = "scripts/leakcheck/"
+
+
+def fully_exempt(path):
+    """The scanner's own directory is the trusted definition of the policy and is skipped.
+    Matches both the standalone-repo form (scripts/leakcheck/) and the embedded form used
+    when scanning a subtree of a larger repository (sifty/scripts/leakcheck/)."""
+    return path.startswith(LEAKCHECK_DIR) or ("/" + LEAKCHECK_DIR) in path
+
+
+def env_shaped(path):
+    base = os.path.basename(path)
+    return (base in ENV_SHAPED_FILES
+            or path.endswith(".sh")
+            or path.endswith(".md")
+            or path.startswith("scripts/")
+            or "/scripts/" in path
+            or path.startswith(".githooks/")
+            or "/.githooks/" in path)
+
+
+def git(repo, *args):
+    r = subprocess.run(["git", "-C", repo] + list(args), capture_output=True, text=True)
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip())
+    return r.stdout
+
+
+def tracked_files(repo, ref):
+    out = git(repo, "ls-tree", "-r", "--name-only", ref) if ref else git(repo, "ls-files")
+    return [p for p in out.split("\n") if p]
+
+
+def read_file(repo, ref, path):
+    if ref:
+        r = subprocess.run(["git", "-C", repo, "show", f"{ref}:{path}"], capture_output=True)
+        if r.returncode != 0:
+            return None
+        raw = r.stdout
+    else:
+        full = os.path.join(repo, path)
+        if not os.path.isfile(full) or os.path.islink(full):
+            return None
+        with open(full, "rb") as f:
+            raw = f.read()
+    if b"\0" in raw[:8000]:
+        return None
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+
+
+def main(argv):
+    repo = "."
+    ref = None
+    subtree = None
+    rest = list(argv)
+    if "--ref" in rest:
+        i = rest.index("--ref")
+        if i + 1 >= len(rest):
+            print("tree-check: --ref needs a git ref", file=sys.stderr)
+            return 2
+        ref = rest[i + 1]
+        del rest[i:i + 2]
+    if "--subtree" in rest:
+        i = rest.index("--subtree")
+        if i + 1 >= len(rest):
+            print("tree-check: --subtree needs a path prefix", file=sys.stderr)
+            return 2
+        subtree = rest[i + 1]
+        if not subtree.endswith("/"):
+            subtree += "/"
+        del rest[i:i + 2]
+    if rest:
+        repo = rest[0]
+
+    try:
+        repo_root = git(repo, "rev-parse", "--show-toplevel").strip()
+    except Exception as exc:
+        print(f"tree-check: not a git repository: {repo} ({exc})", file=sys.stderr)
+        return 2
+
+    census = leak_census.parse_census()
+    prefixes = leak_census.discover_card_prefixes(repo_root)
+    try:
+        origin = git(repo_root, "config", "--get", "remote.origin.url").strip()
+    except Exception:
+        origin = ""
+    repo_is_public = leak_census.is_public_repo(origin, census)
+
+    label = f"{repo_root}@{ref}" if ref else repo_root
+    if subtree:
+        label += f" (subtree {subtree})"
+    total = 0
+    blocks = []
+    for path in tracked_files(repo_root, ref):
+        if subtree and not path.startswith(subtree):
+            continue
+        if path.endswith(SKIP_SUFFIXES) or fully_exempt(path):
+            continue
+        # A file under a census-declared public subtree gets full public rules even when
+        # the repository's origin is private.
+        is_public = repo_is_public or leak_census.is_public_subtree(path, census)
+        text = read_file(repo_root, ref, path)
+        if text is None:
+            continue
+        allow_env = env_shaped(path)
+        findings = leak_census.scan_text(text, census, prefixes, is_public,
+                                         allow_env_shape=allow_env)
+        if findings:
+            total += len(findings)
+            blocks.append(leak_census.format_findings(findings, path))
+
+    if not total:
+        print(f"tree-check: {label} is clean "
+              f"({'public' if repo_is_public else 'private'} repository, origin {origin or 'none'}).")
+        return 0
+
+    print(f"tree-check: refused — {label} carries {total} form(s) this "
+          f"{'public' if repo_is_public else 'private'} repository must not:")
+    print("\n".join(blocks))
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

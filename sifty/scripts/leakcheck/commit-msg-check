@@ -1,0 +1,137 @@
+#!/usr/bin/env python3
+"""commit-msg-check — refuses a commit message that carries a form the census at
+scripts/leakcheck/census.md names, or (in a repository the census marks public, or when the
+commit touches a census-declared public subtree) that does not follow Conventional Commits.
+
+Usage:
+    commit-msg-check <message-file> [--repo PATH] [--commit SHA]
+
+An irreversible form is refused everywhere. An untidy form and the Conventional-Commits shape
+are enforced when the repository's own origin is public OR when the staged changes (or, with
+--commit, the given commit's changes) touch a census-declared public subtree.
+
+Exit codes: 0 clean; 1 refused, with every finding named; 2 bad invocation.
+"""
+import argparse
+import os
+import re
+import subprocess
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+import leak_census  # noqa: E402
+
+CONVENTIONAL_TYPES = ("feat", "fix", "refactor", "test", "docs", "chore", "build", "ci", "perf")
+_SUBJECT_HINT = (
+    "the subject line must read 'type(scope): imperative summary', with type one of "
+    + ", ".join(CONVENTIONAL_TYPES))
+
+
+def repo_origin_url(repo_root):
+    result = subprocess.run(
+        ["git", "-C", repo_root, "config", "--get", "remote.origin.url"],
+        capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def staged_paths(repo_root):
+    """File paths currently staged in the repository (Added, Copied, Modified)."""
+    result = subprocess.run(
+        ["git", "-C", repo_root, "diff", "--cached", "--name-only", "--diff-filter=ACM"],
+        capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def commit_paths(repo_root, sha):
+    """File paths touched by an already-made commit."""
+    result = subprocess.run(
+        ["git", "-C", repo_root, "diff-tree", "--no-commit-id", "-r", "--name-only", sha],
+        capture_output=True, text=True)
+    if result.returncode != 0:
+        return []
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def strip_comment_lines(text):
+    return "\n".join(line for line in text.splitlines() if not line.startswith("#"))
+
+
+def first_content_line(text):
+    for line in text.splitlines():
+        if line.strip():
+            return line
+    return ""
+
+
+def check_conventional_shape(subject):
+    type_group = "|".join(CONVENTIONAL_TYPES)
+    pattern = re.compile(r"^(" + type_group + r")(\([a-z0-9_-]+\))?: \S.+")
+    if pattern.match(subject):
+        return None
+    return leak_census.Finding(
+        "not Conventional-Commits shaped", "untidy", 1, subject, _SUBJECT_HINT)
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="commit-msg-check", description=__doc__,
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("message_file")
+    parser.add_argument("--repo")
+    parser.add_argument("--commit", metavar="SHA",
+                        help="SHA of an already-made commit; used to determine which subtrees "
+                             "it touches instead of reading staged changes")
+    args = parser.parse_args()
+
+    if args.repo:
+        repo_root = os.path.abspath(args.repo)
+    else:
+        result = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                                 capture_output=True, text=True)
+        if result.returncode != 0:
+            print("commit-msg-check: could not resolve a repository; pass --repo",
+                  file=sys.stderr)
+            return 2
+        repo_root = result.stdout.strip()
+
+    if not os.path.isfile(args.message_file):
+        print(f"commit-msg-check: no such file: {args.message_file}", file=sys.stderr)
+        return 2
+
+    with open(args.message_file, encoding="utf-8") as fh:
+        text = strip_comment_lines(fh.read())
+
+    census = leak_census.parse_census()
+    prefixes = leak_census.discover_card_prefixes(repo_root)
+    origin = repo_origin_url(repo_root)
+    is_public = leak_census.is_public_repo(origin, census)
+
+    # Apply full public rules when any touched path is under a census-declared public subtree.
+    if not is_public:
+        if args.commit:
+            paths = commit_paths(repo_root, args.commit)
+        else:
+            paths = staged_paths(repo_root)
+        is_public = any(leak_census.is_public_subtree(p, census) for p in paths)
+
+    findings = leak_census.scan_text(text, census, prefixes, is_public)
+
+    if is_public:
+        shape_finding = check_conventional_shape(first_content_line(text))
+        if shape_finding:
+            findings.insert(0, shape_finding)
+
+    if findings:
+        forms = "1 form" if len(findings) == 1 else f"{len(findings)} forms"
+        print(f"commit-msg-check: refused — {args.message_file} carries {forms} "
+              f"this repository's commit messages must not:", file=sys.stderr)
+        print(leak_census.format_findings(findings, args.message_file), file=sys.stderr)
+        return 1
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

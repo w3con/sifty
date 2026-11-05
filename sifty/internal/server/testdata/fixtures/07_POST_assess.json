@@ -1,0 +1,13 @@
+{
+  "description": "POST /api/jobs/:id/assess \u2014 enqueue assessment",
+  "method": "POST",
+  "path": "/api/jobs/1/assess",
+  "requestBody": {},
+  "responseStatus": 202,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "jobId",
+    "status"
+  ],
+  "source": "synthetic"
+}

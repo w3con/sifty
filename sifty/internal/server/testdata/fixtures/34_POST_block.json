@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/jobs/:id/block — create a block rule derived from a role",
+  "method": "POST",
+  "path": "/api/jobs/1/block",
+  "requestBody": {"dimension": "company"},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["id", "kind", "value", "createdAt"],
+  "source": "synthetic"
+}

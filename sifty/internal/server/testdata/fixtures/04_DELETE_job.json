@@ -1,0 +1,15 @@
+{
+  "description": "DELETE /api/jobs/:id \u2014 delete role",
+  "method": "DELETE",
+  "path": "/api/jobs/1",
+  "requestBody": {
+    "confirmed": true
+  },
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "deleted",
+    "cleanupErrors"
+  ],
+  "source": "synthetic"
+}

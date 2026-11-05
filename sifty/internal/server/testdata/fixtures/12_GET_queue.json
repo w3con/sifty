@@ -1,0 +1,13 @@
+{
+  "description": "GET /api/queue \u2014 queue status",
+  "method": "GET",
+  "path": "/api/queue",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "enabled",
+    "counts"
+  ],
+  "source": "synthetic"
+}

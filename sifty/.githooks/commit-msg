@@ -1,0 +1,5 @@
+#!/bin/sh
+# commit-msg — refuses a commit message that carries a forbidden form or, in the public repo,
+# is not Conventional-Commits shaped.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$HOOK_DIR/../scripts/leakcheck/commit-msg-check" "$1"

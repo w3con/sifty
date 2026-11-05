@@ -1,0 +1,15 @@
+version: 1
+port: 4317
+max_pages: 16
+max_jobs_per_source: 300
+# Measured discovery bounds, independent from imported matches and model calls.
+max_reviewed_per_source: 1200
+max_detail_requests: 100
+detail_concurrency: 4
+max_query_groups: 8
+request_timeout_ms: 20000
+max_assessments_per_run: 10
+# Opt-in only: tool-free model fallback on public pages without deterministic description extraction.
+model_extraction: false
+daily_hour: 9
+daily_minute: 0

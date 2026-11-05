@@ -1,0 +1,37 @@
+# macOS metadata
+.DS_Store
+
+# App data directories — persistent but not versioned
+data/
+data-staging/
+
+# SQLite runtime files
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite.bak*
+
+# Frontend build artifacts
+node_modules
+app/dist/
+bin/sifty
+
+# Python build artifacts
+bin/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Work-management harness: executor worktrees and scratch copies (generated)
+.worktrees/
+.work-scratch/
+
+# Local runtime state
+.local/
+.env
+
+# Obsidian vault internals
+.obsidian/
+
+# Local AI cache
+.ai/docs/
+.ai/logs/

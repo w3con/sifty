@@ -1,0 +1,5 @@
+#!/bin/sh
+# pre-push — re-scans every commit about to leave the machine, catching anything committed with
+# --no-verify or before the hooks were installed. Reads git's pre-push protocol from stdin.
+HOOK_DIR="$(cd "$(dirname "$0")" && pwd)"
+exec python3 "$HOOK_DIR/../scripts/leakcheck/range-check"

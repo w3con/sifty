@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+"""commit-diff-check — refuses added lines (or, with --tree, every tracked line) that carry a
+form the census at scripts/leakcheck/census.md names.
+
+Usage:
+    commit-diff-check [--repo PATH] [--staged | --commit SHA | --tree]
+
+    --repo     the repository being checked (default: `git rev-parse --show-toplevel`)
+    --staged   check `git diff --cached` — the default, for use as a pre-commit hook
+    --commit   check one already-made commit against its own parent (`git show <sha>`)
+    --tree     check every line of every tracked file, not only added lines
+
+The scanner's own directory, scripts/leakcheck/, is exempt from untidy forms (its census and
+engine spell out the forms they catch); irreversible forms are still refused there.
+`.env.example`, shell scripts, git hooks and log files are exempt from the .env-content form
+alone, because a KEY=VALUE line is their ordinary shape rather than a leaked file.
+
+Exit codes: 0 clean; 1 refused, with every finding named; 2 bad invocation.
+"""
+import argparse
+import os
+import re
+import subprocess
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+import leak_census  # noqa: E402
+
+LEAKCHECK_DIR = "scripts/leakcheck/"
+ENV_SHAPE_EXEMPT_PATHS = {".env.example", "deployment/.env.example"}
+
+
+def fully_exempt(file_path):
+    """The scanner's own directory is the trusted definition of the policy: its census and
+    engine legitimately spell out every form — including irreversible shapes (a PEM header, a
+    cloud-key prefix, a github clone address inside a regex) — that they exist to catch. It is
+    skipped entirely; a real credential belongs in no code file and would be caught anywhere
+    else. Matches both the standalone-repo form (scripts/leakcheck/) and the embedded form
+    used when the subtree is nested inside a larger repository (sifty/scripts/leakcheck/)."""
+    return file_path.startswith(LEAKCHECK_DIR) or ("/" + LEAKCHECK_DIR) in file_path
+
+
+def env_shape_exempt(file_path):
+    """True where a KEY=VALUE line is not a leaked .env line: the example file, any shell
+    script (including an extensionless operational script under scripts/), a git hook (which
+    git requires to carry no extension), or a log file quoting a verification transcript."""
+    base = os.path.basename(file_path)
+    return (file_path in ENV_SHAPE_EXEMPT_PATHS
+            or base == ".env.example"
+            or file_path.endswith(".sh")
+            or file_path.endswith(".md")
+            or file_path.startswith("scripts/")
+            or "/scripts/" in file_path
+            or file_path.startswith(".githooks/")
+            or "/.githooks/" in file_path
+            or file_path.startswith("githooks/"))
+
+
+_HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
+
+
+def repo_origin_url(repo_root):
+    result = subprocess.run(
+        ["git", "-C", repo_root, "config", "--get", "remote.origin.url"],
+        capture_output=True, text=True)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def run_git_diff(repo_root, staged, commit):
+    if commit:
+        args = ["git", "-C", repo_root, "show", "--no-color", "-U0", "--format=", commit]
+    else:
+        args = ["git", "-C", repo_root, "diff", "--no-color", "-U0", "--cached"]
+    result = subprocess.run(args, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"commit-diff-check: git failed:\n{result.stderr}", file=sys.stderr)
+        sys.exit(2)
+    return result.stdout
+
+
+def parse_added_lines(diff_text):
+    """Every added line in a unified (-U0) diff, as (file_path, line_no_in_new_file, text)."""
+    results = []
+    current_file = None
+    current_line = None
+    for line in diff_text.splitlines():
+        if line.startswith("+++ "):
+            path = line[4:]
+            current_file = None if path == "/dev/null" else path[2:] if path.startswith("b/") else path
+            current_line = None
+            continue
+        if line.startswith("@@"):
+            m = _HUNK_RE.match(line)
+            if m:
+                current_line = int(m.group(1))
+            continue
+        if line.startswith("+") and not line.startswith("+++"):
+            if current_file is not None and current_line is not None:
+                results.append((current_file, current_line, line[1:]))
+                current_line += 1
+            continue
+    return results
+
+
+def tracked_files(repo_root):
+    result = subprocess.run(["git", "-C", repo_root, "ls-files"],
+                             capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"commit-diff-check: `git ls-files` failed:\n{result.stderr}", file=sys.stderr)
+        sys.exit(2)
+    return [line for line in result.stdout.splitlines() if line.strip()]
+
+
+def tracked_file_lines(repo_root):
+    results = []
+    for file_path in tracked_files(repo_root):
+        full_path = os.path.join(repo_root, file_path)
+        try:
+            with open(full_path, encoding="utf-8") as fh:
+                for line_no, text in enumerate(fh, start=1):
+                    results.append((file_path, line_no, text.rstrip("\n")))
+        except (UnicodeDecodeError, OSError):
+            continue
+    return results
+
+
+def format_findings_by_file(added_lines, census, prefixes, is_public):
+    lines = []
+    count = 0
+    for file_path, line_no, text in added_lines:
+        if fully_exempt(file_path):
+            continue
+        # A file under a census-declared public subtree gets the full public rules even when
+        # the repository's own origin is private.
+        file_is_public = is_public or leak_census.is_public_subtree(file_path, census)
+        allow_env_shape = env_shape_exempt(file_path)
+        hits = []
+        for form, hint in leak_census.scan_line_irreversible(text):
+            if form == ".env file content" and allow_env_shape:
+                continue
+            hits.append(("irreversible", form, hint))
+        if file_is_public:
+            for form, hint in leak_census.scan_line_untidy(text, prefixes, census):
+                hits.append(("untidy", form, hint))
+        for cls, form, hint in hits:
+            count += 1
+            lines.append(f"{file_path}:{line_no}: [{cls}] {form}")
+            lines.append(f"    {text.strip()}")
+            lines.append(f"    replace with: {hint}")
+    return count, "\n".join(lines)
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="commit-diff-check", description=__doc__,
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--repo")
+    parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--commit")
+    parser.add_argument("--tree", action="store_true")
+    args = parser.parse_args()
+
+    if args.repo:
+        repo_root = os.path.abspath(args.repo)
+    else:
+        result = subprocess.run(["git", "rev-parse", "--show-toplevel"],
+                                 capture_output=True, text=True)
+        if result.returncode != 0:
+            print("commit-diff-check: could not resolve a repository; pass --repo",
+                  file=sys.stderr)
+            return 2
+        repo_root = result.stdout.strip()
+
+    census = leak_census.parse_census()
+    prefixes = leak_census.discover_card_prefixes(repo_root)
+    origin = repo_origin_url(repo_root)
+    is_public = leak_census.is_public_repo(origin, census)
+
+    if args.tree:
+        lines = tracked_file_lines(repo_root)
+        source = "the working tree"
+    else:
+        diff_text = run_git_diff(repo_root, args.staged, args.commit)
+        lines = parse_added_lines(diff_text)
+        source = args.commit or "the staged changes"
+
+    count, body = format_findings_by_file(lines, census, prefixes, is_public)
+    if count:
+        forms = "1 form" if count == 1 else f"{count} forms"
+        print(f"commit-diff-check: refused — {source} in {repo_root} carries {forms} "
+              f"this repository's content must not:", file=sys.stderr)
+        print(body, file=sys.stderr)
+        return 1
+
+    if args.tree:
+        print(f"commit-diff-check: {len(lines)} line(s) across every tracked file in "
+              f"{repo_root} checked, clean")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

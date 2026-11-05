@@ -1,0 +1,54 @@
+# --- Secrets and environment ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Local runtime state and private candidate data ---
+# The configurable data directory holds candidate evidence, remembered answers,
+# feedback and the local store. None of it belongs in the public repository.
+/data/
+.local/
+*.sqlite
+*.sqlite-*
+# Candidate evidence in any form
+*.pdf
+cv.*
+profile.*
+answers.local.*
+feedback.local.*
+
+# --- Private paths that must never be tracked here (defensive) ---
+# These belong to the private FCTO repository; name them so a stray copy is ignored.
+/ai/
+/kb/
+/bin/
+/app/
+/config/
+/prompts/
+/site/
+/.githooks-private/
+HANDOVER.md
+AGENTS.md
+
+# --- Go build output ---
+/sifty
+/bin/
+*.exe
+*.test
+*.out
+/dist/
+/build/
+
+# --- Node / TypeScript worker artifacts ---
+node_modules/
+workers/**/node_modules/
+workers/**/dist/
+*.tsbuildinfo
+
+# --- OS and editor metadata ---
+.DS_Store
+.idea/
+.vscode/
+*.swp

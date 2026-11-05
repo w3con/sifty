@@ -1,0 +1,13 @@
+{
+  "description": "POST /api/search \u2014 start collection run",
+  "method": "POST",
+  "path": "/api/search",
+  "requestBody": {},
+  "responseStatus": 202,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "runId",
+    "status"
+  ],
+  "source": "synthetic"
+}

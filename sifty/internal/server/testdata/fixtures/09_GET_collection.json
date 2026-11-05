@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/collection \u2014 current run progress",
+  "method": "GET",
+  "path": "/api/collection",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object|null",
+  "requiredFields": [],
+  "source": "synthetic"
+}

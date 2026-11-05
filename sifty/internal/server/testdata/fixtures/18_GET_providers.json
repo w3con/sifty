@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/providers \u2014 provider diagnostics",
+  "method": "GET",
+  "path": "/api/providers",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic"
+}

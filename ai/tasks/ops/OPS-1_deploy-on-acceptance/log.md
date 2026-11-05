@@ -223,3 +223,14 @@ Exit: 0
 1
 ```
 
+
+## 2026-11-05 — 4.1 — Document two-environment loop in AGENTS.md and ROADMAP.md; replace manual recipe with pointer
+
+Check: `grep -c 'sift-deploy' AGENTS.md && grep -c 'sift-promote' ai/ROADMAP.md`
+Exit: 0
+
+```
+5
+5
+```
+

@@ -74,7 +74,7 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 *Gate: the documented commands work from a clean shell.*
 
-- [ ] 4.1 — Document the two-environment loop in `AGENTS.md` and the README (finish auto-deploys to staging, `sift-promote` to production on confirmation, how rollback works) and replace the manual recipe in `ai/ROADMAP.md` with a pointer to it.
+- [x] 4.1 — Document the two-environment loop in `AGENTS.md` and the README (finish auto-deploys to staging, `sift-promote` to production on confirmation, how rollback works) and replace the manual recipe in `ai/ROADMAP.md` with a pointer to it.
 
 ## Gate evidence
 

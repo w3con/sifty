@@ -869,6 +869,160 @@ func RegisterRoutes(mux Router, d *Deps) {
 		return nil
 	}))
 
+	// ------------------------------------------------------------------
+	// NAVIGATION-2 — Search expressions, exclusion terms, source sites
+	// ------------------------------------------------------------------
+
+	// GET /api/search/expressions — read the current OR/AND search expressions.
+	// Returns the effective expressions: either the explicit Expressions list from search.yaml
+	// or the backward-compat synthesised OR group from titles+keywords.
+	mux.HandleFunc("GET /api/search/expressions", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		cfg := d.Cfg.Get()
+		exprs := cfg.Search.EffectiveExpressions()
+		type exprOut struct {
+			Or  []string `json:"or,omitempty"`
+			And []string `json:"and,omitempty"`
+		}
+		out := make([]exprOut, len(exprs))
+		for i, e := range exprs {
+			out[i] = exprOut{Or: e.Or, And: e.And}
+		}
+		if out == nil {
+			out = []exprOut{}
+		}
+		writeJSON(w, http.StatusOK, out)
+		return nil
+	}))
+
+	// PUT /api/search/expressions — replace the search expressions in search.yaml.
+	// Body: {"expressions": [{"or": [...]}, {"and": [...]}]}
+	// An empty expressions array removes the expressions key (restoring titles/keywords control).
+	mux.HandleFunc("PUT /api/search/expressions", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		var body struct {
+			Expressions json.RawMessage `json:"expressions"`
+		}
+		if err := readBody(r, &body); err != nil {
+			return err
+		}
+		exprs, err := parseExpressionsBody(body.Expressions)
+		if err != nil {
+			return err
+		}
+		result, err := ex.Run(func() (any, error) {
+			updated, err := updateSearchExpressionsInYAML(d.Dirs.ConfigFile("search"), exprs)
+			if err != nil {
+				return nil, err
+			}
+			if err := config.Save(d.Dirs, "search", updated); err != nil {
+				return nil, err
+			}
+			_ = d.Cfg.Reload(d.Dirs)
+			cfg := d.Cfg.Get()
+			return map[string]any{"expressions": cfg.Search.EffectiveExpressions()}, nil
+		})
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, result)
+		return nil
+	}))
+
+	// GET /api/search/sites — read the sites list from search.yaml.
+	mux.HandleFunc("GET /api/search/sites", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		cfg := d.Cfg.Get()
+		sites := cfg.Search.Sites
+		if sites == nil {
+			sites = []config.Source{}
+		}
+		writeJSON(w, http.StatusOK, sites)
+		return nil
+	}))
+
+	// POST /api/search/sites — add a new site to search.yaml.
+	// Body: {"name": "...", "url": "...", "enabled": true}
+	mux.HandleFunc("POST /api/search/sites", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		var body struct {
+			Name    string `json:"name"`
+			URL     string `json:"url"`
+			Enabled *bool  `json:"enabled"`
+		}
+		if err := readBody(r, &body); err != nil {
+			return err
+		}
+		enabled := body.Enabled == nil || *body.Enabled
+		result, err := ex.Run(func() (any, error) {
+			updated, err := updateSearchSiteInYAML(d.Dirs.ConfigFile("search"), "add", map[string]any{
+				"name": body.Name, "url": body.URL, "enabled": enabled,
+			})
+			if err != nil {
+				return nil, err
+			}
+			if err := config.Save(d.Dirs, "search", updated); err != nil {
+				return nil, err
+			}
+			_ = d.Cfg.Reload(d.Dirs)
+			return map[string]any{"name": body.Name, "url": body.URL, "enabled": enabled}, nil
+		})
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusCreated, result)
+		return nil
+	}))
+
+	// DELETE /api/search/sites/{name} — remove a site from search.yaml by name.
+	mux.HandleFunc("DELETE /api/search/sites/{name}", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		name := r.PathValue("name")
+		result, err := ex.Run(func() (any, error) {
+			updated, err := updateSearchSiteInYAML(d.Dirs.ConfigFile("search"), "remove", map[string]any{"name": name})
+			if err != nil {
+				return nil, err
+			}
+			if err := config.Save(d.Dirs, "search", updated); err != nil {
+				return nil, err
+			}
+			_ = d.Cfg.Reload(d.Dirs)
+			return map[string]any{"removed": name}, nil
+		})
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, result)
+		return nil
+	}))
+
+	// PATCH /api/search/sites/{name} — toggle the enabled flag of a site in search.yaml.
+	// Body: {"enabled": true|false}
+	mux.HandleFunc("PATCH /api/search/sites/{name}", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		name := r.PathValue("name")
+		var body struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := readBody(r, &body); err != nil {
+			return err
+		}
+		op := "enable"
+		if !body.Enabled {
+			op = "disable"
+		}
+		result, err := ex.Run(func() (any, error) {
+			updated, err := updateSearchSiteInYAML(d.Dirs.ConfigFile("search"), op, map[string]any{"name": name})
+			if err != nil {
+				return nil, err
+			}
+			if err := config.Save(d.Dirs, "search", updated); err != nil {
+				return nil, err
+			}
+			_ = d.Cfg.Reload(d.Dirs)
+			return map[string]any{"name": name, "enabled": body.Enabled}, nil
+		})
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, result)
+		return nil
+	}))
+
 	mux.HandleFunc("GET /api/application-files/{name}", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
 		name := r.PathValue("name")
 		if name != "cv.pdf" && name != "profile.pdf" {

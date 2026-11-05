@@ -87,6 +87,9 @@ func TestReplayFixtures(t *testing.T) {
 	// The provider name "p" matches minimalTestCfg so the in-memory validation passes.
 	seedConfigFile(t, d, "providers", "version: 1\nstages:\n  assessment: p\n  extraction: p\nproviders:\n  p:\n    type: ollama\n    model: llama3\n    endpoint: http://127.0.0.1:11434\n")
 
+	// Seed search.yaml so the search expression and site endpoints can read and update the file.
+	seedConfigFile(t, d, "search", "version: 1\nsites:\n  - name: LinkedIn\n    url: https://linkedin.com/jobs\n    enabled: true\nsearch:\n  titles:\n    - CTO\n  keywords:\n    - golang\n")
+
 	// Insert a seeded job so id-specific endpoints have something to work with.
 	jobID, err := s.Upsert(model.JobInput{
 		Title: "Fixture Job", Company: "Test Co",

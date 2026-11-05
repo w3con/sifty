@@ -1,10 +1,10 @@
 {
-  "description": "POST /api/block-rules — create a source block rule directly (Settings)",
+  "description": "POST /api/block-rules — retired; source block rules are no longer supported (source control is now the search.yaml enabled flag)",
   "method": "POST",
   "path": "/api/block-rules",
   "requestBody": {"kind": "source", "value": "LinkedIn"},
-  "responseStatus": 200,
+  "responseStatus": 400,
   "responseBodyShape": "object",
-  "requiredFields": ["id", "kind", "value", "createdAt"],
+  "requiredFields": ["error"],
   "source": "synthetic"
 }

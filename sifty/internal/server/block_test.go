@@ -36,24 +36,15 @@ func TestBlockJobCompany(t *testing.T) {
 }
 
 // TestBlockJobSource verifies that POST /api/jobs/{id}/block with dimension=source
-// creates a source rule using the job's first source name.
+// returns 400 now that source block rules have been retired (source control is the search.yaml
+// enabled flag; use the /api/search/sites API instead).
 func TestBlockJobSource(t *testing.T) {
 	h, s := newRouteHandler(t)
-	seedJob(t, s) // Source: "LinkedIn"
+	seedJob(t, s)
 
 	resp := apiDo(t, h, "POST", "/api/jobs/1/block", `{"dimension":"source"}`)
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("POST /api/jobs/1/block source: got %d, want 200", resp.StatusCode)
-	}
-	var rule map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&rule); err != nil {
-		t.Fatalf("decode rule: %v", err)
-	}
-	if rule["kind"] != "source" {
-		t.Errorf("kind: got %v, want source", rule["kind"])
-	}
-	if rule["value"] != "LinkedIn" {
-		t.Errorf("value: got %v, want LinkedIn", rule["value"])
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("POST /api/jobs/1/block source (retired): got %d, want 400", resp.StatusCode)
 	}
 }
 
@@ -153,7 +144,8 @@ func TestRemoveBlockRuleNotFound(t *testing.T) {
 }
 
 // TestListSources verifies that GET /api/sources returns the distinct source names with a role
-// count each and a blocked flag that follows the active source rules.
+// count each. Source blocking via block rules has been retired (migration v14); Blocked is always
+// false since no source rules remain after migration.
 func TestListSources(t *testing.T) {
 	h, s := newRouteHandler(t)
 	seedJob(t, s) // one role on "LinkedIn"
@@ -163,85 +155,37 @@ func TestListSources(t *testing.T) {
 		Roles   int    `json:"roles"`
 		Blocked bool   `json:"blocked"`
 	}
-	list := func() []src {
-		resp := apiDo(t, h, "GET", "/api/sources", "")
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("GET /api/sources: got %d, want 200", resp.StatusCode)
-		}
-		var out []src
-		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
-			t.Fatalf("decode: %v", err)
-		}
-		return out
+	resp := apiDo(t, h, "GET", "/api/sources", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/sources: got %d, want 200", resp.StatusCode)
 	}
-
-	got := list()
+	var got []src
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
 	if len(got) != 1 || got[0].Name != "LinkedIn" || got[0].Roles != 1 || got[0].Blocked {
-		t.Fatalf("sources before block: got %+v, want [{LinkedIn 1 false}]", got)
-	}
-
-	apiDo(t, h, "POST", "/api/jobs/1/block", `{"dimension":"source"}`)
-	got = list()
-	if len(got) != 1 || !got[0].Blocked {
-		t.Errorf("sources after block: got %+v, want LinkedIn blocked", got)
+		t.Errorf("sources: got %+v, want [{LinkedIn 1 false}]", got)
 	}
 }
 
-// TestCreateSourceBlockRule verifies that POST /api/block-rules creates a source rule directly,
-// returns the stored rule, and that the matching role is then blocked.
+// TestCreateSourceBlockRule verifies that POST /api/block-rules now returns 400 (retired).
+// Source block rules were retired in migration v14; use the /api/search/sites API instead.
 func TestCreateSourceBlockRule(t *testing.T) {
-	h, s := newRouteHandler(t)
-	seedJob(t, s) // Source: "LinkedIn"
+	h, _ := newRouteHandler(t)
 
 	resp := apiDo(t, h, "POST", "/api/block-rules", `{"kind":"source","value":"LinkedIn"}`)
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("POST /api/block-rules: got %d, want 200", resp.StatusCode)
-	}
-	var rule map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&rule); err != nil {
-		t.Fatalf("decode rule: %v", err)
-	}
-	if rule["kind"] != "source" || rule["value"] != "LinkedIn" || rule["id"] == nil || rule["createdAt"] == nil {
-		t.Errorf("rule: got %v, want source/LinkedIn with id and createdAt", rule)
-	}
-
-	// The role on that source is now blocked.
-	jobResp := apiDo(t, h, "GET", "/api/jobs/1", "")
-	var job map[string]any
-	json.NewDecoder(jobResp.Body).Decode(&job)
-	if job["blocked"] != true {
-		t.Error("job should be blocked after a source rule is created from Settings")
-	}
-
-	// Creating the same rule again is idempotent: same id, still one rule.
-	resp2 := apiDo(t, h, "POST", "/api/block-rules", `{"kind":"source","value":"LinkedIn"}`)
-	var rule2 map[string]any
-	json.NewDecoder(resp2.Body).Decode(&rule2)
-	if rule2["id"] != rule["id"] {
-		t.Errorf("duplicate create: id %v, want %v", rule2["id"], rule["id"])
-	}
-	listResp := apiDo(t, h, "GET", "/api/block-rules", "")
-	var rules []map[string]any
-	json.NewDecoder(listResp.Body).Decode(&rules)
-	if len(rules) != 1 {
-		t.Errorf("rules count: got %d, want 1", len(rules))
-	}
-
-	// Removing the rule restores the role.
-	apiDo(t, h, "DELETE", fmt.Sprintf("/api/block-rules/%d", int(rule["id"].(float64))), "")
-	jobResp2 := apiDo(t, h, "GET", "/api/jobs/1", "")
-	var job2 map[string]any
-	json.NewDecoder(jobResp2.Body).Decode(&job2)
-	if job2["blocked"] == true {
-		t.Error("job should not be blocked after the rule is removed")
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Errorf("POST /api/block-rules (retired): got %d, want 400", resp.StatusCode)
 	}
 }
 
-// TestCreateBlockRuleRejectsBadInput verifies that a non-source kind or an empty value returns 400.
+// TestCreateBlockRuleRejectsBadInput verifies that POST /api/block-rules always returns 400,
+// since source block rules have been retired.
 func TestCreateBlockRuleRejectsBadInput(t *testing.T) {
 	h, _ := newRouteHandler(t)
 	for _, body := range []string{
 		`{"kind":"company","value":"acme"}`,
+		`{"kind":"source","value":"LinkedIn"}`,
 		`{"kind":"source","value":"   "}`,
 		`{"kind":"source"}`,
 	} {

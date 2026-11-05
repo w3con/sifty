@@ -45,6 +45,7 @@ func (r *recordingMux) HandleFunc(pattern string, h func(http.ResponseWriter, *h
 //	/api/providers/p/check   → /api/providers/{name}/check
 //	/api/config/runtime      → /api/config/{name}
 //	/api/application-files/cv.pdf → /api/application-files/{name}
+//	/api/search/sites/LinkedIn → /api/search/sites/{name}
 func normalizeFixturePath(path string) string {
 	segs := strings.Split(strings.TrimPrefix(path, "/"), "/")
 	// /api/jobs/<numeric>/...
@@ -70,6 +71,10 @@ func normalizeFixturePath(path string) string {
 	// /api/application-files/<name>
 	if len(segs) == 3 && segs[0] == "api" && segs[1] == "application-files" {
 		segs[2] = "{name}"
+	}
+	// /api/search/sites/<name>
+	if len(segs) == 4 && segs[0] == "api" && segs[1] == "search" && segs[2] == "sites" {
+		segs[3] = "{name}"
 	}
 	return "/" + strings.Join(segs, "/")
 }

@@ -1,0 +1,9 @@
+{
+  "description": "POST /api/search/sites — add a new source site to search.yaml",
+  "method": "POST",
+  "path": "/api/search/sites",
+  "requestBody": {"name": "NewBoard", "url": "https://newboard.example.com/jobs", "enabled": true},
+  "responseStatus": 201,
+  "responseBodyShape": "object",
+  "source": "synthetic"
+}

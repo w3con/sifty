@@ -46,7 +46,7 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 *Gate: `bin/sift-deploy --help` and a `--build-only` dry run.*
 
-- [ ] 1.1 — Write `bin/sift-deploy --env <name>` reading per-env port, data dir, dist, binary and log paths from `bin/work.config` and the environment, with no hardcoded `/tmp`; `--help` documents every key.
+- [x] 1.1 — Write `bin/sift-deploy --env <name>` reading per-env port, data dir, dist, binary and log paths from `bin/work.config` and the environment, with no hardcoded `/tmp`; `--help` documents every key.
 - [ ] 1.2 — Build phase: `go build ./cmd/sifty` to a fresh binary and `vite build` in `app/` to `app/dist`, aborting on any build error; `--build-only` builds both without touching any server.
 - [ ] 1.3 — Swap and start: back up the target env's data (timestamped copy of `store.sqlite`), keep the previous binary, stop that env's server on its port, start the new binary detached against that env's data dir and dist.
 - [ ] 1.4 — Health, smoke and rollback: poll the catalogue endpoint until it answers 200 within a timeout, then assert the catalogue count is greater than zero; on failure restore the previous binary and the data backup, restart, and exit non-zero.

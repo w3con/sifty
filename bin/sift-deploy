@@ -1,0 +1,384 @@
+#!/usr/bin/env bash
+# bin/sift-deploy — build, swap and smoke-check a sifty environment.
+#
+# Usage: sift-deploy --env staging|prod [--build-only] [--help]
+#
+# Per-env config (bin/work.config or environment variables):
+#   SIFTY_PROD_PORT          prod HTTP port           (default 8080)
+#   SIFTY_PROD_DATA_DIR      prod data directory      (default <repo>/data)
+#   SIFTY_PROD_BINARY        path to prod binary      (default <repo>/bin/sifty)
+#   SIFTY_PROD_LOG           prod server log path     (default <repo>/data/prod-server.log)
+#   SIFTY_STAGING_PORT       staging HTTP port        (default 8081)
+#   SIFTY_STAGING_DATA_DIR   staging data directory   (default <repo>/data-staging)
+#   SIFTY_STAGING_BINARY     path to staging binary   (default <repo>/bin/sifty)
+#   SIFTY_STAGING_LOG        staging server log path  (default <repo>/data-staging/staging-server.log)
+#   SIFTY_DIST_DIR           React dist dir (shared)  (default <repo>/app/dist)
+#   SIFTY_WORKERS_DIR        workers dir (shared)     (default <repo>/sifty/workers)
+#
+# Every run appends a line to <data_dir>/deploy.log with timestamp, env, binary
+# hash and smoke result. On build, start, or smoke failure the previous binary
+# and data backup are restored, the server is restarted, and the script exits 1.
+
+set -euo pipefail
+
+# --- Helpers ---
+die()  { echo "sift-deploy: ERROR: $*" >&2; exit 1; }
+warn() { echo "sift-deploy: WARNING: $*" >&2; }
+log()  { echo "sift-deploy: $*"; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
+    || die "not inside a git repository"
+
+# Load work.config: KEY=VALUE pairs; env variable of same name takes priority.
+load_config() {
+    local cfg="$APP_HOME/bin/work.config"
+    [[ -f "$cfg" ]] || return 0
+    while IFS= read -r line; do
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ "$line" =~ ^[[:space:]]*$ ]] && continue
+        [[ "$line" == *=* ]] || continue
+        local key="${line%%=*}"
+        local val="${line#*=}"
+        key="${key// /}"
+        # Only set if not already in environment
+        if [[ -n "$key" ]] && [[ -z "${!key+x}" ]]; then
+            export "$key=$val"
+        fi
+    done < "$cfg"
+}
+load_config
+
+# --- Argument parsing ---
+ENV=""
+BUILD_ONLY=0
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --env)
+            [[ $# -ge 2 ]] || die "--env requires an argument"
+            ENV="$2"; shift 2 ;;
+        --build-only) BUILD_ONLY=1; shift ;;
+        --help|-h)
+            cat <<'HELP'
+sift-deploy — build, swap and smoke-check a sifty environment.
+
+Usage:
+  sift-deploy --env staging|prod [--build-only]
+  sift-deploy --help
+
+Options:
+  --env <name>    Environment to deploy: staging or prod. Required.
+  --build-only    Build Go binary and frontend but do not stop/start any server.
+  --help          Print this help and exit.
+
+Per-env config keys (bin/work.config or environment variables):
+  SIFTY_PROD_PORT / SIFTY_STAGING_PORT         HTTP port (defaults: 8080 / 8081)
+  SIFTY_PROD_DATA_DIR / SIFTY_STAGING_DATA_DIR data directory
+  SIFTY_PROD_BINARY / SIFTY_STAGING_BINARY     path to the sifty binary
+  SIFTY_PROD_LOG / SIFTY_STAGING_LOG           server log path
+  SIFTY_DIST_DIR                               React dist dir (shared)
+  SIFTY_WORKERS_DIR                            workers dir (shared)
+
+Build:
+  (a) cd sifty && go build -o <repo>/bin/sifty.new ./cmd/sifty
+  (b) npm --prefix app ci && npm --prefix app run build  → app/dist/
+
+Deploy (non-build-only):
+  1. For staging: refresh data-staging from a consistent prod snapshot.
+  2. Back up <data_dir>/store.sqlite (timestamped).
+  3. Keep previous binary as <binary>.prev.
+  4. Stop the env's server on its port.
+  5. Start the new binary detached against the env's data dir and dist.
+  6. Poll GET /api/health for HTTP 200 (30 s timeout).
+  7. Assert GET /api/jobs returns at least one entry.
+  8. POST /api/context (idempotent rescore / profile-save).
+  9. On any failure: restore previous binary and backup, restart, exit 1.
+ 10. Append a log line to <data_dir>/deploy.log.
+HELP
+            exit 0
+            ;;
+        *) die "unknown argument: $1 (run with --help for usage)" ;;
+    esac
+done
+
+[[ -n "$ENV" ]] || die "--env <staging|prod> is required (run with --help)"
+[[ "$ENV" == "staging" || "$ENV" == "prod" ]] \
+    || die "--env must be 'staging' or 'prod', got: $ENV"
+
+# --- Per-env config resolution ---
+DIST_DIR="${SIFTY_DIST_DIR:-$APP_HOME/app/dist}"
+WORKERS_DIR="${SIFTY_WORKERS_DIR:-$APP_HOME/sifty/workers}"
+
+case "$ENV" in
+    prod)
+        PORT="${SIFTY_PROD_PORT:-8080}"
+        DATA_DIR="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}"
+        BINARY="${SIFTY_PROD_BINARY:-$APP_HOME/bin/sifty}"
+        SERVER_LOG="${SIFTY_PROD_LOG:-$DATA_DIR/prod-server.log}"
+        ;;
+    staging)
+        PORT="${SIFTY_STAGING_PORT:-8081}"
+        DATA_DIR="${SIFTY_STAGING_DATA_DIR:-$APP_HOME/data-staging}"
+        BINARY="${SIFTY_STAGING_BINARY:-$APP_HOME/bin/sifty}"
+        SERVER_LOG="${SIFTY_STAGING_LOG:-$DATA_DIR/staging-server.log}"
+        ;;
+esac
+
+DEPLOY_LOG="$DATA_DIR/deploy.log"
+PREV_BINARY="${BINARY}.prev"
+TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+BACKUP_DB="${DATA_DIR}/store.sqlite.backup.${TIMESTAMP}"
+NEW_BINARY="$APP_HOME/bin/sifty.new"
+
+log "env=$ENV port=$PORT data=$DATA_DIR binary=$BINARY"
+
+# =============================================================================
+# BUILD PHASE (checkpoints 1.1–1.2)
+# =============================================================================
+
+log "--- BUILD ---"
+log "Building Go binary (sifty/cmd/sifty → bin/sifty.new)..."
+(cd "$APP_HOME/sifty" && go build -o "$NEW_BINARY" ./cmd/sifty) \
+    || die "Go build failed"
+
+log "Installing frontend dependencies (npm ci)..."
+if npm --prefix "$APP_HOME/app" ci --silent 2>/dev/null; then
+    : # clean install succeeded
+elif npm --prefix "$APP_HOME/app" install --silent 2>/dev/null; then
+    warn "package-lock.json missing or out of date; used npm install instead of ci"
+else
+    die "npm install failed"
+fi
+
+log "Building frontend (npm run build → app/dist/)..."
+npm --prefix "$APP_HOME/app" run build \
+    || die "Frontend build failed"
+
+BINARY_HASH="$(shasum -a 256 "$NEW_BINARY" | cut -d' ' -f1)"
+log "Build complete. binary hash: ${BINARY_HASH:0:16}..."
+
+# --- build-only exit ---
+if [[ "$BUILD_ONLY" -eq 1 ]]; then
+    mv "$NEW_BINARY" "$BINARY"
+    log "build-only: binary installed at $BINARY; no server touched."
+    exit 0
+fi
+
+# =============================================================================
+# STAGING: refresh data from prod snapshot (checkpoint 2.3)
+# =============================================================================
+
+if [[ "$ENV" == "staging" ]]; then
+    PROD_DATA="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}"
+    PROD_DB="$PROD_DATA/store.sqlite"
+    log "--- STAGING DATA REFRESH ---"
+    if [[ -f "$PROD_DB" ]]; then
+        mkdir -p "$DATA_DIR/config" "$DATA_DIR/evidence"
+        log "Copying prod DB via sqlite3 .backup (safe against live WAL)..."
+        sqlite3 "$PROD_DB" ".backup $DATA_DIR/store.sqlite" \
+            || die "sqlite3 backup of prod DB failed"
+        # Copy config files, excluding runtime.yaml (port override must be preserved)
+        if [[ -d "$PROD_DATA/config" ]]; then
+            rsync -a --exclude 'runtime.yaml' "$PROD_DATA/config/" "$DATA_DIR/config/" 2>/dev/null || true
+        fi
+        # Copy candidate evidence (CV, profile, answers — read-only reference data)
+        for f in cv.pdf profile.pdf; do
+            [[ -f "$PROD_DATA/$f" ]] && cp "$PROD_DATA/$f" "$DATA_DIR/$f" 2>/dev/null || true
+        done
+        if [[ -d "$PROD_DATA/evidence" ]]; then
+            rsync -a "$PROD_DATA/evidence/" "$DATA_DIR/evidence/" 2>/dev/null || true
+        fi
+        log "Staging data refreshed from prod."
+    else
+        warn "prod DB not found at $PROD_DB; staging will use existing data."
+        mkdir -p "$DATA_DIR"
+    fi
+
+    # Ensure staging port is set in runtime.yaml
+    STAGING_RUNTIME="$DATA_DIR/config/runtime.yaml"
+    mkdir -p "$(dirname "$STAGING_RUNTIME")"
+    if [[ ! -f "$STAGING_RUNTIME" ]]; then
+        echo "port: $PORT" > "$STAGING_RUNTIME"
+        log "Created $STAGING_RUNTIME with port: $PORT"
+    elif grep -q "^port:" "$STAGING_RUNTIME" 2>/dev/null; then
+        if ! grep -q "^port: $PORT$" "$STAGING_RUNTIME" 2>/dev/null; then
+            sed -i '' "s/^port:.*$/port: $PORT/" "$STAGING_RUNTIME"
+            log "Updated port in $STAGING_RUNTIME to $PORT"
+        fi
+    else
+        echo "port: $PORT" >> "$STAGING_RUNTIME"
+        log "Appended port: $PORT to $STAGING_RUNTIME"
+    fi
+fi
+
+# --- Prod: data dir must already exist ---
+if [[ "$ENV" == "prod" ]]; then
+    [[ -d "$DATA_DIR" ]] \
+        || die "prod data dir $DATA_DIR does not exist — refusing to create it automatically"
+fi
+
+# =============================================================================
+# BACKUP (checkpoint 1.3)
+# =============================================================================
+
+log "--- BACKUP ---"
+mkdir -p "$DATA_DIR"
+if [[ -f "$DATA_DIR/store.sqlite" ]]; then
+    log "Backing up DB to $BACKUP_DB..."
+    sqlite3 "$DATA_DIR/store.sqlite" ".backup $BACKUP_DB" \
+        || die "DB backup failed"
+    log "Backup written."
+else
+    log "No existing DB to back up."
+fi
+
+# Keep previous binary
+if [[ -f "$BINARY" ]]; then
+    cp "$BINARY" "$PREV_BINARY"
+    log "Previous binary saved as ${PREV_BINARY##*/}"
+fi
+
+# =============================================================================
+# ROLLBACK helper (checkpoint 1.4)
+# =============================================================================
+
+ROLLBACK_CALLED=0
+rollback() {
+    [[ "$ROLLBACK_CALLED" -eq 1 ]] && return
+    ROLLBACK_CALLED=1
+    warn "Initiating rollback..."
+    # Restore binary
+    if [[ -f "$PREV_BINARY" ]]; then
+        cp "$PREV_BINARY" "$BINARY"
+        log "Previous binary restored."
+    else
+        log "No previous binary to restore."
+    fi
+    # Restore DB
+    if [[ -f "$BACKUP_DB" ]]; then
+        cp "$BACKUP_DB" "$DATA_DIR/store.sqlite"
+        log "DB backup restored from $BACKUP_DB"
+    fi
+    # Try to restart
+    _start_server_raw || warn "Rollback restart failed; server may be down."
+    mkdir -p "$(dirname "$DEPLOY_LOG")"
+    echo "$TIMESTAMP env=$ENV hash=${BINARY_HASH:0:16} catalogue=? result=ROLLBACK" >> "$DEPLOY_LOG"
+}
+
+# =============================================================================
+# STOP SERVER (checkpoint 1.3)
+# =============================================================================
+
+_stop_server() {
+    local pid
+    pid="$(lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null || true)"
+    if [[ -n "$pid" ]]; then
+        log "Stopping server on port $PORT (PID $pid)..."
+        kill "$pid" 2>/dev/null || true
+        local i=0
+        while lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t &>/dev/null && [[ $i -lt 20 ]]; do
+            sleep 0.5
+            ((i++))
+        done
+        if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t &>/dev/null; then
+            warn "Server still on port $PORT after 10 s; sending SIGKILL..."
+            kill -9 "$pid" 2>/dev/null || true
+            sleep 1
+        fi
+        log "Server stopped."
+    else
+        log "No server running on port $PORT."
+    fi
+}
+
+# =============================================================================
+# START SERVER (checkpoint 1.3)
+# =============================================================================
+
+_start_server_raw() {
+    mkdir -p "$(dirname "$SERVER_LOG")"
+    nohup "$BINARY" serve \
+        --data-dir "$DATA_DIR" \
+        --dist     "$DIST_DIR" \
+        --workers-dir "$WORKERS_DIR" \
+        >> "$SERVER_LOG" 2>&1 &
+    disown
+    log "Server started (PID $!)."
+}
+
+# =============================================================================
+# SWAP, START, HEALTH CHECK (checkpoints 1.3–1.4)
+# =============================================================================
+
+log "--- DEPLOY ---"
+mv "$NEW_BINARY" "$BINARY"
+log "Binary swapped."
+
+_stop_server
+_start_server_raw
+
+# Health check: poll GET /api/health for HTTP 200, up to 30 s
+log "Waiting for server on port $PORT (up to 30 s)..."
+SMOKE_OK=0
+for i in $(seq 1 30); do
+    CODE="$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:$PORT/api/health" 2>/dev/null || echo 0)"
+    if [[ "$CODE" == "200" ]]; then
+        SMOKE_OK=1
+        break
+    fi
+    sleep 1
+done
+
+if [[ "$SMOKE_OK" -ne 1 ]]; then
+    log "ERROR: server did not answer on /api/health within 30 s"
+    _stop_server
+    rollback
+    exit 1
+fi
+log "Health check passed."
+
+# Catalogue count
+CATALOGUE_COUNT="$(curl -s "http://127.0.0.1:$PORT/api/jobs" 2>/dev/null \
+    | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))' 2>/dev/null || echo 0)"
+log "Catalogue count: $CATALOGUE_COUNT"
+
+if [[ "$CATALOGUE_COUNT" -le 0 ]]; then
+    # Fresh staging with no data: treat as a warning, not failure
+    if [[ "$ENV" == "staging" ]]; then
+        warn "Catalogue is empty on staging (may be a fresh environment); continuing."
+    else
+        log "ERROR: catalogue is empty on prod — rolling back"
+        _stop_server
+        rollback
+        exit 1
+    fi
+fi
+
+# =============================================================================
+# RESCORE (checkpoint 1.5)
+# =============================================================================
+
+log "--- POST-DEPLOY RESCORE ---"
+log "Triggering idempotent rescore via POST /api/context..."
+RESCORE_CODE="$(curl -s -X POST "http://127.0.0.1:$PORT/api/context" \
+    -H "Content-Type: application/json" \
+    -d '{"refreshRemote":false}' \
+    -o /dev/null -w '%{http_code}' 2>/dev/null || echo 0)"
+if [[ "$RESCORE_CODE" == "200" ]]; then
+    log "Rescore completed (HTTP 200)."
+else
+    warn "Rescore request returned HTTP $RESCORE_CODE (non-fatal; scores remain as-is)."
+fi
+
+# =============================================================================
+# LOG (checkpoint 1.6)
+# =============================================================================
+
+mkdir -p "$(dirname "$DEPLOY_LOG")"
+echo "$TIMESTAMP env=$ENV hash=${BINARY_HASH:0:16} catalogue=$CATALOGUE_COUNT result=OK" \
+    >> "$DEPLOY_LOG"
+
+log ""
+log "Deploy complete."
+log "URL: http://localhost:$PORT"

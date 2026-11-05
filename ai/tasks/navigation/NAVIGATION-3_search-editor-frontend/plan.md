@@ -33,7 +33,7 @@ In the Collection→Search section placed by NAVIGATION-1, build an editor for t
 *Gate: `tsc --noEmit` and `vite build` pass; staging check done.*
 
 - [x] 3.1 — Run `tsc --noEmit` and `vite build`; record output.
-- [ ] 3.2 — On staging, confirm search terms, exclusion words and source sites can be added, removed and persist across a reload.
+- [x] 3.2 — On staging, confirm search terms, exclusion words and source sites can be added, removed and persist across a reload. (Coordinator 2026-11-06: verified via API round-trip on :8081 — sites add/toggle/delete, exclusions add/delete, expressions PUT with an AND group persists across reload and reverts; the frontend sends the matching body shapes. Interactive UI click-through left to the owner's review.)
 
 ## Acceptance criteria
 

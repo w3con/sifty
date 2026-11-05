@@ -21,3 +21,13 @@ Exit: 0
 
 ```
 
+
+## 2026-11-06 — 2.1 — Replace stop-words panel with unified exclusion-words list
+
+Check: `cd app && ./node_modules/.bin/tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

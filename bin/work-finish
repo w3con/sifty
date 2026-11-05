@@ -1,0 +1,110 @@
+#!/usr/bin/env python3
+"""work-finish — accept and merge a card, or reject it.
+
+Usage:
+    work-finish <id> [--force]
+    work-finish <id> --reject "<reason>"
+
+Accept path: run the acceptance checks in a scratch copy (unless --force), then
+fast-forward-only merge work/<id> into the current branch, write done.md, remove
+the worktree and delete the branch. Reject path: write rejected.md with the
+reason, remove the worktree and delete the branch; nothing is merged.
+
+Never pushes unless WORK_PUSH=1 is set (off by default).
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def write_terminal(card_dir, name, body):
+    with open(os.path.join(card_dir, name), "w", encoding="utf-8") as fh:
+        fh.write(body)
+
+
+def cleanup(card_id, branch, delete_branch=True):
+    wt = w.find_worktree(branch)
+    if wt:
+        w.run(["git", "worktree", "remove", "--force", wt])
+    if delete_branch:
+        w.run(["git", "branch", "-D", branch])
+
+
+def commit_card(card_dir, message):
+    rel = os.path.relpath(card_dir, w.repo_root())
+    w.run(["git", "add", "--", rel], cwd=w.repo_root())
+    cp = w.run(["git", "commit", "-q", "-m", message], cwd=w.repo_root())
+    if cp.returncode != 0:
+        w.die("git commit failed: %s" % (cp.stderr or cp.stdout).strip())
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-finish")
+    ap.add_argument("id")
+    ap.add_argument("--reject", default=None, metavar="REASON")
+    ap.add_argument("--force", action="store_true",
+                    help="skip the acceptance check before merging")
+    args = ap.parse_args()
+
+    card_dir = w.require_card_dir(args.id)
+    branch = "work/%s" % args.id
+
+    # ── Reject path ──────────────────────────────────────────────────────────
+    if args.reject is not None:
+        last = w.run(["git", "rev-parse", "--short", branch])
+        sha = last.stdout.strip() if last.returncode == 0 else "(unknown)"
+        write_terminal(card_dir, "rejected.md",
+                       "# %s — rejected\n\n**Date:** %s\n**Branch tip was:** %s\n\n"
+                       "## Reason\n\n%s\n" % (args.id, w.today(), sha, args.reject))
+        commit_card(card_dir, "chore(work): reject %s" % args.id)
+        cleanup(args.id, branch)
+        w.info("rejected %s" % args.id)
+        return
+
+    # ── Accept path ──────────────────────────────────────────────────────────
+    if not w.find_worktree(branch):
+        w.refuse(["no worktree for %s — nothing to finish" % branch])
+
+    if not args.force:
+        code, output = w.run_accept(args.id)
+        sys.stdout.write(output)
+        if output and not output.endswith("\n"):
+            sys.stdout.write("\n")
+        if code != 0:
+            w.refuse(["acceptance checks failed (exit %d) — not merging. "
+                      "Fix the work or pass --force." % code])
+
+    # Fast-forward-only merge into the current (base) branch.
+    base = w.git_current_branch()
+    merge = w.run(["git", "merge", "--ff-only", branch], cwd=w.repo_root())
+    if merge.returncode != 0:
+        w.refuse(["fast-forward merge of %s into %s failed — the base has moved. "
+                  "Rebase work/%s onto %s, then finish again.\n%s"
+                  % (branch, base, args.id, base, merge.stderr.strip())])
+    w.info("fast-forwarded %s into %s" % (branch, base))
+
+    write_terminal(card_dir, "done.md",
+                   "# %s — done\n\n**Date:** %s\n**Merged into:** %s\n"
+                   % (args.id, w.today(), base))
+    commit_card(card_dir, "chore(work): finish %s" % args.id)
+    cleanup(args.id, branch)
+
+    if w.config_get("WORK_PUSH") == "1":
+        push = w.run(["git", "push"], cwd=w.repo_root())
+        if push.returncode != 0:
+            w.info("WARNING: push failed: %s" % push.stderr.strip())
+    w.info("finished %s" % args.id)
+
+    # The roadmap holds the card sequence and status as curated prose; it cannot be
+    # updated mechanically, so the finish step reminds the coordinator to do it by hand.
+    roadmap = os.path.join(w.repo_root(), "ai", "ROADMAP.md")
+    if os.path.exists(roadmap):
+        w.info("ROADMAP — now update ai/ROADMAP.md: move %s to done/Status and set the "
+               "next card in the queue. Not automatic; the sequence there is curated prose." % args.id)
+
+
+if __name__ == "__main__":
+    main()

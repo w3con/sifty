@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+"""work-handover — the gate between a finished plan and the executor.
+
+Usage:
+    work-handover <id>
+
+Enforces every refusal inside this command (not an external hook):
+  * plan not fit
+  * unanswered attention
+  * a terminal file present (done/rejected/cancelled/question)
+  * the declared estimate exceeds the ceiling
+  * nothing left to brief (no open steps)
+  * the card has uncommitted changes
+
+Then cuts a linked git worktree on branch work/<id> and hands the executor
+brief to the live session (or to the configured headless dispatch command).
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def card_has_uncommitted_changes(card_rel):
+    cp = w.run(["git", "status", "--porcelain", "--", card_rel],
+               cwd=w.repo_root())
+    return bool(cp.stdout.strip())
+
+
+def build_brief(card_id, card_dir, worktree):
+    steps = w.open_steps(card_dir)
+    open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none)"
+    rel_card = os.path.relpath(card_dir, w.repo_root())
+    rel_steps = os.path.relpath(w.steps_file(card_dir), w.repo_root())
+    return w.render_template(
+        "executor-brief.md",
+        id=card_id,
+        card_dir=rel_card,
+        worktree=worktree,
+        steps_file=rel_steps,
+        open_steps=open_block,
+    )
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-handover")
+    ap.add_argument("id")
+    args = ap.parse_args()
+
+    card_dir = w.require_card_dir(args.id)
+    card_rel = os.path.relpath(card_dir, w.repo_root())
+
+    # ── Refusals (all inside the command) ────────────────────────────────────
+    reasons = []
+    reasons += w.plan_fitness_problems(card_dir)
+    att = w.open_attention(card_dir)
+    if att:
+        reasons.append("unanswered attention (%d open item(s))" % len(att))
+    term = w.terminal_file_present(card_dir)
+    if term:
+        reasons.append("terminal file present: %s" % term)
+    ceiling = int(w.config_get("WORK_ESTIMATE_CEILING", "25"))
+    est = w.read_estimate(card_dir)
+    if est is not None and est > ceiling:
+        reasons.append("estimate %d exceeds ceiling %d (split the card or raise "
+                       "WORK_ESTIMATE_CEILING)" % (est, ceiling))
+    if not w.open_steps(card_dir):
+        reasons.append("nothing left to brief (no open steps)")
+    if card_has_uncommitted_changes(card_rel):
+        reasons.append("card has uncommitted changes — commit the plan first")
+    if reasons:
+        w.refuse(["cannot hand over %s:" % args.id] + reasons)
+
+    # ── Cut the worktree on branch work/<id> ─────────────────────────────────
+    branch = "work/%s" % args.id
+    worktree = os.path.join(w.repo_root(), ".worktrees", args.id)
+    if os.path.exists(worktree):
+        w.refuse(["worktree already exists at %s — use work-resume %s"
+                  % (worktree, args.id)])
+    os.makedirs(os.path.dirname(worktree), exist_ok=True)
+    add = w.run(["git", "worktree", "add", "-b", branch, worktree, "HEAD"],
+                cwd=w.repo_root())
+    if add.returncode != 0:
+        w.die("git worktree add failed: %s" % add.stderr.strip())
+    w.info("cut worktree %s on branch %s" % (worktree, branch))
+
+    # ── Hand off the brief through the cross-tool seam ────────────────────────
+    brief = build_brief(args.id, card_dir, worktree)
+    w.dispatch(brief)
+
+
+if __name__ == "__main__":
+    main()

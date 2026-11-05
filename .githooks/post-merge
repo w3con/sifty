@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Rebuild the generated navigation map after a pull or a merge.
+# kb/_index.md is untracked, so nothing brings it in for us; see
+# ai/tools/kb-index-refresh for the whole story.
+unset GIT_DIR GIT_WORK_TREE
+exec "$(git rev-parse --show-toplevel)/ai/tools/kb-index-refresh"

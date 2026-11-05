@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""work-accept — run a card's acceptance checks in a throwaway scratch copy.
+
+Usage:
+    work-accept <id>
+
+Creates a detached scratch worktree of work/<id>, runs the acceptance command
+(WORK_ACCEPT_CMD, default bin/work-test) there, prints the verbatim output and
+reports pass/fail. Never merges; acceptance is a judgement, work-finish does the
+merge. The scratch copy is always removed.
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-accept")
+    ap.add_argument("id")
+    args = ap.parse_args()
+
+    w.require_card_dir(args.id)
+    code, output = w.run_accept(args.id)
+    sys.stdout.write(output)
+    if not output.endswith("\n"):
+        sys.stdout.write("\n")
+    if code != 0:
+        w.refuse(["acceptance checks for %s failed (exit %d)" % (args.id, code)])
+    w.info("accepted %s — checks pass" % args.id)
+
+
+if __name__ == "__main__":
+    main()

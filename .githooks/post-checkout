@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Rebuild the generated navigation map after switching branches.
+# $3 is 1 for a branch checkout and 0 for a single-file checkout; only a
+# branch checkout can change which documents exist, so only that one matters.
+unset GIT_DIR GIT_WORK_TREE
+[ "${3:-0}" = "1" ] || exit 0
+exec "$(git rev-parse --show-toplevel)/ai/tools/kb-index-refresh"

@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+"""work-plan — validate that a card's plan is fit to hand over.
+
+Usage:
+    work-plan <id>
+
+Refuses (exit 2) when the plan has no steps, no acceptance criteria, or still
+carries template placeholders. This is the same fitness check work-handover
+enforces, exposed on its own so the coordinator can check a plan while writing
+it.
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-plan")
+    ap.add_argument("id")
+    args = ap.parse_args()
+
+    card_dir = w.require_card_dir(args.id)
+    problems = w.plan_fitness_problems(card_dir)
+    if problems:
+        w.refuse(["plan for %s is not fit:" % args.id] + problems)
+
+    steps = w.all_steps(card_dir)
+    w.info("plan for %s is fit: %d step(s), acceptance criteria present."
+           % (args.id, len(steps)))
+
+
+if __name__ == "__main__":
+    main()

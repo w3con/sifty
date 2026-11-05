@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Rebuild the generated navigation map after a rebase or an amend.
+# `git pull --rebase` never fires post-merge, so without this hook the most
+# common way of syncing this repository would leave a stale map behind.
+unset GIT_DIR GIT_WORK_TREE
+exec "$(git rev-parse --show-toplevel)/ai/tools/kb-index-refresh"

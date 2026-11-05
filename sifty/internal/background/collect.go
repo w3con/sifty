@@ -54,7 +54,7 @@ func defaultCollect(s *store.Store, d dirs.Dirs, cfg *config.Config) error {
 
 			// A title already known from discovery lets a stop-word skip the posting before
 			// its detail page is fetched; the resolved title is checked again below.
-			if stoppedPosting(stopWords, ref.Partial.Title) {
+			if stoppedPosting(stopWords, ref.Partial.Title, ref.Partial.Company) {
 				skipped++
 				continue
 			}
@@ -70,7 +70,7 @@ func defaultCollect(s *store.Store, d dirs.Dirs, cfg *config.Config) error {
 				j.DescriptionStatus = pendingStatus(j.Description)
 			}
 
-			if stoppedPosting(stopWords, j.Title) {
+			if stoppedPosting(stopWords, j.Title, j.Company) {
 				skipped++
 				continue
 			}
@@ -165,7 +165,7 @@ func collectSources(ctx context.Context, s *store.Store, sites []config.Source, 
 
 			// A title already known from discovery lets a stop-word skip the posting before
 			// its detail page is fetched; the resolved title is checked again below.
-			if stoppedPosting(stopWords, ref.Partial.Title) {
+			if stoppedPosting(stopWords, ref.Partial.Title, ref.Partial.Company) {
 				skipped++
 				continue
 			}
@@ -180,7 +180,7 @@ func collectSources(ctx context.Context, s *store.Store, sites []config.Source, 
 				j.DescriptionStatus = "pending detail fetch"
 			}
 
-			if stoppedPosting(stopWords, j.Title) {
+			if stoppedPosting(stopWords, j.Title, j.Company) {
 				skipped++
 				continue
 			}
@@ -213,12 +213,12 @@ func loadStopWords(s *store.Store) []*store.StopWord {
 	return words
 }
 
-// stoppedPosting reports whether title matches an active stop-word. An empty title never
-// matches, so a posting without a title is left to the normal path.
-func stoppedPosting(words []*store.StopWord, title string) bool {
-	if title == "" {
+// stoppedPosting reports whether a posting matches an active exclusion term. The check tests
+// both title and company via RoleMatchesExclusions. An empty title and company never matches.
+func stoppedPosting(words []*store.StopWord, title, company string) bool {
+	if title == "" && company == "" {
 		return false
 	}
-	hit, _ := store.TitleMatchesStopWords(title, words)
+	hit, _ := store.RoleMatchesExclusions(title, company, words)
 	return hit
 }

@@ -83,6 +83,20 @@ func TitleMatchesStopWords(title string, words []*StopWord) (bool, string) {
 	return titleMatchesStopWords(title, words)
 }
 
+// RoleMatchesExclusions reports whether a role (identified by its title and company) matches
+// any of the stop-words as a case-insensitive literal substring of either field.
+// It returns the first matching word. The match is tried on title first, then on company,
+// so the same stop-word list covers both old title-only exclusions and new company exclusions.
+func RoleMatchesExclusions(title, company string, words []*StopWord) (bool, string) {
+	if hit, w := titleMatchesStopWords(title, words); hit {
+		return true, w
+	}
+	if hit, w := titleMatchesStopWords(company, words); hit {
+		return true, w
+	}
+	return false, ""
+}
+
 func titleMatchesStopWords(title string, words []*StopWord) (bool, string) {
 	if len(words) == 0 {
 		return false, ""
@@ -97,14 +111,16 @@ func titleMatchesStopWords(title string, words []*StopWord) (bool, string) {
 	return false, ""
 }
 
-// stopMatch is the job-level wrapper used by Get.
+// stopMatch is the job-level wrapper used by Get. It delegates to RoleMatchesExclusions so that
+// the same stop-word list covers both the job's title and its company name.
 func stopMatch(job *model.Job, words []*StopWord) (bool, string) {
-	return titleMatchesStopWords(job.Title, words)
+	return RoleMatchesExclusions(job.Title, job.Company, words)
 }
 
 // StopWordMatchCount returns how many stored roles adding word would newly hide: roles whose
-// title contains the normalised word and that no active stop-word already hides. It creates
-// nothing. Matching runs in Go (not SQL lower()) so it is identical to the matcher used by Get.
+// title or company contains the normalised word and that no active stop-word already hides.
+// It creates nothing. Matching runs in Go (not SQL lower()) so it is identical to the matcher
+// used by Get.
 func (s *Store) StopWordMatchCount(word string) (int, error) {
 	w := normalizeStopWord(word)
 	if w == "" {
@@ -114,7 +130,7 @@ func (s *Store) StopWordMatchCount(word string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rows, err := s.DB.Query(`SELECT title FROM jobs`)
+	rows, err := s.DB.Query(`SELECT title, company FROM jobs`)
 	if err != nil {
 		return 0, fmt.Errorf("count stop word matches: %w", err)
 	}
@@ -122,20 +138,20 @@ func (s *Store) StopWordMatchCount(word string) (int, error) {
 	candidate := []*StopWord{{Word: w}}
 	n := 0
 	for rows.Next() {
-		var title string
-		if err := rows.Scan(&title); err != nil {
-			return 0, fmt.Errorf("scan title: %w", err)
+		var title, company string
+		if err := rows.Scan(&title, &company); err != nil {
+			return 0, fmt.Errorf("scan title/company: %w", err)
 		}
-		if hit, _ := titleMatchesStopWords(title, candidate); !hit {
+		if hit, _ := RoleMatchesExclusions(title, company, candidate); !hit {
 			continue
 		}
-		if already, _ := titleMatchesStopWords(title, active); already {
+		if already, _ := RoleMatchesExclusions(title, company, active); already {
 			continue
 		}
 		n++
 	}
 	if err := rows.Err(); err != nil {
-		return 0, fmt.Errorf("iterate titles: %w", err)
+		return 0, fmt.Errorf("iterate title/company: %w", err)
 	}
 	return n, nil
 }

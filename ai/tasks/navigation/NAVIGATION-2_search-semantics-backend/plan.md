@@ -24,7 +24,7 @@ Extend the search-term model in `config/search.yaml` from two flat OR lists into
 
 *Gate: `go test -race ./internal/store/... ./internal/background/...` passes.*
 
-- [ ] 2.1 — Generalise stop-word matching to test title OR company (e.g. `RoleMatchesExclusions`), keeping the collection-time skip.
+- [x] 2.1 — Generalise stop-word matching to test title OR company (e.g. `RoleMatchesExclusions`), keeping the collection-time skip.
 - [ ] 2.2 — Add a schema migration (bump user_version) that copies company block rules into exclusion terms and drops source-block rules.
 - [ ] 2.3 — Remove the source-block code path; leave source enable/disable to the `search.yaml` sites list.
 

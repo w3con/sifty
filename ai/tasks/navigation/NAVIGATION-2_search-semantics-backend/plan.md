@@ -18,7 +18,7 @@ Extend the search-term model in `config/search.yaml` from two flat OR lists into
 
 - [x] 1.1 — Define the OR/AND expression schema on `config.Search`, parsing the existing flat `titles`/`keywords` as a backward-compatible OR group.
 - [x] 1.2 — Update `store.BuildFTSQuery` to compile OR/AND expressions into an FTS query; add combinator unit tests.
-- [ ] 1.3 — Point `collect.go` and the `routes.go` rescore at the new query; add a test that AND narrows and that ASM-4 scores are still produced.
+- [x] 1.3 — Point `collect.go` and the `routes.go` rescore at the new query; add a test that AND narrows and that ASM-4 scores are still produced.
 
 ### Phase 2 — Unified exclusions
 

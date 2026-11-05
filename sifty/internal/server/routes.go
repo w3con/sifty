@@ -497,7 +497,7 @@ func RegisterRoutes(mux Router, d *Deps) {
 			}
 			// Rescore all roles using the updated profile. Errors are non-fatal: the
 			// context was saved successfully, so return the context even if rescoring fails.
-			matchQuery := store.BuildFTSQuery(append(cfg.Search.Search.Titles, cfg.Search.Search.Keywords...))
+			matchQuery := store.BuildFTSQueryExprs(configExprsToFTSGroups(cfg.Search.EffectiveExpressions()))
 			if rerr := d.Store.Rescore(matchQuery); rerr != nil {
 				_ = rerr // logged by Rescore internals; context response is not affected
 			}
@@ -930,6 +930,16 @@ func queueStatus(s *store.Store) (map[string]any, error) {
 		"rows":    rows,
 		"runtime": run,
 	}, nil
+}
+
+// configExprsToFTSGroups converts config search expressions to store query groups.
+// It is the server-package equivalent of background.expressionsToFTSGroups.
+func configExprsToFTSGroups(exprs []config.SearchExpression) []store.SearchGroup {
+	groups := make([]store.SearchGroup, len(exprs))
+	for i, e := range exprs {
+		groups[i] = store.SearchGroup{Or: e.Or, And: e.And}
+	}
+	return groups
 }
 
 // jobVersionHash computes a fingerprint of the job's assessable fields, used to detect staleness.

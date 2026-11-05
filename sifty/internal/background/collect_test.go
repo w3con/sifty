@@ -12,6 +12,12 @@ import (
 	"github.com/w3con/sifty/internal/store"
 )
 
+// expressionsForTest converts config.SearchExpression slices to store.SearchGroup slices,
+// matching the production helper so test code can build queries the same way.
+func expressionsForTest(exprs []config.SearchExpression) []store.SearchGroup {
+	return expressionsToFTSGroups(exprs)
+}
+
 // matchScoreFor reads the match_score for the first job whose title equals title.
 func matchScoreFor(t *testing.T, s *store.Store, title string) int {
 	t.Helper()
@@ -303,6 +309,106 @@ func queuedCount(t *testing.T, s *store.Store) int {
 		t.Fatalf("queuedCount: %v", err)
 	}
 	return n
+}
+
+// TestANDQueryNarrows verifies that an AND expression narrows the match set:
+// a role must contain ALL terms to earn a non-zero score, while a role that contains
+// only some of them scores zero. It also confirms that ASM-4 fit scores (match_score)
+// are still produced across the catalogue when OR/AND expressions are used.
+func TestANDQueryNarrows(t *testing.T) {
+	st := newTestStore(t)
+
+	refs := []source.Ref{
+		{
+			URL: "https://jobs.example.com/jobs/full-001",
+			Partial: model.JobInput{
+				Title:             "Blockchain CTO",
+				Company:           "ChainCo",
+				OriginalURL:       "https://jobs.example.com/jobs/full-001",
+				Description:       "We need an experienced CTO with deep blockchain expertise to lead our protocol engineering team.",
+				DescriptionStatus: "available structured description",
+				Source:            "example",
+			},
+		},
+		{
+			URL: "https://jobs.example.com/jobs/partial-002",
+			Partial: model.JobInput{
+				Title:             "Blockchain Developer",
+				Company:           "ChainTwo",
+				OriginalURL:       "https://jobs.example.com/jobs/partial-002",
+				Description:       "Build decentralised applications using Solidity and Ethereum.",
+				DescriptionStatus: "available structured description",
+				Source:            "example",
+			},
+		},
+		{
+			URL: "https://jobs.example.com/jobs/none-003",
+			Partial: model.JobInput{
+				Title:             "Frontend Engineer",
+				Company:           "WebCo",
+				OriginalURL:       "https://jobs.example.com/jobs/none-003",
+				Description:       "Build user interfaces with React and TypeScript.",
+				DescriptionStatus: "available structured description",
+				Source:            "example",
+			},
+		},
+	}
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+
+	stub := &stubSource{refs: refs}
+	reg := source.NewRegistry(stub)
+	trueVal := true
+	sites := []config.Source{{Name: "example", URL: srv.URL, Enabled: &trueVal}}
+
+	// AND query: both "Blockchain" AND "CTO" must appear. Only "Blockchain CTO" matches both.
+	andExprs := []config.SearchExpression{{And: []string{"Blockchain", "CTO"}}}
+	andQuery := store.BuildFTSQueryExprs(expressionsForTest(andExprs))
+
+	total, err := collectSources(context.Background(), st, sites, reg, andQuery)
+	if err != nil {
+		t.Fatalf("collectSources: %v", err)
+	}
+	if total != 3 {
+		t.Errorf("expected 3 collected postings, got %d", total)
+	}
+
+	ctoScore := matchScoreFor(t, st, "Blockchain CTO")
+	devScore := matchScoreFor(t, st, "Blockchain Developer")
+	feScore := matchScoreFor(t, st, "Frontend Engineer")
+
+	t.Logf("AND query match_scores: Blockchain CTO=%d, Blockchain Developer=%d, Frontend Engineer=%d",
+		ctoScore, devScore, feScore)
+
+	if ctoScore == 0 {
+		t.Error("Blockchain CTO should have a non-zero score for AND(Blockchain,CTO) query")
+	}
+	if devScore != 0 {
+		t.Errorf("Blockchain Developer should score 0 for AND(Blockchain,CTO) query (CTO absent), got %d", devScore)
+	}
+	if feScore != 0 {
+		t.Errorf("Frontend Engineer should score 0 for AND(Blockchain,CTO) query, got %d", feScore)
+	}
+	if ctoScore <= devScore {
+		t.Errorf("AND query must narrow: Blockchain CTO (%d) should outscore Blockchain Developer (%d)", ctoScore, devScore)
+	}
+
+	// Now verify ASM-4 fit scores are produced with an OR expression (backward-compat path).
+	st2 := newTestStore(t)
+	orExprs := []config.SearchExpression{{Or: []string{"Blockchain", "CTO"}}}
+	orQuery := store.BuildFTSQueryExprs(expressionsForTest(orExprs))
+	if _, err := collectSources(context.Background(), st2, sites, reg, orQuery); err != nil {
+		t.Fatalf("OR collectSources: %v", err)
+	}
+	ctoOr := matchScoreFor(t, st2, "Blockchain CTO")
+	devOr := matchScoreFor(t, st2, "Blockchain Developer")
+	if ctoOr == 0 || devOr == 0 {
+		t.Errorf("OR query: both Blockchain CTO (%d) and Blockchain Developer (%d) should have non-zero scores",
+			ctoOr, devOr)
+	}
 }
 
 // TestCollectDoesNotEnqueue confirms that collectSources no longer mass-enqueues roles,

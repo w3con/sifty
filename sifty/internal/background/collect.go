@@ -84,11 +84,20 @@ func defaultCollect(s *store.Store, d dirs.Dirs, cfg *config.Config) error {
 	}
 
 	log.Printf("collect: upserted %d postings, skipped %d by stop-word", total, skipped)
-	matchQuery := store.BuildFTSQuery(append(cfg.Search.Search.Titles, cfg.Search.Search.Keywords...))
+	matchQuery := store.BuildFTSQueryExprs(expressionsToFTSGroups(cfg.Search.EffectiveExpressions()))
 	if err := s.Rescore(matchQuery); err != nil {
 		log.Printf("collect: rescore: %v", err)
 	}
 	return nil
+}
+
+// expressionsToFTSGroups converts config search expressions to store query groups.
+func expressionsToFTSGroups(exprs []config.SearchExpression) []store.SearchGroup {
+	groups := make([]store.SearchGroup, len(exprs))
+	for i, e := range exprs {
+		groups[i] = store.SearchGroup{Or: e.Or, And: e.And}
+	}
+	return groups
 }
 
 // buildRegistry creates a source registry wired with all adapters.

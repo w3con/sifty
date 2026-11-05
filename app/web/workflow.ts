@@ -1,10 +1,10 @@
 import type { Job } from '../src/core';
 import type { Stage } from '../src/workflow';
 import {managementTitle} from './filters';
-export type View=Exclude<Stage,'no'>;
+export type View=Exclude<Stage,'no'>|'collection';
 export type QuickFilters={web3:boolean;remote:boolean;strong:boolean;hideExpired:boolean;management:boolean};
 export const emptyQuick=():QuickFilters=>({web3:false,remote:false,strong:false,hideExpired:false,management:false});
-export function visibleInStage(j:Job,view:View,session:Set<number>) {return j.stage===view||(view==='triage'&&session.has(j.id)&&['preselected','no'].includes(j.stage));}
+export function visibleInStage(j:Job,view:View,session:Set<number>) {return view!=='collection'&&(j.stage===view||(view==='triage'&&session.has(j.id)&&['preselected','no'].includes(j.stage)));}
 export function quickMatch(j:Job,q:QuickFilters,query:string) {
   return (!q.management||managementTitle(j.title))&&(!q.web3||j.isWeb3)&&(!q.remote||/remote|anywhere|telecommute/i.test(j.location??''))&&(!q.strong||j.matchScore>=75)&&(!q.hideExpired||!j.expired)&&`${j.title} ${j.company} ${(j.tags??[]).join(' ')} ${j.description}`.toLowerCase().includes(query.toLowerCase());
 }

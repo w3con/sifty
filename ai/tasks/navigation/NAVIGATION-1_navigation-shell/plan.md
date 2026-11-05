@@ -16,7 +16,7 @@ Replace the top workflow navigation with four tabs — Collection, Triage, Prepa
 
 *Gate: `tsc --noEmit` passes; the app renders the four tabs.*
 
-- [ ] 1.1 — Replace the three-stage nav in `main.tsx` with Collection · Triage · Preparation · Archive, wiring `view` state and per-tab counts.
+- [x] 1.1 — Replace the three-stage nav in `main.tsx` with Collection · Triage · Preparation · Archive, wiring `view` state and per-tab counts.
 - [ ] 1.2 — Rename the preselected stage label to "Preparation" everywhere it shows (nav, empty states, review actions, notices).
 
 ### Phase 2 — Collection tab

@@ -100,3 +100,14 @@ SIFTY_PROD_PORT=8080
 SIFTY_STAGING_PORT=8081
 ```
 
+
+## 2026-11-05 — 2.2 — Verify prod data at ./data, prod server uses it (correction: nothing to move from /tmp)
+
+Check: `ls /Volumes/SSD/Dev/tknff/sifty/data/store.sqlite && lsof -p 25247 -a -d cwd 2>/dev/null | grep sifty`
+Exit: 0
+
+```
+/Volumes/SSD/Dev/tknff/sifty/data/store.sqlite
+sifty   25247 tknff  cwd    DIR   1,29      544 15352038 /Volumes/SSD/Dev/tknff/sifty
+```
+

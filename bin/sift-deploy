@@ -178,9 +178,9 @@ if [[ "$ENV" == "staging" ]]; then
         log "Copying prod DB via sqlite3 .backup (safe against live WAL)..."
         sqlite3 "$PROD_DB" ".backup $DATA_DIR/store.sqlite" \
             || die "sqlite3 backup of prod DB failed"
-        # Copy config files, excluding runtime.yaml (port override must be preserved)
+        # Copy all config files including runtime.yaml (we adjust port below).
         if [[ -d "$PROD_DATA/config" ]]; then
-            rsync -a --exclude 'runtime.yaml' "$PROD_DATA/config/" "$DATA_DIR/config/" 2>/dev/null || true
+            rsync -a "$PROD_DATA/config/" "$DATA_DIR/config/" 2>/dev/null || true
         fi
         # Copy candidate evidence (CV, profile, answers — read-only reference data)
         for f in cv.pdf profile.pdf; do
@@ -192,16 +192,24 @@ if [[ "$ENV" == "staging" ]]; then
         log "Staging data refreshed from prod."
     else
         warn "prod DB not found at $PROD_DB; staging will use existing data."
-        mkdir -p "$DATA_DIR"
+        mkdir -p "$DATA_DIR/config"
     fi
 
-    # Ensure staging port is set in runtime.yaml
+    # Ensure staging runtime.yaml exists with the correct port.
+    # Copy prod's runtime.yaml as the base (it has version: 1 and all required fields).
     STAGING_RUNTIME="$DATA_DIR/config/runtime.yaml"
     mkdir -p "$(dirname "$STAGING_RUNTIME")"
+    PROD_RUNTIME="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}/config/runtime.yaml"
     if [[ ! -f "$STAGING_RUNTIME" ]]; then
-        echo "port: $PORT" > "$STAGING_RUNTIME"
-        log "Created $STAGING_RUNTIME with port: $PORT"
-    elif grep -q "^port:" "$STAGING_RUNTIME" 2>/dev/null; then
+        if [[ -f "$PROD_RUNTIME" ]]; then
+            cp "$PROD_RUNTIME" "$STAGING_RUNTIME"
+        else
+            # Minimal valid config
+            printf 'version: 1\nport: %s\n' "$PORT" > "$STAGING_RUNTIME"
+        fi
+    fi
+    # Update the port in the staging config.
+    if grep -q "^port:" "$STAGING_RUNTIME" 2>/dev/null; then
         if ! grep -q "^port: $PORT$" "$STAGING_RUNTIME" 2>/dev/null; then
             sed -i '' "s/^port:.*$/port: $PORT/" "$STAGING_RUNTIME"
             log "Updated port in $STAGING_RUNTIME to $PORT"
@@ -210,6 +218,7 @@ if [[ "$ENV" == "staging" ]]; then
         echo "port: $PORT" >> "$STAGING_RUNTIME"
         log "Appended port: $PORT to $STAGING_RUNTIME"
     fi
+    log "Staging runtime.yaml: $(grep '^port:' "$STAGING_RUNTIME")"
 fi
 
 # --- Prod: data dir must already exist ---

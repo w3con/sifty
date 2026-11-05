@@ -111,3 +111,56 @@ Exit: 0
 sifty   25247 tknff  cwd    DIR   1,29      544 15352038 /Volumes/SSD/Dev/tknff/sifty
 ```
 
+
+## 2026-11-05 — 1.3 — Swap and start: backup data, keep prev binary, stop server, start new binary detached
+
+Check: `curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:8081/api/health`
+Exit: 0
+
+```
+200
+```
+
+
+## 2026-11-05 — 1.4 — Health, smoke and rollback: poll /api/health for 200; catalogue count > 0; rollback on failure
+
+Check: `curl -s http://127.0.0.1:8081/api/jobs | python3 -c 'import sys,json; d=json.load(sys.stdin); print(len(d))'`
+Exit: 0
+
+```
+2496
+```
+
+
+## 2026-11-05 — 1.5 — Post-deploy rescore via POST /api/context (idempotent; no-op when scores are current)
+
+Check: `curl -s -X POST http://127.0.0.1:8081/api/context -H 'Content-Type: application/json' -d '{"refreshRemote":false}' -o /dev/null -w '%{http_code}'`
+Exit: 0
+
+```
+200
+```
+
+
+## 2026-11-05 — 1.6 — Idempotent and logged: second run with no code change ends healthy; deploy.log written
+
+Check: `cat data-staging/deploy.log`
+Exit: 0
+
+```
+20261105T151824Z env=staging hash=9215bf49fd501af1 catalogue=? result=ROLLBACK
+20261105T151945Z env=staging hash=9215bf49fd501af1 catalogue=2496 result=OK
+```
+
+
+## 2026-11-05 — 2.3 — Staging deploy refreshes data-staging from prod snapshot (sqlite3 .backup + config copy)
+
+Check: `ls data-staging/store.sqlite data-staging/config/runtime.yaml && grep 'port: 8081' data-staging/config/runtime.yaml`
+Exit: 0
+
+```
+data-staging/config/runtime.yaml
+data-staging/store.sqlite
+port: 8081
+```
+

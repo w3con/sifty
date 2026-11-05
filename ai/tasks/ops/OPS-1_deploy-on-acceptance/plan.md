@@ -48,10 +48,10 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 - [x] 1.1 — Write `bin/sift-deploy --env <name>` reading per-env port, data dir, dist, binary and log paths from `bin/work.config` and the environment, with no hardcoded `/tmp`; `--help` documents every key.
 - [x] 1.2 — Build phase: `go build ./cmd/sifty` to a fresh binary and `vite build` in `app/` to `app/dist`, aborting on any build error; `--build-only` builds both without touching any server.
-- [ ] 1.3 — Swap and start: back up the target env's data (timestamped copy of `store.sqlite`), keep the previous binary, stop that env's server on its port, start the new binary detached against that env's data dir and dist.
-- [ ] 1.4 — Health, smoke and rollback: poll the catalogue endpoint until it answers 200 within a timeout, then assert the catalogue count is greater than zero; on failure restore the previous binary and the data backup, restart, and exit non-zero.
-- [ ] 1.5 — Post-deploy data step: run the idempotent rescore (local profile-save) so a migration that needs a one-time backfill completes; it is a no-op when scores are current; deploying against a database with no match score ends with scores populated.
-- [ ] 1.6 — Idempotent and logged: a second run with no code change ends healthy without disruption, and every run appends the binary hash, timestamp, env, and smoke result to a deploy log.
+- [x] 1.3 — Swap and start: back up the target env's data (timestamped copy of `store.sqlite`), keep the previous binary, stop that env's server on its port, start the new binary detached against that env's data dir and dist.
+- [x] 1.4 — Health, smoke and rollback: poll the catalogue endpoint until it answers 200 within a timeout, then assert the catalogue count is greater than zero; on failure restore the previous binary and the data backup, restart, and exit non-zero.
+- [x] 1.5 — Post-deploy data step: run the idempotent rescore (local profile-save) so a migration that needs a one-time backfill completes; it is a no-op when scores are current; deploying against a database with no match score ends with scores populated.
+- [x] 1.6 — Idempotent and logged: a second run with no code change ends healthy without disruption, and every run appends the binary hash, timestamp, env, and smoke result to a deploy log.
 
 **2 — Staging and production environments**
 
@@ -59,7 +59,7 @@ The application's behaviour (collection, scoring, serving). The coordinator-gate
 
 - [x] 2.1 — Define `staging` and `prod` in `bin/work.config`: prod on port 8080, staging on port 8081, each with its persistent data directory at the home chosen by the move decision (see OPS-2 / pending owner confirmation).
 - [x] 2.2 — Move the production data from `/tmp/claude-501/sift-data` to the persistent prod path once, and point the running production server at it; the collected corpus and its config survive the move.
-- [ ] 2.3 — Staging deploy first refreshes `~/.local/share/sifty-staging` from a production snapshot, so staging always reviews the new build against current real data.
+- [x] 2.3 — Staging deploy first refreshes `~/.local/share/sifty-staging` from a production snapshot, so staging always reviews the new build against current real data.
 
 **3 — Wire into acceptance (staging automatic, production on confirmation)**
 

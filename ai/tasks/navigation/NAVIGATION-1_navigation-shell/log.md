@@ -51,3 +51,13 @@ Exit: 0
 
 ```
 
+
+## 2026-11-05 — 3.1
+
+Check: `cd app && npx tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

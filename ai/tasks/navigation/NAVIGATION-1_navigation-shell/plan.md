@@ -31,7 +31,7 @@ Replace the top workflow navigation with four tabs — Collection, Triage, Prepa
 
 *Gate: `tsc --noEmit` passes; Archive toggles the two lists.*
 
-- [ ] 3.1 — Add an Applied/Dismissed toggle to the Archive view.
+- [x] 3.1 — Add an Applied/Dismissed toggle to the Archive view.
 - [ ] 3.2 — Render the Dismissed list from `GET /api/jobs?status=no` with undo and delete actions; leave Triage dismissal behaviour unchanged.
 
 ### Phase 4 — Settings trim and build

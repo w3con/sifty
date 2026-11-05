@@ -40,6 +40,8 @@ function App(){
   const [settings,setSettings]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importUrl,setImportUrl]=useState(''),[busy,setBusy]=useState(false);
   const [confirmation,setConfirmation]=useState<Job|null>(null);
   const [deleting,setDeleting]=useState<Job|null>(null);
+  const [archiveView,setArchiveView]=useState<'applied'|'dismissed'>('applied');
+  const [dismissedJobs,setDismissedJobs]=useState<Job[]>([]);
   const [assessmentOn,setAssessmentOn]=useState<boolean|null>(null),[savingAssessment,setSavingAssessment]=useState(false),[assessmentError,setAssessmentError]=useState('');
   const assessmentRevision=useRef(0),assessmentSaving=useRef(false);
   const search=useRef<HTMLInputElement>(null),filterBox=useRef<HTMLDivElement>(null),writes=useRef(0),epoch=useRef(0),polling=useRef(false);
@@ -58,6 +60,7 @@ function App(){
     catch(e:any){setAssessmentError(`Could not change assessment setting: ${e.message}`);}
     finally{assessmentSaving.current=false;assessmentRevision.current++;setSavingAssessment(false);}
   }
+  useEffect(()=>{if(view==='applied'&&archiveView==='dismissed'){api('jobs?status=no').then((js:Job[])=>setDismissedJobs(js)).catch(e=>setError(e.message));}},[view,archiveView]);
   useEffect(()=>{localStorage.setItem('fcto.catalogue.query',query);localStorage.setItem('fcto.catalogue.filters',JSON.stringify(selection));localStorage.setItem('sift.filters.version','2');localStorage.setItem('sift.quick',JSON.stringify(quick));localStorage.setItem('sift.unread',JSON.stringify(unread));localStorage.setItem('sift.sort',JSON.stringify(sort));},[query,selection,quick,unread,sort]);
   const resetFilters=()=>{setSelection(emptySelection());setQuick(emptyQuick());setQuery('');setUnread(false);setSort('fit');};
   // A stop-word hides a role from every view and every count; the server already omits stopped roles from the list, this keeps a stale client copy hidden too.
@@ -94,7 +97,7 @@ function App(){
     try{await blockJob(job.id,'company');const data=await api('jobs');if(!writes.current)setJobs(data);}
     catch(e:any){setError(e.message);}finally{writes.current--;epoch.current++;setBusy(false);}
   }
-  function switchView(next:View){setView(next);setSelected(null);setHeldUnread(null);setError('');setNotice('');}
+  function switchView(next:View){setView(next);setSelected(null);setHeldUnread(null);setError('');setNotice('');if(next!=='applied')setArchiveView('applied');}
   function move(delta:number){if(!filtered.length)return;const i=filtered.findIndex(j=>j.id===selected);setHeldUnread(null);setSelected(filtered[(i+delta+filtered.length)%filtered.length].id);}
   useEffect(()=>{function key(e:KeyboardEvent){
     if(settings||document.querySelector('dialog[open]')||e.metaKey||e.ctrlKey||e.altKey||e.isComposing)return;
@@ -123,7 +126,8 @@ function App(){
     {view!=='collection'&&<div className="workspace">
       <aside className="catalogue" aria-label="Vacancies"><div className="list-toolbar"><button aria-pressed={unread} onClick={()=>setUnread(!unread)}>Unread</button><div className="filter-box" ref={filterBox}><button aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(!filtersOpen)}><Icon name="filters" size={14}/> Filters {activeCount>0&&<span className="filter-count">{activeCount}</span>}</button>{filtersOpen&&<div className="filter-popover"><div className="quick-filters">{([['web3','Web3 / blockchain only'],['remote','Remote only'],['strong','Strong fit (75+)'],['hideExpired','Hide expired'],['management','Management title']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={quick[key]} onChange={e=>setQuick({...quick,[key]:e.target.checked})}/>{label}</label>)}</div><p className="muted">Management matches CTO, Head, Director, Manager or Lead in the title, excluding lead generation. Responsibilities are not inferred.</p><Filters jobs={live} options={options} selection={selection} setSelection={setSelection} rows={queue?.rows??[]} shown={filtered.length} reset={resetFilters}/></div>}</div><label className="sort-control"><span className="sr-only">Sort roles</span><select aria-label="Sort roles" value={sort} onChange={e=>setSort(e.target.value as 'fit'|'newest')}><option value="fit">Best fit</option><option value="newest">Newest</option></select></label></div>
         {unread&&<p className="unread-note">Opening marks a role read. It stays here until you choose another role.</p>}
-        {view==='applied'&&<p className="archive-retention">Applications are permanently deleted 30 days after the confirmed application date. Entries without a valid date are kept.</p>}
+        {view==='applied'&&<div className="archive-tabs"><button className={archiveView==='applied'?'active':''} aria-pressed={archiveView==='applied'} onClick={()=>{setArchiveView('applied');setSelected(null);}}>Applied</button><button className={archiveView==='dismissed'?'active':''} aria-pressed={archiveView==='dismissed'} onClick={()=>{setArchiveView('dismissed');setSelected(null);}}>Dismissed</button></div>}
+        {view==='applied'&&archiveView==='applied'&&<p className="archive-retention">Applications are permanently deleted 30 days after the confirmed application date. Entries without a valid date are kept.</p>}
         <div className="job-list">{filtered.map(j=><button key={j.id} data-job-id={j.id} onClick={()=>{if(j.id!==selected)setHeldUnread(null);setSelected(j.id);}} aria-pressed={selected===j.id} className={`job-row ${selected===j.id?'selected':''} ${j.seen?'seen':'unseen'} ${j.stage==='no'?'session-no':''}`}><div className="row-company">{j.isWeb3&&<span className="web3-mark" aria-label="Web3">⬡</span>}{j.company}</div><div className="row-icons">{j.expired&&<span title="Listing expired">◷</span>}{view==='triage'&&j.stage==='preselected'&&<span className="yes-check" title="Preparation">✓</span>}<span className={`score ${j.matchScore>=75?'strong':''}`}>{j.matchScore>0?j.matchScore:'—'}</span></div><strong>{j.title}</strong><div className="row-location">{j.location||'Location unstated'}{view==='applied'&&<span> · Applied {dateLabel(j.appliedAt)}</span>}</div></button>)}
           {!filtered.length&&<div className="empty">{query||activeCount?'No matching roles. Adjust your filters.':view==='triage'?'Inbox zero. Collect more jobs in Sources.':view==='preselected'?'Nothing in Preparation yet — press Y in Triage.':'No applications yet.'}{!!(query||activeCount)&&<button onClick={resetFilters}>Reset filters</button>}</div>}
           {view==='triage'&&filtered.some(j=>j.stage==='no')&&<p className="session-note">{filtered.filter(j=>j.stage==='no').length} dismissed this session — they disappear next time.</p>}

@@ -23,7 +23,12 @@ The 2026-11-05 session shipped TRI-1, TRI-2, COL-6, ASM-3, ASM-4, OPS-2, OPS-1, 
 
 1. **OPS-1 — done.** The two-environment deploy loop: `bin/sift-deploy --env staging|prod`, `bin/sift-promote`, `bin/sift-accept`. See `AGENTS.md` for the full loop documentation.
 2. **OPS-3 — done.** Corrected the loop so staging previews in-progress work: each env owns its own binary and bundle; staging deploy never touches prod artifacts; `bin/work-finish` no longer auto-deploys staging; production advances only via `bin/sift-promote`.
-2. **Navigation restructure** — to be founded. Single **Collection** tab (Sources + Search sections), single **Archived** tab (Applied/Dismissed toggle), Pre-selected→Selected, and relocation of the TRI-1/TRI-2 block-rule management and the COL-6 stop-word management into Collection→Search. Owner's design settled 2026-11-05; still needs its interview and `plan.md`. **After ASM-4**, because it displays the fit number and "Best fit" sort that ASM-4 changes.
+2. **Navigation restructure — founded 2026-11-05 as three cards, planned, awaiting "Execute the plan".** The owner's design (settled 2026-11-05) grew past a pure reshuffle and was split into three logical cards:
+   - **NAVIGATION-1 (frontend, independent, first).** Top tabs Collection · Triage · Preparation · Archive (Pre-selected renamed to **Preparation**, not "Selected"); Collection tab with Sources + Search sections; Archive with an Applied/Dismissed toggle over existing data; Settings trimmed to Context/Configuration/Queue. Pure frontend on existing endpoints.
+   - **NAVIGATION-2 (backend, before -3).** OR/AND search-term model in `search.yaml` honoured by collection and ASM-4 ranking; a single exclusion mechanism matching title or company that folds in TRI-1 company blocks and COL-6 stop-words; source-block (TRI-2) retired in favour of the Sources list; migration of existing block rules; endpoints.
+   - **NAVIGATION-3 (frontend, depends on -2).** The OR/AND builder and the unified exclusion list in Collection→Search; removal of the old block-rule, source-block and stop-word UI.
+
+   Order: -1 first (or any time, no dependency), then -2, then -3. One conversation runs one card, so they proceed in sequence. Industry/title-category selection is deliberately out of scope (per-source taxonomies differ).
 3. **COL-5** — preserve heading/list structure in the job description view (our CSS, new `description_html` field, plain `job.Description` untouched). Cheap readability win for daily scanning; optional, skippable. Needs `plan.md` before execution.
 
 After these: stop and reassess. Do not continue into the deferred pile without a fresh owner decision.

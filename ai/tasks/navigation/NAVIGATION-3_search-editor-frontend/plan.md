@@ -1,5 +1,5 @@
 ---
-estimate:
+estimate: 10
 ---
 # NAVIGATION-3 — plan
 
@@ -8,14 +8,34 @@ estimate:
 
 ## Statement of work
 
-<!-- One connected paragraph: what is being built, read cold by a future session. -->
+In the Collection→Search section placed by NAVIGATION-1, build an editor for the OR/AND search expressions — add and remove terms, group them by OR and AND — wired to the NAVIGATION-2 endpoints with validation and save feedback. Replace the standalone stop-words panel with a single exclusion-words list where one term hides a role by title or company, wired to the NAVIGATION-2 exclusion endpoint. Remove the now-obsolete moderation UI: the company block-rule list, the source-block control, and the "Dismissed & blocked" Settings panel, leaving the Settings drawer with only Context, Configuration and Queue. Verify with `tsc --noEmit` and `vite build`, then a manual check on staging that terms and exclusions edit and persist. This card is frontend only and depends on NAVIGATION-2 being merged.
 
 ## Steps
 
-### Phase 1
+### Phase 1 — Search expression builder
 
-- [ ] 1.1 — First step, with the narrow check that closes it.
+*Gate: `tsc --noEmit` passes; the builder reads and shows current expressions.*
+
+- [ ] 1.1 — Build the OR/AND term editor in Collection→Search, reading the current expressions from the NAVIGATION-2 endpoint.
+- [ ] 1.2 — Wire add, remove and OR/AND grouping edits to the endpoint, with validation and a saved/unsaved indicator.
+
+### Phase 2 — Unified exclusions and cleanup
+
+*Gate: `tsc --noEmit` passes; exclusions edit; old panels are gone.*
+
+- [ ] 2.1 — Replace the stop-words panel with a unified exclusion-words list (add/remove) wired to the exclusion endpoint.
+- [ ] 2.2 — Remove the company block-rule list and the source-block control, and remove the "Dismissed & blocked" panel from the Settings drawer.
+
+### Phase 3 — Verify
+
+*Gate: `tsc --noEmit` and `vite build` pass; staging check done.*
+
+- [ ] 3.1 — Run `tsc --noEmit` and `vite build`; record output.
+- [ ] 3.2 — On staging, confirm search terms and exclusion words can be added, removed and persist across a reload.
 
 ## Acceptance criteria
 
-- The work is complete when ...
+- Collection→Search edits OR/AND search expressions and a single exclusion-words list; both persist through the NAVIGATION-2 backend.
+- One exclusion term hides a role by title or company; there is no separate company-block or stop-word UI.
+- The company block-rule list, the source-block control and the "Dismissed & blocked" Settings panel are gone; the Settings drawer holds only Context, Configuration and Queue.
+- `tsc --noEmit` and `vite build` pass; editing of terms and exclusions is verified on staging.

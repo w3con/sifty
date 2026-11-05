@@ -45,7 +45,7 @@ The application's behaviour (collection, scoring, serving). The harness one-card
 
 - [x] 2.1 — Prove isolation: build main to prod (8080) and a working copy carrying a one-line visible marker to staging (8081); a check shows the marker present on 8081 and absent on 8080 at the same time.
 - [x] 2.2 — Remove the automatic staging deploy from `bin/work-finish`; finishing an app-touching throwaway card fast-forward-merges to main and starts/stops no server (prod and staging PIDs unchanged across the finish).
-- [ ] 2.3 — `bin/sift-promote` builds the current main into the production binary + production dist and restarts 8080 on main, with the existing backup and rollback; a check shows 8080 serving main after promote.
+- [x] 2.3 — `bin/sift-promote` builds the current main into the production binary + production dist and restarts 8080 on main, with the existing backup and rollback; a check shows 8080 serving main after promote.
 
 **3 — Document the corrected loop**
 

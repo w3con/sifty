@@ -101,3 +101,19 @@ subprocess import:
 8081 PID: 46634
 ```
 
+
+## 2026-11-05 — 2.3 sift-promote updates prod only; staging unchanged
+
+Check: `bash -c 'echo "prod binary: $(shasum -a 256 /Volumes/SSD/Dev/tknff/sifty/bin/sifty | cut -d" " -f1)"; echo "staging binary: $(shasum -a 256 /Volumes/SSD/Dev/tknff/sifty/bin/sifty-staging | cut -d" " -f1)"; echo "staging dist: $(find /Volumes/SSD/Dev/tknff/sifty/app/dist-staging -type f | sort | xargs shasum -a 256 | shasum -a 256 | cut -d" " -f1)"; echo "8080 PID: $(lsof -nP -iTCP:8080 -sTCP:LISTEN -t 2>/dev/null)"; echo "8081 PID: $(lsof -nP -iTCP:8081 -sTCP:LISTEN -t 2>/dev/null)"; echo "8080 marker absent: $(curl -s http://127.0.0.1:8080/ | grep -c OPS-3-STAGING-MARKER || true)"; echo "8081 health: $(curl -s -o /dev/null -w %{http_code} http://127.0.0.1:8081/api/health)"'`
+Exit: 0
+
+```
+prod binary: 64d4b8f50ae674c67a5af7586bb1a19268af8475b3f313281fddfdd2ab8a22f4
+staging binary: f99dc72f66a1bc588ce0ad3ac9144280a4dcba31e228c95c14de78750144ae4d
+staging dist: dfd073b79bc775737753a907e264bc732a7f76cbc0deeef41f66090ee9f2a1bb
+8080 PID: 47274
+8081 PID: 46634
+8080 marker absent: 0
+8081 health: 200
+```
+

@@ -36,7 +36,7 @@ function App(){
   const [selection,setSelection]=useState<CatalogueSelection>(()=>migrateSelection(preference('fcto.catalogue.filters',{}),preference('sift.filters.version',1)));
   const [unread,setUnread]=useState(()=>preference('sift.unread',false)),[sort,setSort]=useState<'fit'|'newest'>(()=>preference('sift.sort','fit')),[heldUnread,setHeldUnread]=useState<number|null>(null);
   const [quick,setQuick]=useState<QuickFilters>(()=>({...emptyQuick(),...preference('sift.quick',{})}));
-  const [filtersOpen,setFiltersOpen]=useState(false),[options,setOptions]=useState<any>(null),[queue,setQueue]=useState<any>(null),[stageModels,setStageModels]=useState<any>(null);
+  const [filtersOpen,setFiltersOpen]=useState(false),[options,setOptions]=useState<any>(null),[queue,setQueue]=useState<any>(null);
   const [settings,setSettings]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importUrl,setImportUrl]=useState(''),[busy,setBusy]=useState(false);
   const [confirmation,setConfirmation]=useState<Job|null>(null);
   const [deleting,setDeleting]=useState<Job|null>(null);
@@ -52,7 +52,7 @@ function App(){
   // Fire one unforced collection on app mount so opening or reloading the app triggers a
   // throttled run; the server-side cooldown prevents repeated runs within the configured interval.
   useEffect(()=>{api('search','POST',{force:false}).catch(()=>{});},[]);
-  useEffect(()=>{let alive=true;async function poll(){if(polling.current)return;polling.current=true;const revision=assessmentRevision.current;try{const [q,sp]=await Promise.all([api('queue'),api('stage-providers').catch(()=>null)]);if(alive){setQueue(q);if(sp)setStageModels(sp);if(!assessmentSaving.current&&revision===assessmentRevision.current&&typeof q.enabled==='boolean')setAssessmentOn(q.enabled);await refresh();}}catch(e:any){if(alive)setError(e.message);}finally{polling.current=false;}}void poll();const timer=setInterval(poll,2500);return()=>{alive=false;clearInterval(timer);};},[]);
+  useEffect(()=>{let alive=true;async function poll(){if(polling.current)return;polling.current=true;const revision=assessmentRevision.current;try{const q=await api('queue');if(alive){setQueue(q);if(!assessmentSaving.current&&revision===assessmentRevision.current&&typeof q.enabled==='boolean')setAssessmentOn(q.enabled);await refresh();}}catch(e:any){if(alive)setError(e.message);}finally{polling.current=false;}}void poll();const timer=setInterval(poll,2500);return()=>{alive=false;clearInterval(timer);};},[]);
   async function toggleAssessment(){
     if(assessmentSaving.current||assessmentOn===null)return;
     assessmentSaving.current=true;assessmentRevision.current++;setSavingAssessment(true);setAssessmentError('');
@@ -115,8 +115,6 @@ function App(){
   }window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
   useEffect(()=>{function outside(e:PointerEvent){if(filterBox.current&&!filterBox.current.contains(e.target as Node))setFiltersOpen(false);}document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);
   const activeCount=Object.values(quick).filter(Boolean).length+selectionCount(selection)+(unread?1:0);
-  const runtime=queue?.runtime?JSON.parse(queue.runtime.data):null;
-  const stageModel=(s:string)=>{const pn=stageModels?.stages?.[s];if(!pn)return '— not set —';const p=(stageModels?.providers??[]).find((x:any)=>x.name===pn);return p?`${pn} · ${p.model}`:pn;};
   return <div className="sift-app">
     <header className="app-header">
       <div className="brand"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20"><circle cx="5" cy="5" r="3" fill="#58585e"/><circle cx="13" cy="5" r="3" fill="#58585e"/><circle cx="9" cy="14" r="4" fill="#8ab4ff"/></svg><strong>sift</strong></div>
@@ -150,12 +148,7 @@ function App(){
         </>:<div className="empty"><h1>{filtered.length?'Select a role':'No role selected'}</h1><p>{filtered.length?'Choose a role to review its evidence.':'This stage has no visible roles. Change stage or filters, or collect jobs in Sources.'}</p></div>}
       </div></main>
     </div>}
-    <footer className="queue-bar" aria-label="Assessment queue">
-      <div className="assessment-control">{assessmentOn===null?<span role="status">Loading assessment setting…</span>:<button type="button" role="switch" aria-label="Assess vacancies" aria-checked={assessmentOn} aria-describedby="assessment-switch-state" disabled={savingAssessment} onClick={toggleAssessment}><span className="switch-track" aria-hidden="true"><span/></span>Assess vacancies</button>}<span id="assessment-switch-state" role="status">{savingAssessment?'Saving…':assessmentOn===false?(queue?.counts.running?'Off · current inference finishing':'Off'):assessmentOn===true?'On':''}</span></div>
-      <div className="queue-status"><button className="queue-action" onClick={()=>setSettings('queue')} title={runtime?.reason??'Inspect assessment queue and errors'}>{runtime?.paused?'Paused · details':'Queue'}</button><span className={queue?.counts.running?'running':''}>● {queue?.counts.running??0} running</span><span>{queue?.counts.pending??0} pending</span><button onClick={()=>setSettings('queue')}>{queue?.counts.failed??0} failed</button><span className="warning">{queue?.counts['missing-description']??0} missing desc.</span><span>{queue?.counts.done??0} current</span><span className="queue-provider"><Icon name="target" size={13}/> Assessment: {stageModel('assessment')} <span className="queue-sep">·</span> <Icon name="pencil" size={13}/> Application: {stageModel('preparation')}{queue?.rows.filter((r:any)=>r.status==='running').map((r:any)=>` · #${r.jobId??r.job_id} ${Math.floor((r.elapsedMs??((r.finished??Date.now())-r.started))/1000)}s`)}</span></div>
-      {assessmentError&&<div className="assessment-switch-error" role="alert">{assessmentError}</div>}
-    </footer>
-    {settings&&<Settings panel={settings} setPanel={setSettings} queue={queue} onError={setError} onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}}/>}
+    {settings&&<Settings panel={settings} setPanel={setSettings} queue={queue} assessmentOn={assessmentOn} savingAssessment={savingAssessment} assessmentError={assessmentError} toggleAssessment={toggleAssessment} onError={setError} onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}}/>}
     {confirmation&&<ApplicationConfirmation job={confirmation} onClose={()=>setConfirmation(null)} onConfirm={()=>transition('applied',true,confirmation)}/>}
     {deleting&&<DeleteRole job={deleting} onClose={()=>setDeleting(null)} onDeleted={(id,cleanupIncomplete)=>{epoch.current++;setJobs(old=>old.filter(j=>j.id!==id));setDismissedJobs(old=>old.filter(j=>j.id!==id));setDeleting(null);setNotice(cleanupIncomplete?'Role deleted, but a local technical log could not be removed. See server logs.':'Role and application history permanently deleted.');}}/>}
   </div>;

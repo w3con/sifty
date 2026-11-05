@@ -16,8 +16,8 @@ In the Collection→Search section placed by NAVIGATION-1, build an editor for t
 
 *Gate: `tsc --noEmit` passes; the builder reads and shows current expressions.*
 
-- [ ] 1.1 — Build the OR/AND term editor in Collection→Search, reading the current expressions from the NAVIGATION-2 endpoint.
-- [ ] 1.2 — Wire add, remove and OR/AND grouping edits to the endpoint, with validation and a saved/unsaved indicator.
+- [x] 1.1 — Build the OR/AND term editor in Collection→Search, reading the current expressions from the NAVIGATION-2 endpoint.
+- [x] 1.2 — Wire add, remove and OR/AND grouping edits to the endpoint, with validation and a saved/unsaved indicator.
 
 ### Phase 2 — Unified exclusions and cleanup
 

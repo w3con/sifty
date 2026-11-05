@@ -34,6 +34,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
     || die "not inside a git repository"
 
+# Determine the main repo root. When sift-deploy is run from a linked worktree
+# (e.g. .worktrees/OPS-3), APP_HOME is the worktree root. Compiled binaries and
+# the staging server must live in the main repo so they survive worktree removal.
+# git rev-parse --git-common-dir returns ".git" in the main checkout and an
+# absolute path in a linked worktree.
+_GIT_COMMON_DIR="$(git -C "$APP_HOME" rev-parse --git-common-dir 2>/dev/null)"
+if [[ "$_GIT_COMMON_DIR" == ".git" ]]; then
+    MAIN_REPO="$APP_HOME"
+else
+    MAIN_REPO="$(cd "$(dirname "$_GIT_COMMON_DIR")" && pwd)"
+fi
+
 # Load work.config: KEY=VALUE pairs; env variable of same name takes priority.
 load_config() {
     local cfg="$APP_HOME/bin/work.config"
@@ -116,7 +128,11 @@ done
     || die "--env must be 'staging' or 'prod', got: $ENV"
 
 # --- Per-env config resolution ---
-WORKERS_DIR="${SIFTY_WORKERS_DIR:-$APP_HOME/sifty/workers}"
+# Production uses APP_HOME (always the main repo via sift-promote).
+# Staging uses MAIN_REPO for binary/dist/data/workers so the staging server
+# survives after the worktree it was built from is removed; source is still
+# compiled from APP_HOME (the current checkout, which may be a worktree).
+WORKERS_DIR="${SIFTY_WORKERS_DIR:-$MAIN_REPO/sifty/workers}"
 
 case "$ENV" in
     prod)
@@ -128,9 +144,9 @@ case "$ENV" in
         ;;
     staging)
         PORT="${SIFTY_STAGING_PORT:-8081}"
-        DATA_DIR="${SIFTY_STAGING_DATA_DIR:-$APP_HOME/data-staging}"
-        BINARY="${SIFTY_STAGING_BINARY:-$APP_HOME/bin/sifty-staging}"
-        DIST_DIR="${SIFTY_STAGING_DIST:-$APP_HOME/app/dist-staging}"
+        DATA_DIR="${SIFTY_STAGING_DATA_DIR:-$MAIN_REPO/data-staging}"
+        BINARY="${SIFTY_STAGING_BINARY:-$MAIN_REPO/bin/sifty-staging}"
+        DIST_DIR="${SIFTY_STAGING_DIST:-$MAIN_REPO/app/dist-staging}"
         SERVER_LOG="${SIFTY_STAGING_LOG:-$DATA_DIR/staging-server.log}"
         ;;
 esac
@@ -161,12 +177,14 @@ else
     die "npm install failed"
 fi
 
-# For staging, build into app/dist-staging (via BUILD_OUTDIR=../dist-staging, relative to
-# vite's root dir app/web/). Prod builds into app/dist using the default in vite.config.ts.
+# For staging, build into DIST_DIR (an absolute path in the main repo) so the
+# bundle persists after the worktree is removed. BUILD_OUTDIR is read by
+# vite.config.ts; when absolute, vite uses it as-is. Prod uses the default
+# vite.config.ts outDir (../dist relative to app/web/ = app/dist).
 # A staging build never touches app/dist or bin/sifty.
 if [[ "$ENV" == "staging" ]]; then
-    log "Building frontend (npm run build → app/dist-staging/)..."
-    BUILD_OUTDIR=../dist-staging npm --prefix "$APP_HOME/app" run build \
+    log "Building frontend (npm run build → $DIST_DIR)..."
+    BUILD_OUTDIR="$DIST_DIR" npm --prefix "$APP_HOME/app" run build \
         || die "Frontend build failed"
 else
     log "Building frontend (npm run build → app/dist/)..."
@@ -189,7 +207,8 @@ fi
 # =============================================================================
 
 if [[ "$ENV" == "staging" ]]; then
-    PROD_DATA="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}"
+    # Prod data always lives in the main repo, never in a worktree.
+    PROD_DATA="${SIFTY_PROD_DATA_DIR:-$MAIN_REPO/data}"
     PROD_DB="$PROD_DATA/store.sqlite"
     log "--- STAGING DATA REFRESH ---"
     if [[ -f "$PROD_DB" ]]; then
@@ -218,7 +237,7 @@ if [[ "$ENV" == "staging" ]]; then
     # Copy prod's runtime.yaml as the base (it has version: 1 and all required fields).
     STAGING_RUNTIME="$DATA_DIR/config/runtime.yaml"
     mkdir -p "$(dirname "$STAGING_RUNTIME")"
-    PROD_RUNTIME="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}/config/runtime.yaml"
+    PROD_RUNTIME="${SIFTY_PROD_DATA_DIR:-$MAIN_REPO/data}/config/runtime.yaml"
     if [[ ! -f "$STAGING_RUNTIME" ]]; then
         if [[ -f "$PROD_RUNTIME" ]]; then
             cp "$PROD_RUNTIME" "$STAGING_RUNTIME"

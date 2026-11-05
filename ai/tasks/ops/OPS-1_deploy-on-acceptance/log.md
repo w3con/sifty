@@ -234,3 +234,8 @@ Exit: 0
 5
 ```
 
+
+## 2026-11-05 — note
+
+Deviations from stale plan text (overridden by brief corrections): (1) Data dirs are <repo>/data and <repo>/data-staging, not ~/.local/share/sifty paths. (2) Checkpoint 2.2 had nothing to move; prod data already at ./data. (3) Staging runtime.yaml must include version:1 — script copies prod runtime.yaml and updates port, not create from scratch. (4) Build uses npm ci (with npm install fallback) before vite build to handle clean worktrees. (5) WORK_ACCEPT_CMD set to bin/sift-accept, not bin/work-test.
+

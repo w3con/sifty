@@ -2,8 +2,6 @@ package store_test
 
 import (
 	"testing"
-
-	"github.com/w3con/sifty/internal/model"
 )
 
 // TestBlockRuleCRUD covers AddBlockRule (including idempotency), ListBlockRules, and RemoveBlockRule.
@@ -138,58 +136,8 @@ func TestBlockMatchCompany(t *testing.T) {
 	}
 }
 
-// TestBlockMatchSource verifies the all-sources-blocked semantics.
-func TestBlockMatchSource(t *testing.T) {
-	s := openFresh(t)
-
-	// Single-source job from LinkedIn.
-	j1 := fixtureJobInput("LinkedIn")
-	id1, _ := s.Upsert(j1, false)
-
-	// Block LinkedIn: single-source job is blocked.
-	s.AddBlockRule("source", "LinkedIn")
-	job1, _ := s.Get(id1)
-	if !job1.Blocked {
-		t.Error("single-source job (LinkedIn blocked): should be blocked")
-	}
-
-	// Two-source job: LinkedIn + Indeed via same apply_url (triggers dedup).
-	apply := "https://apply.megacorp.com/job/42"
-	j2a := model.JobInput{
-		Title: "Platform Engineer", Company: "MegaCorp",
-		OriginalURL:       "https://linkedin.com/jobs/42",
-		ApplyURL:          &apply,
-		Description:       "Build and operate the platform infrastructure for a rapidly scaling product team.",
-		DescriptionStatus: "full",
-		Source:            "LinkedIn",
-	}
-	j2b := model.JobInput{
-		Title: "Platform Engineer", Company: "MegaCorp",
-		OriginalURL:       "https://indeed.com/job/42",
-		ApplyURL:          &apply,
-		Description:       "Build and operate the platform infrastructure for a rapidly scaling product team.",
-		DescriptionStatus: "full",
-		Source:            "Indeed",
-	}
-	id2, _ := s.Upsert(j2a, false)
-	id2b, _ := s.Upsert(j2b, false)
-	if id2 != id2b {
-		t.Fatalf("dedup: same apply_url must produce same id, got %d and %d", id2, id2b)
-	}
-
-	// Only LinkedIn is blocked: Indeed not blocked → job not fully blocked.
-	job2, _ := s.Get(id2)
-	if job2.Blocked {
-		t.Error("two-source job (LinkedIn blocked, Indeed not): should NOT be blocked")
-	}
-
-	// Block Indeed as well: all sources now blocked → job is blocked.
-	s.AddBlockRule("source", "Indeed")
-	job2b, _ := s.Get(id2)
-	if !job2b.Blocked {
-		t.Error("two-source job (LinkedIn + Indeed both blocked): should be blocked")
-	}
-}
+// Source-block tests have been removed: source block rules are retired in migration v14.
+// Source enable/disable is now the search.yaml enabled flag.
 
 // TestBlockJobDerivation verifies BlockJob derives the correct (kind, value) pair.
 func TestBlockJobDerivation(t *testing.T) {
@@ -206,15 +154,9 @@ func TestBlockJobDerivation(t *testing.T) {
 		t.Errorf("BlockJob company: got {%q %q}, want {company acme corp}", r.Kind, r.Value)
 	}
 
-	// Source dimension: creates a source rule for the first source.
-	s2 := openFresh(t)
-	id2, _ := s2.Upsert(j, false)
-	r2, err := s2.BlockJob(id2, "source")
-	if err != nil {
-		t.Fatalf("BlockJob source: %v", err)
-	}
-	if r2.Kind != "source" || r2.Value != "LinkedIn" {
-		t.Errorf("BlockJob source: got {%q %q}, want {source LinkedIn}", r2.Kind, r2.Value)
+	// Source dimension is no longer supported — returns an error.
+	if _, err := s.BlockJob(id, "source"); err == nil {
+		t.Error("BlockJob source dimension: want error (source blocks retired)")
 	}
 
 	// Invalid dimension returns an error.

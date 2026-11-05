@@ -75,9 +75,10 @@ func (s *Store) RemoveBlockRule(id int64) error {
 }
 
 // BlockJob derives a block rule from a job and inserts it. dimension must be "company"
-// (creates a company rule using normalizeText(company)) or "source" (creates a source rule
-// using the job's first source name). The domain rule kind exists in blockMatch for a future
-// explicit block-domain action but is never derived here.
+// (creates a company rule using normalizeText(company)). The "source" dimension is no longer
+// supported: source enable/disable is now the search.yaml enabled flag.
+// The domain rule kind exists in blockMatch for a future explicit block-domain action but is
+// never derived here.
 func (s *Store) BlockJob(jobID int64, dimension string) (*BlockRule, error) {
 	job, err := s.Get(jobID)
 	if err != nil {
@@ -89,21 +90,17 @@ func (s *Store) BlockJob(jobID int64, dimension string) (*BlockRule, error) {
 		kind = "company"
 		value = normalizeText(job.Company)
 	case "source":
-		if len(job.Sources) == 0 {
-			return nil, fmt.Errorf("job has no sources to block")
-		}
-		kind = "source"
-		value = job.Sources[0].Name
+		return nil, fmt.Errorf("source block rules have been retired; disable the source in search.yaml instead")
 	default:
-		return nil, fmt.Errorf("dimension must be \"company\" or \"source\"")
+		return nil, fmt.Errorf("dimension must be \"company\"")
 	}
 	return s.AddBlockRule(kind, value)
 }
 
 // blockMatch checks whether a job matches any of the given block rules, returning (blocked, reason).
-// Domain and company rules match a single field; a source rule blocks a role only when every one
-// of its sources is covered by a source rule in the list. The reason string takes the form
-// "kind:value" for the first matching rule.
+// Domain and company rules match a single field. Source rules are ignored — source control is now
+// the search.yaml enabled flag and no source rules survive migration v14. The reason string takes
+// the form "kind:value" for the first matching rule.
 func blockMatch(job *model.Job, rules []*BlockRule) (bool, string) {
 	if len(rules) == 0 {
 		return false, ""
@@ -116,14 +113,6 @@ func blockMatch(job *model.Job, rules []*BlockRule) (bool, string) {
 	}
 	jobCompany := normalizeText(job.Company)
 
-	// Collect blocked source names for the all-sources-blocked check.
-	blockedSources := map[string]bool{}
-	for _, r := range rules {
-		if r.Kind == "source" {
-			blockedSources[r.Value] = true
-		}
-	}
-
 	// Check domain and company rules (any match hides the role).
 	for _, r := range rules {
 		switch r.Kind {
@@ -135,20 +124,6 @@ func blockMatch(job *model.Job, rules []*BlockRule) (bool, string) {
 			if r.Value == jobCompany {
 				return true, "company:" + r.Value
 			}
-		}
-	}
-
-	// Source-block: blocked only when every one of the job's sources is in the blocked set.
-	if len(job.Sources) > 0 && len(blockedSources) > 0 {
-		allBlocked := true
-		for _, src := range job.Sources {
-			if !blockedSources[src.Name] {
-				allBlocked = false
-				break
-			}
-		}
-		if allBlocked {
-			return true, "source:" + job.Sources[0].Name
 		}
 	}
 

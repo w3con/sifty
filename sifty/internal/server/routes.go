@@ -254,26 +254,9 @@ func RegisterRoutes(mux Router, d *Deps) {
 	}))
 
 	mux.HandleFunc("POST /api/block-rules", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
-		var body struct {
-			Kind  string `json:"kind"`
-			Value string `json:"value"`
-		}
-		if err := readBody(r, &body); err != nil {
-			return err
-		}
-		if body.Kind != "source" {
-			return fmt.Errorf("kind must be \"source\"")
-		}
-		value := strings.TrimSpace(body.Value)
-		if value == "" {
-			return fmt.Errorf("value must not be empty")
-		}
-		rule, err := d.Store.AddBlockRule(body.Kind, value)
-		if err != nil {
-			return err
-		}
-		writeJSON(w, http.StatusOK, rule)
-		return nil
+		// Source block rules have been retired in migration v14. Source enable/disable is now
+		// managed through the search.yaml sites list (GET/POST/DELETE/PATCH /api/search/sites).
+		return fmt.Errorf("source block rules have been retired; use /api/search/sites to manage sources")
 	}))
 
 	mux.HandleFunc("GET /api/sources", safeHandler(func(w http.ResponseWriter, r *http.Request) error {

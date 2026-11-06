@@ -552,3 +552,25 @@ OK
 Correction — pass the configured base branch to the acceptance command.
 
 `run_accept` now exports `WORK_BASE_BRANCH` from `base_branch()`, so `bin/sift-accept` uses the same target as `work-accept`/`work-finish` even when the setting comes from `bin/work.config` rather than the environment. 30 lifecycle tests OK; `bin/work-test` PASS; `git diff --check` exit 0.
+
+## 2026-11-06 — finish cleanup with ignored artifacts
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.700s
+
+OK
+```
+
+## 2026-11-06 — finish cleanup whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```

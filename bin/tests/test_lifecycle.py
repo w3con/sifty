@@ -117,6 +117,10 @@ class FinishOutcomeTest(LifecycleTest):
         self.assert_refused(retry, "terminal file present: rejected.md")
 
     def test_successful_finish_merges_the_tested_revision(self):
+        # Ignored artifacts must not block the non-force cleanup.
+        (self.wt / "ignored").mkdir()
+        (self.wt / "ignored" / "artifact.txt").write_text(
+            "build output\n", encoding="utf-8")
         record = self.aux_dir / "record.txt"
         result = self.work(
             "work-finish", self.card_id,

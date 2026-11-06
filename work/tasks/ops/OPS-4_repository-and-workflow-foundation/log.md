@@ -6,6 +6,36 @@ Step 3.1 is implemented on `work/OPS-4` and awaits coordinator review; 3.2 has n
 
 ## Current coordinator checkpoint — 2026-11-06
 
+6.3 TECHNICAL ACCEPTANCE through `66db415`: reviewed the one-commit squash preparation/publication, explicit source approval, immutable source archive build, real commit guards, post-release recovery request, legacy old-argv/health compatibility and transaction/build-pinned recovery receipt. The executor's recorded scratch command demonstration covers one-card commit success, wrong approval, failed release, post-release recovery success/failure and restarting an old server without the new flags/version endpoint. No coordinator implementation or suite execution occurred. Session metadata was verified as `opencode-go/deepseek-v4.1-flash`. Twenty-one original steps are now technically accepted. The commands are still on the work branch until delegated installation below; no live production release or old-history rewrite is authorized.
+
+Delivery assignment: the same stopped 6.3 executor may checkpoint this acceptance record and copy only the accepted command/config/documentation files into main, preserving all owner pending changes, runtime data, the running preview and production binary. Verify command help/approval-check and existing root pages, not suites or live deploy. Do not restart preview or production, invoke work-finish, adopt a live process, refresh data, squash/merge main or push. Keep the work branch and all recovery material. Main remains an owner-review working checkout; 7.1/7.2 and actual release approval are not bypassed. Overall current stop boundary remains 23:11 CET.
+
+6.2 TECHNICAL ACCEPTANCE through `a89625a`: reviewed the deploy/refresh diff and the recorded single scratch success/failure/refresh demonstration. Same executor corrected final SQLite snapshot ordering, unsafe refresh recovery, environment-operation serialization, incomplete restoration restart and missing-backup/metadata deletion hazards. The earlier instruction to take every backup before stopping was the coordinator's error; only artifact copies may precede the stop, while the final target SQLite snapshot follows verified shutdown. All 130 assistant metadata rows for this resumed stage use `opencode-go/deepseek-v4.1-flash`. No coordinator implementation, suite execution or live release was performed during this acceptance. Twenty original steps are now technically accepted, with 6.3 next.
+
+Owner renewed continuation after the pause at 22:26 CET: «хорошо, доделывай 6.2, 6.3 (через субагентов)». The owner-facing remaining estimate was 25–45 minutes AI for the 6.2 corrections, 6.3 and acceptance; current stop boundary is 23:11 CET. Prior wall-clock pause records do not authorize an unnoticed overrun. Main production/preview remain on their existing runtime; first live deployment of the new manager still needs explicit migration/adoption and owner approval. Next stage is a fresh 6.3 executor only; mechanical commits/brief preparation are delegated.
+
+LIVE 6.1 HANDOFF: owner authorized «6.1 - доделай». Announced complexity 3 and 9–17 minutes AI for runtime-path recovery (2–4), preview completion/start (4–8) and live demonstration (3–5). Actual work was approximately 10–15 minutes, including additional owner steering about root prompts and data directories; no executor or automated suite was started. Existing preview code was reused rather than rewriting deploy automation.
+
+The owner's `remove/` contained not only old compatibility links but actual `bin`, `config`, `data`, `data-staging`, `prompts` and `CLAUDE.md`. Restored necessary files/directories; moved root prompts into `config/prompts/` and repointed the four legacy readers. General hardcoded-path removal was explicitly kept in OPS-7, with the owner's wording and provisional estimate recorded there. Fixed the relocated shared submodule's stale worktree metadata with native Git moves, leaving no dependency on the removed `ai` link. `data-staging/` was already ignored; added local `remove/` to ignores. Its current remainder is only three obsolete links and `.DS_Store`.
+
+Stopped the verified old staging process and launched `python3 bin/sift-preview start --worktree /Volumes/SSD/Dev/tknff/sifty --label main --wait 90`. Supervisor PID 98160 owns 8081 and uses existing staging data without refreshing it. Generation 1 built and became healthy. A temporary uncommitted HTML comment in `frontend/index.html` was automatically built and visible in HTTP HTML as generation 2; reverting the demonstration produced healthy generation 3 with requested and served fingerprints equal. No build command was invoked for either edit. Frontend-only rebuilding preserved backend generation/PID. Fixed preview-client generation tracking so a completed build is detected relative to the page's loaded generation; clean pages reload automatically, while edited pages retain input and show a Reload button. JavaScript syntax and diff whitespace checks passed. The demonstration source change is fully reverted.
+
+Both production and staging root pages were 404 after old links were moved. Staging now returns HTTP 200 through preview. Restarted production's same pre-existing `bin/sifty` with the same production data and existing `legacy/app/dist`, using the new backend worker path; no binary build/promotion or data copy occurred. Production now returns HTTP 200 as well. A preliminary restart attempt failed because the old process still held its port; stopping that verified PID and starting the same binary corrected it. Current production listener PID is 34905. All necessary files have been taken out of `remove`.
+
+Step 6.1 is technically accepted and live at http://localhost:8081 for owner review. This raises accepted original steps from 18 to 19; 6.2–6.3 remain deferred and 7.1's broad verification remains disabled/not performed. The preview handback portion of 7.2 is now delivered, but the original full card is not closed. No enforcement plugin, general path refactor, test suite or fresh deployment framework was added.
+
+OWNER-AUTHORIZED MAIN RELOCATION: after «применяй», preserved main's owner-rule edits with both a local copy and a named Git stash, archived the tracked staging bundle and both incident versions under `.local/retained/structure-20261106/`, then fast-forwarded main to `0b1965b`. Moved frontend/legacy/worker dependencies to their new source locations and the initialized private submodule working directory to `tools/shared`. Its old internal path remains usable through local `ai -> tools`; `app -> legacy/app` and `sifty -> .local/compat/sifty` preserve paths used by the existing 8080/8081 processes. Compatibility links are locally ignored, not new tracked source directories. Kept all leftover local directories in the retention folder. Installed the newer worktree incident record without overwriting it with the older main version. Applied the already-authorized test-off entrypoint/CI settings and planning rules in main; unfinished deploy-library/data-refresh edits remain in the original worktree and its saved patch, not main. No branch/worktree/history was deleted.
+
+Verification: main `backend/`: `go build ./...` exit 0; main `frontend/`: `npm run build` exit 0 (TypeScript and Vite). Syntax/whitespace checks succeeded. `WORK_TEST_MODE=off python3 bin/work-test` reported SKIPPED. Incident bytes matched the retained newer copy, and the staging bundle matched its retained directory. Shared tooling's own Git status is clean. Existing production/staging health and root HTML each returned HTTP 200; these are continuity checks of the still-running versions, not a claim that the new preview was deployed. No server restart, database copy, production promotion, automated suite or new executor ran. The owner cancelled the separate enforcement-plugin proposal as too costly; no plugin was created.
+
+Remaining original plan: 6.1 coded but not accepted/live; 6.2 environment/refresh rewrite incomplete and deferred; 6.3 automatic release integration absent and deferred; 7.1 comprehensive final workflow/recovery checks not done (suites disabled); 7.2 physical structure now applied, new preview/owner handback still absent. The prior 18 accepted steps remain accepted. Do not mark this original full card done to describe the narrower relocation delivery.
+
+Later owner steering authorized only disabling automatic tests and saving the review: «Отключи большинство тестов» followed by «я бы вообще все выключил». Applied small direct entrypoint/configuration changes without an executor: work-test skips by default, sift-accept defaults to app builds and skips suites, CI is manual-only; test source remains. Updated project instructions accordingly. Verified only `bash -n bin/sift-accept`, `WORK_TEST_MODE=off python3 bin/work-test` (explicit SKIPPED, not PASS), and `git diff --check`; no suite, build, site launch or deploy ran. Saved static readiness, deferred-plan consequences, proposed minimal completion and test observations in `prototype-review.md`. Original broad execution remains paused; its remaining guarantees are not claimed complete.
+
+STOPPED ON OWNER INSTRUCTION: «тормози уже - слишком много ресурсов уходит на эти задачи. кажетсяя, ты не оптимально организовал работу». The coordinator accepts responsibility for broad executor assignments, expansive test matrices and repeated coordinator acceptance cycles that made the work costly and slow. Owner steering immediately beforehand preferred coordinator code/site review over extensive executor testing. No more implementation, agent invocation or tests were started after the stop; only this durable pause record was written.
+
+Preserved state: worktree HEAD `0b1965b`, branch `work/OPS-4`; phases 1–5 technically accepted (18/23). Step 6.1 is checked and committed by the executor but remains unreviewed, not technically accepted. Step 6.2 is incomplete with modified `_deploy_lib.py`, `sift-deploy`, `work-test` and untracked `sift-data-refresh`. Do not deploy this partial state: the latest artifact-backup/publish refactor still has call sites using the old signature. The latest executor message for `ses_e4dff642dffevowoM36cc6qHuR` has `MessageAbortedError` at 19:26:37 and its latest tools are completed; no continuation was launched. Earlier executors have stopped. Main remains `c0181a1`; no live staging/production deployment, merge, push or cleanup occurred. Resume requires a new owner instruction, then review of the existing bytes before any additional implementation. No partial implementation was deleted or marked accepted to create a stopping point.
+
 Phase 5 acceptance: reviewed the requirement map, canonical task/dependency index, data provenance and separate OPS-8 migration card. Independently passed `python3 bin/map-check` (5 current documents, 14 requirements, 48 canonical cards and two legacy cards), all ten map tests and stage whitespace checks. Existing application-preparation failure is explicitly attributed to the roadmap, not a fresh live reproduction. Actual candidate-path resolution is documented; no data migration was performed. All 104 executor assistant metadata rows use `opencode-go/deepseek-v4.1-flash`. Eighteen of 23 steps are accepted through `5d62fa0`; executor stopped. Next: 6.1–6.2 only, continuous staging preview and environment isolation/explicit refresh, exercised on scratch data/ports. Stop before 6.3. Main/production remain unchanged; live staging will be activated by the coordinator only after review.
 
 Phase 4 acceptance: reviewed `601f3b0..d4a3935` and independently passed 34 state/capture/navigation tests, then the eight navigation tests after the final narrow correction; stage whitespace check is clean. Review required worktree-relative handover paths, separation of quoted owner Markdown from metadata/checklists, base cancellation/blocker refusal on resume, active-worktree state filtering, byte-preserving capture and surfacing contradictory active cards. The same executor corrected all findings with focused regressions; its full harness passed after the main correction, and the final narrow branch correction passed its focused suite. All 212 assistant metadata rows use `opencode-go/deepseek-v4.1-flash`. Fifteen of 23 steps are technically accepted. Next stage: 5.1–5.3 only, stop before staging/release automation. Empty duplicate-card directory is safe to remove after a directory read confirmed zero entries. Main and production remain unchanged.
@@ -2338,3 +2368,164 @@ OK
 ok  	github.com/w3con/sifty/internal/server	(cached)
 OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
 ```
+
+## 2026-11-06 — note
+
+Continuation checkpoint: synchronized current owner-approved main changes into the work branch while preserving the unfinished deploy library/entrypoint. Both pre-sync diffs are retained under main .local/retained/release-continuation-20261106. A coordinator copy loop initially used zsh's reserved path variable and could not resolve cp; reran it with a non-reserved variable and absolute copy executable. No source bytes were lost. Current assignment is 6.2 only, with live ports/data protected and suites disabled.
+
+## 2026-11-06 — 6.2 — isolated environment artifacts, candidate builds, explicit data refresh, rollback
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-deploy bin/sift-data-refresh bin/work-test && OPS4_SRC="$PWD" python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-62-demo/demo.py`
+Exit: 0
+
+```
+successful-deploy: state=OK version=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+forced-failure: exit=1 state=ROLLBACK served=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+explicit-refresh: config+kb+answers copied, old staging edit preserved in 20261106T200939.734306Z, wal-row=prod-row
+demo: OK
+```
+
+## 2026-11-06 — 6.2 acceptance corrections — post-stop DB snapshot, safe refresh recovery, per-env operation lock, coherent rollback
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-deploy bin/sift-data-refresh bin/work-test && OPS4_SRC="$PWD" python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-62-demo/demo.py && git diff --check`
+Exit: 0
+
+```
+successful-deploy: state=OK version=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+forced-failure: exit=1 state=ROLLBACK served=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+explicit-refresh: config+kb+answers copied, old staging edit preserved in 20261106T212937.612662Z, wal-row=prod-row
+demo: OK
+```
+
+## 2026-11-06 — 6.2 data-safety correction — never infer a missing database from absent recovery metadata
+
+Check: `python3 -m py_compile bin/_deploy_lib.py && git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 6.3 — one-card squash, approved-source release, failed-release recovery
+
+Check: `python3 -m py_compile bin/_work_lib.py bin/_deploy_lib.py bin/work-finish bin/sift-promote bin/sift-deploy && python3 bin/sift-promote --source HEAD --approve HEAD --check >/dev/null && python3 bin/sift-deploy --help >/dev/null && python3 bin/work-finish --help >/dev/null && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/demo.py "$PWD" && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+source revision: 43cf7cbf348df9396df39f984b28419beb3c03e7
+squash revision: b06a78c241eabe6dba0bd639c1ef247fe711ef10 (feat(ops): DEMO-1 Demo card)
+target revision: main@1073fc0279792db593e75b9c469d75177d6d49e1
+release adapter: python3 bin/fake-release
+release succeeded for source 43cf7cbf348df9396df39f984b28419beb3c03e7
+published one card commit b06a78c241eabe6dba0bd639c1ef247fe711ef10 on main
+finished DEMO-1
+fake-release: OK source=43cf7cbf348df9396df39f984b28419beb3c03e7 build=demo-build-1
+success: source=43cf7cbf348d squash=b06a78c241ea main=b06a78c subject='feat(ops): DEMO-1 Demo card'
+success: recovery-ref=43cf7cb done=A	work/tasks/ops/DEMO-1_demo/done.md
+approval-guard: refused wrong approval, main unchanged
+source revision: 0014a8f72237cee7eaecf1f5918b8861656e4643
+squash revision: 0d652e93109421361a2cb7774ff0483916798adc (feat(ops): DEMO-2 Demo card)
+target revision: main@b06a78c241eabe6dba0bd639c1ef247fe711ef10
+release adapter: python3 bin/fake-release
+REFUSED:
+  - release failed (exit 1) for source 0014a8f72237cee7eaecf1f5918b8861656e4643; no done.md, main unchanged, work branch and worktree preserved
+fake-release: deliberate failure
+failure: source=0014a8f72237 squash=0d652e931094 main=b06a78c outcome=absent branch=preserved worktree=preserved
+demo: OK
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```
+
+## 2026-11-06 — note
+
+6.3 correction: materialize_source now wraps git-archive/extraction failures in DeployError, removes its partial source directory, and refuses an invalid revision. Verified with a pinned-source extraction and a bad-SHA refusal.
+
+## 2026-11-06 — note
+
+6.3 correction: legacy rollback restores the actual adopted bundle/worker paths but no longer removes pre-existing new-destination artifacts; restore_artifacts owns their pre-deploy state. Verified with a pre-existing new bundle/worker tree preserved while the legacy assets were restored.
+
+## 2026-11-06 — 6.3 acceptance corrections — legacy restart, post-release recovery, source-path guards
+
+Check: `python3 -m py_compile bin/_work_lib.py bin/_deploy_lib.py bin/work-finish bin/sift-promote bin/sift-deploy && python3 bin/sift-promote --source HEAD --approve HEAD --check >/dev/null && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/demo.py "$PWD" && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+source revision: 4e8dca5b43bf68aea47c759864329f8b8d40b3e3
+squash revision: 327982ab6bdaf9bd445743964415355c04ede95c (feat(ops): DEMO-1 Demo card)
+target revision: main@f9f7b3ddff2b13ae83530d7e61ceeecce86d59f0
+commit guards passed for squash 327982ab6bdaf9bd445743964415355c04ede95c
+release adapter: python3 bin/fake-release
+release succeeded for source 4e8dca5b43bf68aea47c759864329f8b8d40b3e3
+published one card commit 327982ab6bdaf9bd445743964415355c04ede95c on main
+finished DEMO-1
+fake-release: OK source=4e8dca5b43bf68aea47c759864329f8b8d40b3e3 build=demo-build-1
+success: source=4e8dca5b43bf squash=327982ab6bda main=327982a subject='feat(ops): DEMO-1 Demo card'
+success: recovery-ref=4e8dca5 done=A	work/tasks/ops/DEMO-1_demo/done.md
+approval-guard: refused wrong approval, main unchanged
+source revision: 1f4c2e171a856040922f7e9e2a3355237496b227
+squash revision: 3e51a55a205ba21b99bc100ed287fe614887159c (feat(ops): DEMO-2 Demo card)
+target revision: main@327982ab6bdaf9bd445743964415355c04ede95c
+commit guards passed for squash 3e51a55a205ba21b99bc100ed287fe614887159c
+release adapter: python3 bin/fake-release
+REFUSED:
+  - release failed (exit 1) for source 1f4c2e171a856040922f7e9e2a3355237496b227; no done.md, main unchanged, work branch and worktree preserved
+fake-release: deliberate failure
+failure: source=1f4c2e171a85 squash=3e51a55a205b main=327982a outcome=absent branch=preserved worktree=preserved
+source revision: f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+squash revision: 761b5e627d033f8eacae821dbf609566e2cb8c93 (feat(ops): DEMO-3 Demo card)
+target revision: main@327982ab6bdaf9bd445743964415355c04ede95c
+commit guards passed for squash 761b5e627d033f8eacae821dbf609566e2cb8c93
+release adapter: python3 bin/fake-release
+release succeeded for source f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+release already advanced production; requesting recovery
+REFUSED:
+  - target moved during release: main@327982ab6bdaf9bd445743964415355c04ede95c -> main@2de8335913f7eb6da86d5c86e592955bd14c3089; production was already released for source f0b7fbdab8d86b900d85b8f6041afed792e38ddf; main is at the observed target, not claimed unchanged
+  - production recovery reported success; done.md was not published
+[main 2de8335] actor moved main
+fake-release: OK source=f0b7fbdab8d86b900d85b8f6041afed792e38ddf build=demo-build-1
+fake-release: recovery OK source=f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+post-release-recovery: main=2de8335913f7 source=f0b7fbdab8d8 outcome=absent recovery=requested
+source revision: 088118b203f0952ea8835f312511ce792290c98e
+squash revision: f36fb9ce9f6252c1f6858b3598660f23445d5a57 (feat(ops): DEMO-4 Demo card)
+target revision: main@2de8335913f7eb6da86d5c86e592955bd14c3089
+commit guards passed for squash f36fb9ce9f6252c1f6858b3598660f23445d5a57
+release adapter: python3 bin/fake-release
+release succeeded for source 088118b203f0952ea8835f312511ce792290c98e
+release already advanced production; requesting recovery
+REFUSED:
+  - target moved during release: main@2de8335913f7eb6da86d5c86e592955bd14c3089 -> main@a00aea3213bd9727256cfa2d3251d199148fcc57; production was already released for source 088118b203f0952ea8835f312511ce792290c98e; main is at the observed target, not claimed unchanged
+  - production recovery FAILED (exit 1); production may still run source 088118b203f0952ea8835f312511ce792290c98e; inspect the adapter output above
+[main a00aea3] actor moved main
+fake-release: OK source=088118b203f0952ea8835f312511ce792290c98e build=demo-build-1
+fake-release: recovery deliberately failed
+post-release-recovery-failure: main=a00aea3 source=088118b203f0 outcome=absent recovery=FAILED
+legacy-boundary: old argv restarted, /api/version=404, /api/health=200
+demo: OK
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```
+
+## 2026-11-06 — note
+
+6.3 correction evidence: run_commit_guards ran the approved source's backend/scripts/leakcheck commit-diff-check and commit-msg-check against a prepared real OPS-4 squash commit (exit 0, no findings). The scratch demo also proves the old binary rejects --port/--public-port and returns 404 for /api/version while restart_legacy_server succeeds through /api/health, and that post-release target movement requests recovery (success and honest failure).
+
+## 2026-11-06 — 6.3 recovery receipt — pin recovery to source/squash/approval/build and refuse stale
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-promote && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/receipt_demo.py "$PWD" && git diff --check`
+Exit: 0
+
+```
+receipt-match: OK
+receipt-mismatch-refused: receipt squashSha does not match this finish
+stale-state-refused: latest deploy state is 'FAILED'
+```
+
+## 2026-11-06 — note
+
+Delivery installation 2026-11-06: accepted work SHA 396a21442e60b3694741b473e1def9edd6f8d50e. Installed into main working tree from the worktree: bin/_deploy_lib.py, bin/_work_lib.py, bin/sift-deploy, bin/sift-promote, bin/sift-data-refresh, bin/work-finish, bin/work.config, bin/work-test (owner skip default + sift-deploy/sift-data-refresh in TOOLS), Makefile, .gitignore, AGENTS.md (owner role text preserved and live-preview paragraph retained), docs/MAP.md, docs/architecture/preview-and-environments.md, work/WORKFLOW.md, work/ROADMAP.md and the active OPS-4 card records. Pending owner changes outside this list, config/prompts relocation, legacy prompt readers and preview-client reload fix were not touched. Backups are under . Checks: command --help for work-finish/sift-promote/sift-deploy/sift-data-refresh; sift-promote --source 396a214 --approve 396a214 --check; git diff --check; read-only HTTP 8080 / and /api/health 200 (version 404 old binary), 8081 / /api/health /api/version 200. No tests, builds, restart, stop, adoption, recovery, refresh, merge, commit or push. The new code is source-only in main; the running daemons still use the old binary/bundles until an owner-approved release.
+
+## 2026-11-06 — note
+
+Delivery backup: .local/delivery-backup-20261106T230400 (ignored local directory; contains every overwritten target before installation).
+
+## 2026-11-06 — note
+
+FINAL PROTOTYPE ACCEPTANCE — 2026-11-06: owner accepted staging and approved closure («принимай и закрывай»). 7.1 evidence: recorded 6.2/6.3 scratch deploy/release/recovery/legacy demonstrations, accepted builds (Go, npm ci, tsc+vite) and live review of 8080/8081; automated suites SKIPPED by owner prototype policy, not reported as passed. 7.2 evidence: accepted commands/config/docs installed in main and reconciled into this source snapshot; owner approval and first-adoption release path recorded. Proceeding to normal pinned-source work-finish with WORK_RELEASE_CMD set to bin/sift-promote --adopt-legacy for this invocation only.

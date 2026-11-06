@@ -7,8 +7,10 @@ external git hook.
 
 import os
 import re
+import shlex
 import subprocess
 import sys
+import tempfile
 from datetime import date
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -61,13 +63,14 @@ STATE_ALIASES = {
 
 
 # ── Process / repo helpers ──────────────────────────────────────────────────
-def run(args, cwd=None, check=False, capture=True):
+def run(args, cwd=None, check=False, capture=True, env=None):
     """Run a command, returning CompletedProcess. Text mode."""
     return subprocess.run(
         args,
         cwd=cwd,
         check=check,
         text=True,
+        env=env,
         stdout=subprocess.PIPE if capture else None,
         stderr=subprocess.PIPE if capture else None,
     )
@@ -1199,6 +1202,336 @@ def finish_snapshot(card_id, target_root=None):
     }
 
 
+CONVENTIONAL_RE = re.compile(
+    r"^(feat|fix|chore|docs|refactor|test|build|ci|perf|style|revert)"
+    r"(\([^)]+\))?!?: .+")
+
+
+def card_epic(card_dir, tasks_root=None):
+    """The epic directory name that owns a card, or 'work' as a fallback."""
+    rel = os.path.relpath(card_dir, tasks_root or tasks_dir())
+    parts = rel.split(os.sep)
+    return parts[0] if len(parts) > 1 else "work"
+
+
+def default_squash_subject(card_id, card_dir, tasks_root=None):
+    title = re.sub(r"\s+", " ", card_title(card_dir)).strip()
+    subject = "feat(%s): %s %s" % (card_epic(card_dir, tasks_root), card_id, title)
+    subject = subject.rstrip(" .")
+    if len(subject) > 72:
+        subject = subject[:71].rstrip() + "…"
+    return subject
+
+
+def squash_subject_problem(subject):
+    if not subject or "\n" in subject or "\r" in subject:
+        return "squash subject must be a single non-empty line"
+    if not CONVENTIONAL_RE.match(subject):
+        return ("squash subject is not a Conventional Commits subject: %r"
+                % subject)
+    return None
+
+
+def done_markdown(card_id, source_sha, target_sha, target_branch):
+    return ("# %s — done\n\n**Date:** %s\n**Merged into:** %s\n"
+            "**Tested revision:** %s\n**Target revision:** %s\n"
+            % (card_id, today(), target_branch, source_sha, target_sha))
+
+
+def prepare_squash(card_id, source_sha, target_sha, target_branch,
+                   source_card_dir, source_worktree, subject=None,
+                   target_root=None):
+    """Build the one card commit object without moving any ref.
+
+    The commit tree is the exact checked source tree plus the generated
+    done.md outcome at the SOURCE card location. Its parent is the captured
+    target revision, so publishing it is a fast-forward of exactly one commit.
+    Nothing here writes to the working tree, the index or a branch, so a
+    failed release leaves main and the source worktree untouched.
+    """
+    root = target_root or repo_root()
+    problems = []
+    source_tree = git_rev("%s^{tree}" % source_sha, cwd=root)
+    if not source_tree:
+        problems.append("cannot resolve the source tree of %s" % source_sha)
+    if not source_card_dir or not os.path.isdir(source_card_dir):
+        problems.append("source card folder is missing; cannot place done.md")
+    ancestor = run(["git", "merge-base", "--is-ancestor", target_sha, source_sha],
+                   cwd=root)
+    if ancestor.returncode != 0:
+        problems.append(
+            "target %s is not an ancestor of source %s; the work branch must "
+            "contain the target before a one-commit squash can be published. "
+            "Merge or rebase the base into the work branch first."
+            % (target_sha, source_sha))
+    tasks_root = os.path.join(source_worktree, "work", "tasks")
+    subject = subject or default_squash_subject(card_id, source_card_dir,
+                                                tasks_root=tasks_root)
+    subject_problem = squash_subject_problem(subject)
+    if subject_problem:
+        problems.append(subject_problem)
+    if problems:
+        refuse(["cannot prepare the %s squash:" % card_id] + problems)
+
+    body = done_markdown(card_id, source_sha, target_sha, target_branch)
+    blob = None
+    body_file = tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8")
+    try:
+        body_file.write(body)
+        body_file.close()
+        hashed = run(["git", "hash-object", "-w", "--", body_file.name], cwd=root)
+        if hashed.returncode != 0:
+            refuse(["cannot write done.md content: %s"
+                    % (hashed.stderr or hashed.stdout).strip()])
+        blob = hashed.stdout.strip()
+    finally:
+        try:
+            os.unlink(body_file.name)
+        except OSError:
+            pass
+
+    card_rel = os.path.relpath(source_card_dir,
+                               source_worktree).replace(os.sep, "/")
+    done_path = card_rel + "/done.md"
+    index = tempfile.NamedTemporaryFile(delete=False)
+    index.close()
+    env = os.environ.copy()
+    env["GIT_INDEX_FILE"] = index.name
+    try:
+        tree = None
+        for args in (
+            ["git", "read-tree", source_tree],
+            ["git", "update-index", "--add", "--cacheinfo", "100644",
+             blob, done_path],
+            ["git", "write-tree"],
+        ):
+            cp = run(args, cwd=root, env=env)
+            if cp.returncode != 0:
+                refuse(["cannot build the squash tree: %s"
+                        % (cp.stderr or cp.stdout).strip()])
+            if args[1] == "write-tree":
+                tree = cp.stdout.strip()
+    finally:
+        try:
+            os.unlink(index.name)
+        except OSError:
+            pass
+    if not tree:
+        refuse(["cannot build the squash tree for %s" % card_id])
+
+    commit = run(["git", "commit-tree", tree, "-p", target_sha,
+                  "-m", subject], cwd=root)
+    if commit.returncode != 0:
+        refuse(["cannot create the squash commit: %s"
+                % (commit.stderr or commit.stdout).strip()])
+    squash_sha = commit.stdout.strip()
+    if not git_rev("%s^{commit}" % squash_sha, cwd=root):
+        refuse(["squash commit %r is not a valid commit" % squash_sha])
+    return {
+        "source_sha": source_sha,
+        "source_tree": source_tree,
+        "target_sha": target_sha,
+        "squash_sha": squash_sha,
+        "tree": tree,
+        "done_path": done_path,
+        "subject": subject,
+        "body": body,
+    }
+
+
+def squash_content_problems(source_sha, squash_sha, card_id,
+                            target_root=None, source_worktree=None):
+    """Verify a squash commit differs from the checked source only by done.md.
+
+    The done.md path comes from the SOURCE card location, so a relocation on
+    the base branch cannot make the check compare the wrong path.
+    """
+    root = target_root or repo_root()
+    cp = run(["git", "diff", "--name-status", source_sha, squash_sha], cwd=root)
+    if cp.returncode != 0:
+        return ["cannot compare %s with %s: %s"
+                % (source_sha, squash_sha, (cp.stderr or cp.stdout).strip())]
+    if source_worktree:
+        card_dir = find_card_dir(card_id, root=source_worktree)
+        base = source_worktree
+    else:
+        card_dir = find_card_dir(card_id, root=root)
+        base = root
+    if not card_dir:
+        return ["card %s is missing from the source checkout" % card_id]
+    done_rel = os.path.relpath(os.path.join(card_dir, "done.md"),
+                               base).replace(os.sep, "/")
+    allowed = "A\t%s" % done_rel
+    lines = [line for line in cp.stdout.splitlines() if line.strip()]
+    if lines != [allowed]:
+        return ["squash %s does not match checked source %s apart from %s: %s"
+                % (squash_sha, source_sha, done_rel,
+                   "; ".join(lines) or "no differences")]
+    return []
+
+
+def config_value_from(root, key):
+    """Read one KEY=VALUE from a checkout's bin/work.config, env first."""
+    if key in os.environ and os.environ[key] != "":
+        return os.environ[key]
+    path = os.path.join(root, "bin", "work.config")
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            name, value = line.split("=", 1)
+            if name.strip() == key:
+                return value.strip()
+    return None
+
+
+def release_command(source_root=None):
+    """The configured project release adapter, or None for generic use.
+
+    The target checkout's config wins, so a project can keep one stable
+    release command. The approved source worktree is the fallback: the card
+    that first introduces the adapter can release itself before main has it.
+    """
+    value = (config_value_from(repo_root(), "WORK_RELEASE_CMD") or "").strip()
+    if value:
+        return value
+    if source_root:
+        value = (config_value_from(source_root, "WORK_RELEASE_CMD") or "").strip()
+        if value:
+            return value
+    return None
+
+
+def run_release(card_id, snapshot, squash, approval, command=None):
+    """Run the release adapter against the immutable pinned source revision.
+
+    Returns (returncode, output). The adapter receives the captured source,
+    squash, target and worktree identity in its environment and must exit 0
+    only after the released build is verified healthy. The generic harness
+    never imports project deployment code.
+    """
+    command = command or release_command()
+    if not command:
+        return (None, "")
+    args = shlex.split(command)
+    if not args:
+        return (127, "empty WORK_RELEASE_CMD")
+    env = os.environ.copy()
+    env.update({
+        "WORK_CARD_ID": card_id,
+        "WORK_SOURCE_SHA": snapshot["source_sha"],
+        "WORK_SOURCE_TREE": squash["source_tree"],
+        "WORK_SQUASH_SHA": squash["squash_sha"],
+        "WORK_SQUASH_TREE": squash["tree"],
+        "WORK_TARGET_BRANCH": snapshot["target_branch"],
+        "WORK_TARGET_SHA": snapshot["target_sha"],
+        "WORK_WORKTREE": snapshot["worktree"] or "",
+        "WORK_APPROVAL": approval or "",
+        "WORK_RELEASE": "1",
+    })
+    env["WORK_TARGET_ROOT"] = snapshot["target_root"]
+    try:
+        proc = subprocess.run(args, cwd=snapshot["worktree"] or
+                              snapshot["target_root"], text=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, env=env)
+    except OSError as exc:
+        return (127, "cannot run release adapter %r: %s" % (command, exc))
+    return (proc.returncode, proc.stdout or "")
+
+
+def run_commit_guards(squash, card_id, subject, source_worktree=None,
+                      target_root=None):
+    """Run the approved source's existing secret/message scanners on the commit.
+
+    git commit-tree bypasses hooks, so the scanners vendored in the approved
+    source are invoked explicitly against the prepared commit blobs. Tests and
+    self-tests are not run; these are the repository's own guard commands.
+    """
+    root = target_root or repo_root()
+    scanner_root = source_worktree or root
+    diff_check = os.path.join(scanner_root, "backend", "scripts", "leakcheck",
+                              "commit-diff-check")
+    msg_check = os.path.join(scanner_root, "backend", "scripts", "leakcheck",
+                             "commit-msg-check")
+    commands = []
+    if os.path.isfile(diff_check):
+        commands.append([sys.executable, diff_check, "--repo", root,
+                         "--commit", squash["squash_sha"]])
+    message = tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8")
+    message.write(subject + "\n")
+    message.close()
+    if os.path.isfile(msg_check):
+        commands.append([sys.executable, msg_check, message.name,
+                         "--repo", root, "--commit", squash["squash_sha"]])
+    output = ""
+    problems = []
+    try:
+        if not commands:
+            return (0, "", [])
+        for command in commands:
+            proc = subprocess.run(command, cwd=root, text=True,
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT)
+            output += proc.stdout or ""
+            if proc.returncode != 0:
+                problems.append("commit guard failed: %s (exit %d)"
+                                % (os.path.basename(command[1]),
+                                   proc.returncode))
+                break
+    finally:
+        try:
+            os.unlink(message.name)
+        except OSError:
+            pass
+    return (0 if not problems else 1, output, problems)
+
+
+def run_release_recovery(card_id, snapshot, squash, approval, reason,
+                         command=None):
+    """Ask the same project adapter to restore its captured production point.
+
+    The request is a documented environment contract, not a new framework:
+    WORK_RELEASE_RECOVERY=1, WORK_RELEASE_RECOVERY_REASON=<reason>, plus the
+    same source/squash/target/card/worktree/approval identity as the release.
+    The adapter resolves its own recovery point and must exit 0 only after the
+    previous production build is restored and healthy.
+    """
+    command = command or release_command()
+    if not command:
+        return (None, "", "no WORK_RELEASE_CMD configured")
+    args = shlex.split(command)
+    if not args:
+        return (127, "", "empty WORK_RELEASE_CMD")
+    env = os.environ.copy()
+    env.update({
+        "WORK_CARD_ID": card_id,
+        "WORK_SOURCE_SHA": snapshot["source_sha"],
+        "WORK_SOURCE_TREE": squash["source_tree"],
+        "WORK_SQUASH_SHA": squash["squash_sha"],
+        "WORK_SQUASH_TREE": squash["tree"],
+        "WORK_TARGET_BRANCH": snapshot["target_branch"],
+        "WORK_TARGET_SHA": snapshot["target_sha"],
+        "WORK_TARGET_ROOT": snapshot["target_root"],
+        "WORK_WORKTREE": snapshot["worktree"] or "",
+        "WORK_APPROVAL": approval or "",
+        "WORK_RELEASE": "1",
+        "WORK_RELEASE_RECOVERY": "1",
+        "WORK_RELEASE_RECOVERY_REASON": reason,
+    })
+    try:
+        proc = subprocess.run(args, cwd=snapshot["worktree"] or
+                              snapshot["target_root"], text=True,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, env=env)
+    except OSError as exc:
+        return (127, "", "cannot run release recovery %r: %s" % (command, exc))
+    return (proc.returncode, proc.stdout or "", None)
+
+
 def readiness_problems(card_id, target_root=None):
     """Reasons a card cannot be accepted or finished. Empty = ready.
 
@@ -1266,15 +1599,25 @@ def readiness_problems(card_id, target_root=None):
     return problems
 
 
-def cleanup_finished(card_id, source_sha):
+def cleanup_finished(card_id, source_sha, published_sha=None, source_worktree=None):
     """Remove the finished worktree and branch without force.
 
-    Returns a list of problems. The branch is deleted only after the worktree
-    is gone and only when it still points at the merged source revision. A
-    failed removal or moved branch leaves both in place for recovery."""
+    Returns a list of problems. A successful squash finish passes the
+    published commit: the source tree must match it apart from done.md, a
+    recovery ref keeps the checkpoint history, and the branch is deleted with
+    a compare-and-swap update-ref rather than `--force`. A plain finish keeps
+    the older `git branch -d` path. A failed removal or moved branch leaves
+    both in place for recovery."""
     branch = "work/%s" % card_id
     root = repo_root()
     problems = []
+    if published_sha:
+        problems.extend(squash_content_problems(source_sha, published_sha,
+                                                card_id, root,
+                                                source_worktree=source_worktree))
+        if problems:
+            problems.append("branch %s preserved for recovery" % branch)
+            return problems
     wt = find_worktree(branch, cwd=root)
     if wt:
         ignored = ignored_status_lines(wt)
@@ -1300,6 +1643,21 @@ def cleanup_finished(card_id, source_sha):
         return problems
     if tip != source_sha:
         problems.append("branch %s moved to %s; preserved" % (branch, tip))
+        return problems
+    if published_sha:
+        recovery_ref = "refs/work-recovery/%s" % card_id
+        kept = run(["git", "update-ref", recovery_ref, source_sha], cwd=root)
+        if kept.returncode != 0:
+            problems.append(
+                "could not record recovery ref %s: %s; branch preserved"
+                % (recovery_ref, (kept.stderr or kept.stdout).strip()))
+            return problems
+        deleted = run(["git", "update-ref", "-d", "refs/heads/%s" % branch,
+                       source_sha], cwd=root)
+        if deleted.returncode != 0:
+            problems.append(
+                "branch %s preserved (verified delete failed): %s"
+                % (branch, (deleted.stderr or deleted.stdout).strip()))
         return problems
     deleted = run(["git", "branch", "-d", branch], cwd=root)
     if deleted.returncode != 0:

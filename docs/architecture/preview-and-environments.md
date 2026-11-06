@@ -70,30 +70,90 @@ reason to kill whatever holds it.
 - Preview writes only under its ignored state directory, the ignored dependency
   caches and the selected staging data directory's normal runtime files.
 - No `work-*` command starts or stops a preview. `work-capture` cannot trigger
-  one. Phase 6.3 will connect an approved work handover to
-  `sift-preview start --worktree <path> --label <id>` through a configurable
-  adapter (`WORK_PREVIEW_CMD`), not by embedding sifty policy in the generic
-  lifecycle commands.
+  one. `WORK_PREVIEW_CMD` remains an unused adapter seam; the generic lifecycle
+  commands do not embed sifty policy.
 
 ## Isolated environments
 
 Production and staging own separate binaries, frontend bundles, worker trees,
-data directories and server pid files. Relative destinations in
-`bin/work.config` resolve against the main checkout, never a linked worktree,
-so artifacts built from `.worktrees/<id>` survive that worktree's removal.
-`bin/sift-deploy` refuses overlapping production/staging paths.
+data directories and server pid files. New defaults are `frontend/dist` +
+`bin/sifty` + `backend/workers-prod` for production and `frontend/dist-staging`
++ `bin/sifty-staging` + `backend/workers-staging` for staging. Relative
+destinations resolve against the main checkout, never a linked worktree, so
+artifacts built from `.worktrees/<id>` survive that worktree's removal.
+`bin/sift-deploy` resolves symlinks and refuses overlapping production/staging
+paths, including after a refresh `--from` override.
+
+The current live layout predates these defaults: production runs the old binary
+on 8080 with `legacy/app/dist` and the shared `backend/workers`, and the live
+preview owns 8081 with `data-staging`. Migration is explicit. The new commands
+refuse a busy port, an unverified pid, or a live preview on the same port/data;
+they do not kill an unknown occupant. For the first production transition,
+`bin/sift-promote --source <sha> --approve <sha> --adopt-legacy` is the one
+explicit adoption operation: it requires a single listener, verifies that the
+process runs the configured production binary and data directory, reads the
+actual `--dist` and `--workers-dir` from that process, captures those exact
+assets plus a consistent SQLite snapshot for rollback, and records its pid.
+It refuses an ambiguous owner, a different binary, or a missing bundle/worker
+tree, and refuses to adopt again after a completed migration. No live adoption
+is performed merely by implementing or documenting it.
+
+## Approved-source release
+
+`bin/work-finish <id> --approve <source-sha>` is the normal completion path.
+`WORK_RELEASE_CMD` (this repository: `python3 bin/sift-promote`) is read from
+the target checkout, with the approved source worktree as fallback, so the card
+that first introduces the adapter can release itself. The adapter runs in the
+source worktree with `WORK_SOURCE_SHA`, `WORK_SOURCE_TREE`, `WORK_SQUASH_SHA`,
+`WORK_TARGET_SHA`, `WORK_CARD_ID`, `WORK_WORKTREE` and `WORK_APPROVAL` in its
+environment. `work-finish` prepares the one squash commit without moving a ref,
+runs the adapter against the immutable source revision, re-verifies that the
+source and target did not move, and only then fast-forwards main to the prepared
+commit. The commit tree is the checked source tree plus `done.md`; no separate
+finish commit is written. A failed adapter leaves main, `done.md`, the source branch/worktree and
+recovery untouched. If the adapter already succeeded and a later check or
+publish fails, `work-finish` sends the same adapter `WORK_RELEASE_RECOVERY=1`
+with the reason; `sift-promote` then verifies the release receipt keyed by this finish's
+source, squash, approval and build, checks the currently served build, restores
+that pinned recovery point and prints a `RECOVERY result=` receipt. Missing,
+stale or mismatched receipts are refused rather than rolling back a later
+release. The refusal
+reports the actual main revision and never claims it was unchanged. A verified success records
+`refs/work-recovery/<id>` before removing the checkpoint branch.
+
+`bin/sift-promote --source <sha> --approve <sha>` resolves both arguments to the
+same commit, then runs `bin/sift-deploy --env prod --source <sha>`. A legacy
+rollback restarts the captured process's exact original argv and accepts
+`/api/health` or `/`; it does not add `--port`/`--public-port` or require
+`/api/version`, which the pre-isolation binary lacks. The deploy
+extracts that committed tree with `git archive` into a private directory, builds
+and publishes it, verifies the served build identity and health, and records
+`sourceSha`/`buildId` in deploy state. `--check` resolves and prints the plan
+without touching production. `--force` is accepted only for compatibility and
+never bypasses the source/approval match.
 
 `bin/sift-data-refresh` is the explicit staging data operation. It stops the
 recorded staging server, preserves the old staging data under
 `.refresh-backup/<timestamp>/`, takes a consistent SQLite backup of production,
-copies production config/evidence/answers/feedback, removes stale WAL/SHM
-files, and leaves staging stopped unless asked to restart. A normal deploy never
-runs this operation; `bin/sift-deploy --env staging --refresh-data` is the
-explicit combined code-and-data operation.
+and mirrors the production payload: `config/`, `config-backups/`, `kb/`,
+`evidence/`, `answers/`, `feedback/` and any other root-relative candidate file
+or directory. It removes stale WAL/SHM files, refuses a live preview on staging,
+and fails loudly if copying or recovery fails. A normal deploy never runs this
+operation; `bin/sift-deploy --env staging --refresh-data` is the explicit
+combined code-and-data operation.
 
-All builds go to fresh candidate directories and are published only after they
-succeed. A deploy verifies the serving process through `GET /api/version`
-against the build identity, uses `GET /api/health` rather than requiring a
-non-empty catalogue, and performs no `POST /api/context` write. Rollback stops
-the candidate, restores the binary, bundle, worker tree and a consistent
-database, removes stale WAL/SHM files, and restarts the previous server.
+All builds go to fresh candidate directories under `.local/deploy/<env>/`.
+One per-environment operation lock serializes deploy, build-only and refresh
+mutations. `--build-only` publishes only when the target port is free; it
+refuses to overwrite a running environment's artifacts and reports failure
+instead of silently leaving stale or partially replaced files. A normal deploy
+copies the current binary/dist/workers before the stop, then takes the final
+SQLite snapshot only after the server is verifiably stopped and before
+publication. It verifies the serving process through `GET /api/version` against
+the build identity, uses `GET /api/health` rather than requiring a non-empty
+catalogue, and performs no `POST /api/context` write. Rollback stops the
+candidate, restores the binary, bundle, worker tree and a consistent database,
+removes stale WAL/SHM files, and restarts the previous server. If the target
+cannot be stopped, or artifact/data restore is incomplete, it reports
+`ROLLBACK_INCOMPLETE` or `REFRESH_INCOMPLETE`, preserves the backups and does
+not restart an incoherent mixture.

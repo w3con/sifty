@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""work-finish — accept and merge a card, or reject it.
+"""work-finish — accept, release and publish one card, or reject it.
 
 Usage:
-    work-finish <id> [--force]
+    work-finish <id> [--force] [--approve <revision>] [-m <subject>]
     work-finish <id> --reject "<reason>"
 
 Accept path: require the current checkout to be the base branch (default main),
@@ -10,21 +10,30 @@ the source worktree and target checkout clean including untracked files, every
 step closed, the plan fit (present, non-empty, with steps and acceptance
 criteria, no malformed step line), attention resolved and no terminal outcome.
 Capture the source and target revisions, run acceptance checks in a scratch copy
-detached at the captured source SHA, verify both revisions/branches are
-unchanged, then fast-forward merge exactly that tested source SHA. Write done.md
-and remove the worktree and branch without force when the source worktree has no
-ignored local material; ignored material retains both and is reported.
+detached at the captured source SHA, and verify both revisions/branches are
+unchanged.
 
---force skips only the acceptance command. It does not bypass readiness,
-cleanliness, revision or preservation checks.
+The checked source is published as exactly ONE Conventional Commits squash
+commit on the base branch, not as its checkpoint history plus a separate finish
+commit. The commit tree is the checked source tree plus the generated done.md;
+its parent is the captured target revision. When WORK_RELEASE_CMD is configured,
+work-finish requires `--approve <source revision>` and runs the release adapter
+against the immutable source revision and prepared squash commit. done.md and
+main become authoritative only after that adapter exits successfully. A failed
+acceptance, release or publish writes no done.md and preserves the source
+branch, worktree, recovery refs and main exactly as they were.
+
+--force skips only the acceptance command. It never bypasses approval, release,
+readiness, cleanliness, revision or preservation checks.
 
 Reject path: write rejected.md with the reason and commit only that file on the
 base branch. The work branch, worktree, uncommitted changes and pre-existing
 staged/unstaged target changes are preserved; nothing is removed or merged.
 
-No staging deploy is run after the merge. Staging previews in-progress work from
-its own worktree; finishing a card only merges to main. To update production, run
-bin/sift-promote on the owner's word.
+The generic harness never imports project deployment code. A project configures
+its release adapter with WORK_RELEASE_CMD; Sifty sets it to bin/sift-promote,
+which builds and verifies the pinned source revision. Generic projects without
+a configured adapter finish without a release step.
 
 Never pushes unless WORK_PUSH=1 is set (off by default).
 """
@@ -98,8 +107,13 @@ def main():
     ap.add_argument("id")
     ap.add_argument("--reject", default=None, metavar="REASON")
     ap.add_argument("--force", action="store_true",
-                    help="skip only the acceptance command; readiness, "
-                         "cleanliness and revision checks still apply")
+                    help="skip only the acceptance command; approval, release, "
+                         "readiness, cleanliness and revision checks still apply")
+    ap.add_argument("--approve", default=None, metavar="REVISION",
+                    help="explicit owner approval of the pinned source revision; "
+                         "required when WORK_RELEASE_CMD is configured")
+    ap.add_argument("-m", "--message", default=None, metavar="SUBJECT",
+                    help="Conventional Commits subject for the one squash commit")
     args = ap.parse_args()
 
     card_dir = w.require_card_dir(args.id)
@@ -155,35 +169,154 @@ def main():
                   % (target_branch, target_sha, now["target_branch"],
                      now["target_sha"])])
 
-    merge = w.run(["git", "merge", "--ff-only", source_sha], cwd=target_root)
+    # ── Approval and release adapter ─────────────────────────────────────────
+    release_cmd = w.release_command(source_root=now["worktree"])
+    approval = None
+    if args.approve:
+        approval = w.git_rev("%s^{commit}" % args.approve, cwd=target_root)
+        if not approval:
+            w.refuse(["--approve %r is not a commit" % args.approve])
+        if approval != source_sha:
+            w.refuse(["approval is for %s but the checked source is %s; "
+                      "approve the exact pinned revision"
+                      % (approval, source_sha)])
+    if release_cmd and not approval:
+        w.refuse(["WORK_RELEASE_CMD is configured (%r), so product completion "
+                  "requires --approve <source-revision>. The checked source is %s."
+                  % (release_cmd, source_sha)])
+
+    # ── Prepare the one card commit without moving any ref ───────────────────
+    source_card_dir = w.find_card_dir(args.id, root=now["worktree"])
+    if not source_card_dir:
+        w.refuse(["card %s is missing from the source worktree %s"
+                  % (args.id, now["worktree"])])
+    squash = w.prepare_squash(args.id, source_sha, target_sha, target_branch,
+                              source_card_dir, now["worktree"],
+                              subject=args.message, target_root=target_root)
+    w.info("source revision: %s" % source_sha)
+    w.info("squash revision: %s (%s)" % (squash["squash_sha"],
+                                         squash["subject"]))
+    w.info("target revision: %s@%s" % (target_branch, target_sha))
+
+    # The prepared tree must be the checked source plus done.md at the SOURCE
+    # card location before any release is attempted.
+    equality = w.squash_content_problems(
+        source_sha, squash["squash_sha"], args.id,
+        target_root=target_root, source_worktree=now["worktree"])
+    if equality:
+        w.refuse(["prepared squash does not match the checked source:"] + equality)
+
+    # git commit-tree bypasses hooks; run the approved source's real scanners
+    # on the prepared commit before release or publication.
+    guard_code, guard_output, guard_problems = w.run_commit_guards(
+        squash, args.id, squash["subject"],
+        source_worktree=now["worktree"], target_root=target_root)
+    sys.stdout.write(guard_output)
+    if guard_output and not guard_output.endswith("\n"):
+        sys.stdout.write("\n")
+    if guard_problems:
+        w.refuse(["commit guards rejected the prepared card commit; nothing "
+                  "was released:"] + guard_problems)
+    w.info("commit guards passed for squash %s" % squash["squash_sha"])
+
+    release_succeeded = False
+
+    def post_release_refuse(reasons):
+        """Refuse after a successful release and ask the adapter to recover."""
+        reasons = list(reasons)
+        if release_succeeded and release_cmd:
+            w.info("release already advanced production; requesting recovery")
+            rec_code, rec_output, rec_error = w.run_release_recovery(
+                args.id, now, squash, approval, "; ".join(reasons),
+                command=release_cmd)
+            sys.stdout.write(rec_output)
+            if rec_output and not rec_output.endswith("\n"):
+                sys.stdout.write("\n")
+            if rec_error:
+                reasons.append("production recovery was not requested: %s"
+                               % rec_error)
+            elif rec_code == 0:
+                reasons.append("production recovery reported success; done.md "
+                               "was not published")
+            else:
+                reasons.append(
+                    "production recovery FAILED (exit %s); production may "
+                    "still run source %s; inspect the adapter output above"
+                    % (rec_code, source_sha))
+        elif release_succeeded:
+            reasons.append("no release adapter is configured; production "
+                           "recovery was not requested")
+        else:
+            reasons.append("no production release had succeeded; no recovery "
+                           "was requested")
+        w.refuse(reasons)
+
+    # ── Release the immutable source, then publish the prepared commit ───────
+    if release_cmd:
+        w.info("release adapter: %s" % release_cmd)
+        code, output = w.run_release(args.id, now, squash, approval,
+                                     command=release_cmd)
+        sys.stdout.write(output)
+        if output and not output.endswith("\n"):
+            sys.stdout.write("\n")
+        if code != 0:
+            w.refuse(["release failed (exit %s) for source %s; no done.md, main "
+                      "unchanged, work branch and worktree preserved"
+                      % (code, source_sha)])
+        release_succeeded = True
+        w.info("release succeeded for source %s" % source_sha)
+    else:
+        w.info("no WORK_RELEASE_CMD configured; no release adapter was run")
+
+    # The release adapter must not have moved the source or target behind us.
+    problems = w.readiness_problems(args.id)
+    if problems:
+        post_release_refuse(["cannot publish %s after release:" % args.id]
+                            + problems)
+    after = w.finish_snapshot(args.id)
+    if after["source_sha"] != source_sha:
+        post_release_refuse(
+            ["source revision changed during release: %s -> %s; main is "
+             "currently %s@%s; source branch and worktree preserved"
+             % (source_sha, after["source_sha"],
+                w.git_current_branch(target_root),
+                w.git_rev("HEAD", cwd=target_root))])
+    if after["target_branch"] != target_branch or after["target_sha"] != target_sha:
+        post_release_refuse(
+            ["target moved during release: %s@%s -> %s@%s; production was "
+             "already released for source %s; main is at the observed target, "
+             "not claimed unchanged"
+             % (target_branch, target_sha, after["target_branch"],
+                after["target_sha"], source_sha)])
+
+    merge = w.run(["git", "merge", "--ff-only", squash["squash_sha"]],
+                  cwd=target_root)
     if merge.returncode != 0:
-        w.refuse(["fast-forward merge of tested revision %s into %s failed — "
-                  "the base has moved. Work branch and worktree preserved.\n%s"
-                  % (source_sha, base,
-                     (merge.stderr or merge.stdout).strip())])
+        post_release_refuse(
+            ["publishing prepared squash %s failed; production was already "
+             "released for source %s. main is currently %s@%s, not claimed "
+             "unchanged; the source branch/worktree are preserved.\n%s"
+             % (squash["squash_sha"], source_sha,
+                w.git_current_branch(target_root),
+                w.git_rev("HEAD", cwd=target_root),
+                (merge.stderr or merge.stdout).strip())])
     merged_sha = w.git_rev("HEAD", cwd=target_root)
-    if merged_sha != source_sha:
-        w.refuse(["merge produced %s instead of the tested %s; done.md not "
-                  "written and work branch preserved"
-                  % (merged_sha, source_sha)])
-    w.info("fast-forwarded tested revision %s into %s" % (source_sha, base))
+    if merged_sha != squash["squash_sha"]:
+        post_release_refuse(
+            ["publish produced %s instead of the prepared %s; production was "
+             "already released for source %s; main is at the observed commit "
+             "and the work branch is preserved"
+             % (merged_sha, squash["squash_sha"], source_sha)])
+    w.info("published one card commit %s on %s" % (merged_sha, base))
 
-    # Re-resolve the card after the merge in case the work branch relocated it.
     final_card = w.find_card_dir(args.id)
-    if not final_card:
-        w.die("merged tested revision %s but card %s is not present in the "
-              "target; done.md not written and work branch preserved"
-              % (source_sha, args.id))
-    card_dir = final_card
+    if not final_card or not os.path.isfile(os.path.join(final_card, "done.md")):
+        w.die("published squash %s but done.md is not present in the target; "
+              "the work branch is preserved" % merged_sha)
 
-    write_terminal(card_dir, "done.md",
-                   "# %s — done\n\n**Date:** %s\n**Merged into:** %s\n"
-                   "**Tested revision:** %s\n"
-                   % (args.id, w.today(), base, source_sha))
-    commit_card(card_dir, "chore(work): finish %s" % args.id,
-                only="done.md")
-
-    for problem in w.cleanup_finished(args.id, source_sha):
+    for problem in w.cleanup_finished(args.id, source_sha,
+                                      published_sha=squash["squash_sha"],
+                                      source_worktree=now["worktree"]):
         w.info("WARNING: %s" % problem)
 
     if w.config_get("WORK_PUSH") == "1":

@@ -1,11 +1,9 @@
 name: ci
 
-# Public-repository CI. It must run from a fresh clone without the private
-# tools/shared submodule or the owner's local agent configuration.
+# Manual-only while the product is being prototyped. The preserved full suite
+# is available through an explicit workflow dispatch, not every push or PR.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   leak-scan:
@@ -33,7 +31,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Work harness checks
-        run: python3 bin/work-test
+        run: python3 bin/work-test --full
 
   backend:
     runs-on: ubuntu-latest

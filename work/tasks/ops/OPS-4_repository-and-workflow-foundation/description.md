@@ -3,7 +3,8 @@
 **Epic:** ops
 **Created:** 2026-11-06
 **Author:** coordinator, based on the owner's conversation
-**Status:** in progress; steps 1.1–4.3 implemented on `work/OPS-4`; coordinator review of phase 4 pending
+**Status:** in progress; 6.2 and 6.3 are technically accepted through `66db415` (21/23 original steps). The accepted commands, configuration and documents are installed in this main checkout but not committed; 7.1/7.2 remain open, and no live production release or adoption has run. The live processes still use the earlier layout and need the explicit `sift-promote --adopt-legacy` step under owner approval.
+The owner approved continuing 6.2–6.3 with prototype-mode checks and one-card squash integration. No product question blocks these stages. Automated suites remain disabled; 6.2 was checked with syntax/build checks and a scratch deploy/rollback/refresh demonstration. Production release still requires the owner's staging acceptance.
 
 ## Why this work exists
 

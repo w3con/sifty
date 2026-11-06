@@ -1,67 +1,142 @@
-#!/usr/bin/env bash
-# bin/sift-promote — deploy current main to the production environment.
-#
-# This is the ONLY script that touches production. It is run by the owner
-# on their explicit confirmation; no automatic path ever calls it.
-#
-# What it does:
-#   1. Verify the current branch is main (or --force to override).
-#   2. Run bin/sift-deploy --env prod with full backup and rollback.
-#
-# Usage:
-#   sift-promote [--force] [--help]
-#
-# A staging deploy never promotes. Production is updated only by this command.
-
-set -euo pipefail
-
-die()  { echo "sift-promote: ERROR: $*" >&2; exit 1; }
-log()  { echo "sift-promote: $*"; }
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
-    || die "not inside a git repository"
-
-FORCE=0
-
-while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --force) FORCE=1; shift ;;
-        --help|-h)
-            cat <<'HELP'
-sift-promote — deploy current main to the production environment.
+#!/usr/bin/env python3
+"""sift-promote — release one explicitly approved source revision to production.
 
 Usage:
-  sift-promote [--force]
-  sift-promote --help
+    sift-promote --source <revision> --approve <revision> [--adopt-legacy] [--check]
+    sift-promote --help
 
-This is the only command that updates production (port 8080). It runs
-bin/sift-deploy --env prod, which backs up prod data, swaps the binary,
-restarts the server, runs the health and smoke check, and rolls back on
-any failure.
+This is the only command that updates production. It is the configured
+WORK_RELEASE_CMD for this repository, so `work-finish <card> --approve <sha>`
+runs it with WORK_SOURCE_SHA and WORK_APPROVAL set to the pinned source.
 
-Options:
-  --force   Skip the branch check (allow promote from non-main branches).
-  --help    Print this help and exit.
+The source and the approval must resolve to the same commit. That commit is
+materialized by `bin/sift-deploy --source`, built, published and health-checked
+as production. A moving or dirty main checkout is never used as the source.
 
-A staging deploy never promotes to production. Run bin/sift-deploy --env
-staging instead to deploy to staging (port 8081).
-HELP
-            exit 0
-            ;;
-        *) die "unknown argument: $1 (run with --help for usage)" ;;
-    esac
-done
+`--adopt-legacy` is the one explicit first-transition operation for a server
+started before the isolated artifact layout existed. It verifies the actual
+listening process (binary, data, bundle and worker arguments), captures the
+assets that process is actually serving for rollback, records its pid safely,
+and only then performs the normal approved-source deploy. It never adopts or
+kills an arbitrary port occupant.
 
-# Verify we are on main (unless --force)
-CURRENT_BRANCH="$(git -C "$APP_HOME" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
-if [[ "$FORCE" -ne 1 && "$CURRENT_BRANCH" != "main" ]]; then
-    die "current branch is '$CURRENT_BRANCH', not main. " \
-        "Switch to main before promoting, or pass --force to override."
-fi
+`--check` resolves and prints the approved source and deploy command without
+touching production. When `WORK_RELEASE_RECOVERY=1` is set by `work-finish`
+after a successful release that could not be published, this command instead verifies the release receipt pinned to the finish's
+source/squash/approval and current build, restores that captured recovery
+point, and reports `RECOVERY result=OK|FAILED|REFUSED`.
 
-log "Promoting main to production (port ${SIFTY_PROD_PORT:-8080})..."
-log "This deploys the binary at HEAD of main to the live server."
-log ""
+No other command deploys production. `bin/sift-deploy --env staging` is the
+staging path and never promotes.
+"""
+import argparse
+import os
+import subprocess
+import sys
+from pathlib import Path
 
-exec "$APP_HOME/bin/sift-deploy" --env prod
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _deploy_lib as d
+
+
+def resolve(app_home, value, label):
+    try:
+        return d.git(app_home, "rev-parse", "--verify", value + "^{commit}")
+    except d.DeployError as exc:
+        raise SystemExit("sift-promote: ERROR: %s %r is not a commit: %s"
+                         % (label, value, exc))
+
+
+def recover(app_home, main_repo, reason):
+    """Restore only this finish transaction's pinned production recovery point."""
+    cfg = d.load_config(app_home)
+    prod, staging, shared = d.all_configs(app_home, main_repo, cfg)
+    state_root = shared["state_root"]
+    point, error = d.verify_release_receipt(
+        state_root, prod,
+        os.environ.get("WORK_SOURCE_SHA", ""),
+        os.environ.get("WORK_SQUASH_SHA", ""),
+        os.environ.get("WORK_APPROVAL", ""))
+    if error:
+        print("sift-promote: RECOVERY result=REFUSED reason=%s" % error)
+        return 1
+    print("sift-promote: RECOVERY requested reason=%s point=%s"
+          % (reason, point))
+    command = [sys.executable, str(app_home / "bin" / "sift-deploy"),
+               "--env", "prod", "--recover", str(point)]
+    code = subprocess.call(command, cwd=str(app_home))
+    print("sift-promote: RECOVERY result=%s point=%s"
+          % ("OK" if code == 0 else "FAILED", point))
+    return code
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="sift-promote")
+    parser.add_argument("--source", default=os.environ.get("WORK_SOURCE_SHA"),
+                        help="pinned source revision to build and release")
+    parser.add_argument("--approve", default=os.environ.get("WORK_APPROVAL"),
+                        help="explicit owner approval; must equal --source")
+    parser.add_argument("--adopt-legacy", action="store_true",
+                        help="explicitly adopt the current legacy production "
+                             "process before the approved-source deploy")
+    parser.add_argument("--check", action="store_true",
+                        help="verify source/approval and print the deploy "
+                             "command without touching production")
+    parser.add_argument("--force", action="store_true",
+                        help="accepted for compatibility; it does not bypass "
+                             "source approval")
+    args = parser.parse_args()
+    app_home, main_repo = d.repo_roots(__file__)
+    if os.environ.get("WORK_RELEASE_RECOVERY") == "1":
+        return recover(app_home, main_repo,
+                       os.environ.get("WORK_RELEASE_RECOVERY_REASON", ""))
+    if args.check and os.environ.get("WORK_RELEASE") == "1":
+        raise SystemExit(
+            "sift-promote: ERROR: --check cannot be used as a release adapter; "
+            "it would report success without deploying")
+
+    if not args.source:
+        raise SystemExit(
+            "sift-promote: ERROR: --source <revision> is required; production "
+            "is released only from an explicitly pinned revision")
+    if not args.approve:
+        raise SystemExit(
+            "sift-promote: ERROR: --approve <revision> is required; running "
+            "the command is not an owner approval")
+    source = resolve(app_home, args.source, "source")
+    approval = resolve(app_home, args.approve, "approval")
+    if source != approval:
+        raise SystemExit(
+            "sift-promote: ERROR: approval %s does not match source %s"
+            % (approval, source))
+
+    deploy = [sys.executable, str(app_home / "bin" / "sift-deploy"),
+              "--env", "prod", "--source", source]
+    if args.adopt_legacy:
+        deploy.append("--adopt-legacy")
+    print("sift-promote: approved source %s" % source)
+    print("sift-promote: build/release command: %s" % " ".join(deploy))
+    if args.check:
+        return 0
+    code = subprocess.call(deploy, cwd=str(app_home))
+    if code != 0:
+        return code
+    prod, staging, shared = d.all_configs(app_home, main_repo,
+                                          d.load_config(app_home))
+    state_root = shared["state_root"]
+    state = d.read_json(d.deploy_state_path(state_root, "prod")) or {}
+    if state.get("result") != "OK" or state.get("sourceSha") != source:
+        print("sift-promote: ERROR: deploy returned success but state does not "
+              "match the approved source")
+        return 1
+    receipt = d.write_release_receipt(
+        state_root, source, os.environ.get("WORK_SQUASH_SHA", ""),
+        approval, state)
+    print("sift-promote: release receipt pinned source=%s squash=%s build=%s"
+          % (receipt["sourceSha"][:12], receipt["squashSha"][:12],
+             receipt["buildId"]))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

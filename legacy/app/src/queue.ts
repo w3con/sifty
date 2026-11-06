@@ -6,7 +6,7 @@ import { bindFeedback, contextForRole } from './feedback.js';
 import { contextVersion } from './context.js';
 
 export const descriptionReady=(j:{description:string;descriptionStatus:string})=>j.description.length>=100&&!/metadata|pending|missing|unavailable/i.test(j.descriptionStatus);
-function fingerprintInputs(store:Store){const config=providers(),preferences=searchConfig().preferences,prompt=readFileSync(rootPath('prompts/assessment.md'),'utf8');let c=store.context();if(c){c=bindFeedback(c);if(JSON.stringify(c.preferences)!==JSON.stringify(preferences)){c={...c,preferences};c.version=contextVersion(c);}}return {config,preferences,prompt,context:c};}
+function fingerprintInputs(store:Store){const config=providers(),preferences=searchConfig().preferences,prompt=readFileSync(rootPath('config/prompts/assessment.md'),'utf8');let c=store.context();if(c){c=bindFeedback(c);if(JSON.stringify(c.preferences)!==JSON.stringify(preferences)){c={...c,preferences};c.version=contextVersion(c);}}return {config,preferences,prompt,context:c};}
 export function fingerprint(store:Store,id:number,provider=providers().stages.assessment,inputs=fingerprintInputs(store)){
  const j=store.get(id),c=inputs.context?contextForRole(inputs.context,j.id,n=>store.resolveId(n)):null,p=inputs.config.providers[provider];if(!p)throw new Error('Unknown assessment provider');
  return hash(JSON.stringify({job:{title:j.title,company:j.company,description:j.description,descriptionStatus:j.descriptionStatus,location:j.location},context:c?.version,preferences:inputs.preferences,prompt:inputs.prompt,provider,p}));

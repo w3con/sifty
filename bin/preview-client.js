@@ -58,6 +58,10 @@
     return (value || '?').slice(0, 12);
   }
 
+  let loadedGeneration = null;
+  let edited = false;
+  document.addEventListener('input', () => { edited = true; }, true);
+
   function render(status) {
     const requested = status.requested || {};
     const served = status.served || {};
@@ -65,12 +69,16 @@
     const state = status.state || 'unknown';
     const pending = requested.fingerprint && served.fingerprint &&
       requested.fingerprint !== served.fingerprint;
+    if (!loadedGeneration && served.generation) loadedGeneration = served.generation;
+    const updated = loadedGeneration && served.generation &&
+      loadedGeneration !== served.generation;
     const failed = state === 'failed';
     const down = !served.generation && !failed;
-    banner.dataset.state = failed ? 'failed' : down ? 'down' : pending ? 'update' : 'running';
+    banner.dataset.state = failed ? 'failed' : down ? 'down' : pending || updated ? 'update' : 'running';
     title.textContent = failed ? 'SIFTY PREVIEW · BUILD FAILED'
       : down ? 'SIFTY PREVIEW · STARTING'
-      : pending ? 'SIFTY PREVIEW · UPDATE AVAILABLE'
+      : updated ? 'SIFTY PREVIEW · UPDATE AVAILABLE'
+      : pending ? 'SIFTY PREVIEW · BUILDING UPDATE'
       : 'SIFTY PREVIEW · SERVING CURRENT SOURCES';
     const dirty = requested.dirty ? ' dirty' : '';
     const servedText = served.generation
@@ -80,7 +88,8 @@
       (build.count ? ` · builds ${build.count}` : '');
     error.textContent = build.lastError ?
       `${build.lastStage || 'build'}: ${build.lastError}` : '';
-    reload.hidden = !(pending && served.generation);
+    reload.hidden = !updated;
+    if (updated && !failed && !edited) location.reload();
   }
 
   async function poll() {

@@ -20,16 +20,20 @@ The important invariants enforced here:
 """
 from __future__ import annotations
 
+import atexit
 import datetime as _dt
+import fcntl
 import hashlib
 import json
 import os
+import shlex
 import shutil
 import signal
 import socket
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import tempfile
 import time
 import urllib.error
@@ -220,6 +224,70 @@ def validate_environment_paths(prod: dict, staging: dict, shared: dict) -> None:
             raise DeployError(
                 "%s data directory overlaps deploy state (%s)" %
                 (env["name"], shared["state_root"]))
+
+
+def preview_state_path(main_repo: Path, cfg: dict[str, str]) -> Path:
+    value = setting(cfg, "SIFTY_PREVIEW_STATE_DIR",
+                    str(main_repo / ".local" / "preview"))
+    return resolve_path(value, main_repo)
+
+
+def acquire_environment_lock(state_root: Path, env: str) -> int:
+    """One mutation at a time for an environment (deploy/build-only/refresh)."""
+    directory = state_root / env
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / "operation.lock"
+    fd = os.open(path, os.O_CREAT | os.O_RDWR, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        os.close(fd)
+        raise DeployError(
+            "another deploy, build-only or data-refresh operation is already "
+            "running for %s (%s)" % (env, path))
+    # The CLI process is short-lived; release explicitly at process exit.
+    atexit.register(lambda: os.close(fd))
+    return fd
+
+
+def preview_conflict(env: dict, main_repo: Path, cfg: dict[str, str]) -> None:
+    """Refuse to touch an environment currently owned by a live preview."""
+    state = preview_state_path(main_repo, cfg)
+    owner = read_json(state / "owner.json")
+    if not owner:
+        return
+    pid = int(owner.get("pid", 0) or 0)
+    if pid <= 0 or not pid_alive(pid):
+        return
+    command = process_command(pid)
+    if "sift-preview" not in command and "_preview_lib" not in command:
+        return
+    status = read_json(state / "status.json") or {}
+    preview_port = int(owner.get("port") or
+                       (status.get("ports") or {}).get("public") or 0)
+    preview_data = (status.get("paths") or {}).get("data")
+    conflicts = preview_port == env["port"]
+    if preview_data and paths_overlap(Path(preview_data), env["data"]):
+        conflicts = True
+    if conflicts:
+        raise DeployError(
+            "a continuous preview (pid %d, %s) owns port %s / data %s; "
+            "stop it with bin/sift-preview stop before deploying or refreshing "
+            "this environment" %
+            (pid, state, preview_port or "?", preview_data or "?"))
+
+
+def validate_refresh_source(prod: dict, staging: dict, shared: dict) -> None:
+    """Apply the same overlap rules after a --from data directory override."""
+    for key in ("data", "binary", "dist", "workers"):
+        if paths_overlap(prod["data"], staging[key]):
+            raise DeployError(
+                "refresh source %s overlaps staging %s (%s)" %
+                (prod["data"], key, staging[key]))
+    if paths_overlap(prod["data"], shared["state_root"]):
+        raise DeployError(
+            "refresh source %s overlaps deploy state %s" %
+            (prod["data"], shared["state_root"]))
 
 
 def all_configs(app_home: Path, main_repo: Path, cfg: dict[str, str]) -> tuple[dict, dict, dict]:
@@ -472,13 +540,19 @@ def remove_sqlite_sidecars(path: Path) -> None:
 
 
 def restore_sqlite(source_backup: Path, target: Path, existed: bool) -> None:
+    # Validate the required backup before touching the live database or its
+    # sidecars. A missing snapshot must never be interpreted as "no database".
+    if existed and not source_backup.is_file():
+        raise DeployError(
+            "required SQLite recovery backup missing at %s; existing database "
+            "preserved" % source_backup)
     target.parent.mkdir(parents=True, exist_ok=True)
     remove_sqlite_sidecars(target)
     try:
         target.unlink()
     except FileNotFoundError:
         pass
-    if existed and source_backup.is_file():
+    if existed:
         shutil.copy2(source_backup, target)
 
 
@@ -506,9 +580,15 @@ def free_port() -> int:
 def pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
-        return True
     except OSError:
         return False
+    try:
+        stat = subprocess.run(["ps", "-p", str(pid), "-o", "stat="],
+                              text=True, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL).stdout.strip()
+    except OSError:
+        return True
+    return bool(stat) and not stat.startswith("Z")
 
 
 def process_command(pid: int) -> str:
@@ -576,10 +656,6 @@ def probe_port_owner(cfg: dict, state_root: Path) -> dict | None:
             raise DeployError(
                 "recorded %s server pid %s does not match %s; refusing to kill it"
                 % (cfg["name"], info.get("pid"), cfg["binary"]))
-        if not port_free(cfg["port"]):
-            raise DeployError(
-                "%s port %d is busy while its recorded server is alive; "
-                "refusing to continue" % (cfg["name"], cfg["port"]))
         return info
     if not port_free(cfg["port"]):
         raise DeployError(
@@ -597,11 +673,18 @@ def stop_server(cfg: dict, state_root: Path, log_path: Path | None = None,
                 "%s port %d is in use by an unowned process; refusing to kill it" %
                 (cfg["name"], cfg["port"]))
         return False
+    pid = int(info.get("pid", 0))
+    if pid <= 0 or not pid_alive(pid):
+        clear_pid(state_root, cfg["name"])
+        if not port_free(cfg["port"]):
+            raise DeployError(
+                "%s port %d is in use after its recorded server exited; "
+                "refusing to touch an unowned process" % (cfg["name"], cfg["port"]))
+        return False
     if not _pid_matches(info, cfg["binary"]):
         raise DeployError(
             "recorded %s server pid %s is not the expected process; refusing to stop it"
             % (cfg["name"], info.get("pid")))
-    pid = int(info["pid"])
     if log_path:
         with open(log_path, "a", encoding="utf-8") as fh:
             fh.write("%s stopping %s server pid %d\n" % (now_iso(), cfg["name"], pid))
@@ -680,7 +763,7 @@ def start_server(cfg: dict, state_root: Path, log_path: Path, build_id: str,
     deadline = time.time() + timeout
     last_error = None
     while time.time() < deadline:
-        if not pid_alive(child.pid):
+        if child.poll() is not None:
             clear_pid(state_root, cfg["name"])
             raise DeployError(
                 "%s server exited before becoming healthy; log: %s" %
@@ -709,6 +792,68 @@ def start_server(cfg: dict, state_root: Path, log_path: Path, build_id: str,
         (cfg["name"], last_error or "timeout", tail(log_path)))
 
 
+def restart_legacy_server(legacy: dict, env: dict, state_root: Path,
+                          log_path: Path, timeout: int = 20) -> int:
+    """Restart the captured pre-isolation process with its original argv.
+
+    The old binary predates the new runtime interface: it may reject
+    --public-port and has no /api/version. Reuse the exact verified command
+    line and accept /api/health or / as the compatible health check.
+    """
+    argv = shlex.split(legacy.get("command") or "")
+    if not argv:
+        raise DeployError("legacy recovery has no recorded command line")
+    binary = Path(argv[0])
+    if not binary.is_file():
+        raise DeployError("legacy server binary missing after restore: %s" % binary)
+    if not port_free(env["port"]):
+        raise DeployError(
+            "legacy %s port %d is still in use; refusing to start a second "
+            "server" % (env["name"], env["port"]))
+    cwd = binary.resolve().parent.parent
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    log_file = open(log_path, "a", encoding="utf-8")
+    log_file.write("\n%s restarting legacy %s: %s\n"
+                   % (now_iso(), env["name"], " ".join(argv)))
+    log_file.flush()
+    try:
+        child = subprocess.Popen(argv, stdout=log_file, stderr=subprocess.STDOUT,
+                                 start_new_session=True, cwd=str(cwd))
+    except OSError as exc:
+        log_file.close()
+        raise DeployError("cannot start legacy server %s: %s"
+                          % (binary, exc)) from exc
+    write_pid(state_root, env["name"], {
+        "pid": child.pid, "started": process_start(child.pid),
+        "binary": legacy["binary"], "data": legacy["data"],
+        "dist": legacy["dist"], "workers": legacy["workers"],
+        "port": env["port"], "legacy": True,
+    })
+    deadline = time.time() + timeout
+    last_error = None
+    while time.time() < deadline:
+        if child.poll() is not None:
+            clear_pid(state_root, env["name"])
+            raise DeployError(
+                "legacy %s server exited before becoming healthy; log: %s"
+                % (env["name"], tail(log_path)))
+        code, _ = http_json("http://127.0.0.1:%d/api/health" % env["port"], 1.5)
+        if code == 200:
+            return child.pid
+        code, _ = http_json("http://127.0.0.1:%d/" % env["port"], 1.5)
+        if code == 200:
+            return child.pid
+        last_error = "health/root returned %s" % code
+        time.sleep(0.2)
+    try:
+        stop_server(env, state_root, log_path, timeout=5)
+    except DeployError:
+        pass
+    raise DeployError(
+        "legacy %s server did not become healthy: %s; log: %s"
+        % (env["name"], last_error or "timeout", tail(log_path)))
+
+
 def deploy_state_path(state_root: Path, env: str) -> Path:
     return state_root / env / "state.json"
 
@@ -717,6 +862,58 @@ def write_deploy_state(state_root: Path, env: str, **fields) -> None:
     value = {"schema": SCHEMA, "env": env, "at": now_iso()}
     value.update(fields)
     write_json_atomic(deploy_state_path(state_root, env), value)
+
+
+def release_receipt_path(state_root: Path) -> Path:
+    return state_root / "prod" / "release-receipt.json"
+
+
+def write_release_receipt(state_root: Path, source: str, squash: str,
+                          approval: str, state: dict) -> dict:
+    """Pin the successful release's recovery point to this finish transaction."""
+    receipt = {
+        "schema": 1,
+        "at": now_iso(),
+        "sourceSha": source,
+        "squashSha": squash,
+        "approval": approval,
+        "buildId": state.get("buildId"),
+        "recovery": state.get("recovery"),
+    }
+    write_json_atomic(release_receipt_path(state_root), receipt)
+    return receipt
+
+
+def verify_release_receipt(state_root: Path, prod: dict, expected_source: str,
+                           expected_squash: str, expected_approval: str):
+    """Return (recovery_point, None) only for this transaction's live release.
+
+    A later or failed deploy overwrites deploy state; a different successful
+    release overwrites the receipt. Either makes the old recovery request
+    stale, and the mismatch is refused rather than rolling back that release.
+    """
+    receipt = read_json(release_receipt_path(state_root))
+    if not receipt:
+        return None, "missing release receipt"
+    for key, expected in (("sourceSha", expected_source),
+                          ("squashSha", expected_squash),
+                          ("approval", expected_approval)):
+        if not expected or receipt.get(key) != expected:
+            return None, "receipt %s does not match this finish" % key
+    state = read_json(deploy_state_path(state_root, prod["name"])) or {}
+    if state.get("result") != "OK":
+        return None, "latest deploy state is %r" % state.get("result")
+    for key in ("sourceSha", "buildId", "recovery"):
+        if state.get(key) != receipt.get(key):
+            return None, "latest deploy %s no longer matches the receipt" % key
+    point = receipt.get("recovery")
+    if not point or not Path(point).is_dir():
+        return None, "pinned recovery point is missing"
+    code, body = http_json("http://127.0.0.1:%d/api/version" % prod["port"], 1.5)
+    if code != 200 or not isinstance(body, dict) or             body.get("version") != receipt.get("buildId"):
+        return None, ("current production build cannot be verified as %s"
+                      % receipt.get("buildId"))
+    return point, None
 
 
 def append_deploy_log(cfg: dict, line: str) -> None:
@@ -738,6 +935,252 @@ def build_identity(app_home: Path) -> tuple[str, str, bool]:
     return build_id, commit, dirty
 
 
+def source_identity(commit: str) -> tuple[str, str, bool]:
+    """Build identity for an immutable pinned revision, never a moving HEAD."""
+    return ("%s-%s" % (commit[:12], unique_stamp()), commit, False)
+
+
+def materialize_source(main_repo: Path, sha: str, state_root: Path) -> Path:
+    """Extract the exact committed tree of `sha` into a private build directory.
+
+    `git archive` never consults the main working tree, so a dirty or moved
+    checkout cannot leak into a release. The extracted tree is removed after
+    the deploy attempt; candidate artifacts and recovery copies are retained.
+    """
+    commit = git(main_repo, "rev-parse", "--verify", sha + "^{commit}")
+    root = state_root / "source"
+    root.mkdir(parents=True, exist_ok=True)
+    target = root / ("%s-%s" % (commit[:12], unique_stamp()))
+    target.mkdir(parents=True, exist_ok=False)
+    archive = target.parent / (target.name + ".tar")
+    try:
+        try:
+            subprocess.run(
+                ["git", "-C", str(main_repo), "archive", "--format=tar",
+                 "--output", str(archive), commit],
+                check=True, text=True, stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE)
+            with tarfile.open(archive) as tf:
+                try:
+                    tf.extractall(target, filter="data")
+                except TypeError:
+                    tf.extractall(target)
+        except (subprocess.CalledProcessError, tarfile.TarError) as exc:
+            shutil.rmtree(target, ignore_errors=True)
+            detail = getattr(exc, "stderr", "") or str(exc)
+            raise DeployError("cannot materialize source %s: %s"
+                              % (commit, str(detail).strip())) from exc
+    finally:
+        try:
+            archive.unlink()
+        except FileNotFoundError:
+            pass
+    return target
+
+
+def listening_pids(port: int) -> list[int]:
+    """PIDs listening on `port`, verified by lsof rather than guessed."""
+    try:
+        result = subprocess.run(
+            ["lsof", "-nP", "-iTCP:%d" % port, "-sTCP:LISTEN", "-t"],
+            text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    except OSError as exc:
+        raise DeployError("cannot inspect port %d: %s" % (port, exc)) from exc
+    if result.returncode != 0:
+        return []
+    pids = []
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if line.isdigit():
+            pids.append(int(line))
+    return sorted(set(pids))
+
+
+def process_flags(command: str) -> tuple[str, dict[str, str]]:
+    """Split a recorded command line into argv[0] and --flag values."""
+    try:
+        argv = shlex.split(command)
+    except ValueError as exc:
+        raise DeployError("cannot parse the running command line: %s" % exc) from exc
+    if not argv:
+        raise DeployError("the running process has an empty command line")
+    values: dict[str, str] = {}
+    for index, item in enumerate(argv[1:], start=1):
+        if item.startswith("--") and "=" in item:
+            key, value = item.split("=", 1)
+            values[key] = value
+        elif item.startswith("--") and index + 1 < len(argv):
+            values[item] = argv[index + 1]
+    return argv[0], values
+
+
+def _legacy_from_process(env: dict, pid: int, command: str) -> dict:
+    binary_arg, flags = process_flags(command)
+    binary = Path(binary_arg)
+    if not (binary.is_file() and os.access(binary, os.X_OK)):
+        raise DeployError(
+            "--adopt-legacy: port %d owner pid %d binary %r is not an "
+            "executable file" % (env["port"], pid, binary_arg))
+    if binary.resolve() != env["binary"].resolve():
+        raise DeployError(
+            "--adopt-legacy: port %d owner pid %d runs %s, not the configured "
+            "%s binary; refusing to adopt it"
+            % (env["port"], pid, binary.resolve(), env["binary"].resolve()))
+    data_arg = flags.get("--data-dir")
+    if data_arg and Path(data_arg).resolve() != env["data"].resolve():
+        raise DeployError(
+            "--adopt-legacy: port %d owner uses data %s, not configured %s"
+            % (env["port"], data_arg, env["data"]))
+    dist_arg = flags.get("--dist")
+    workers_arg = flags.get("--workers-dir")
+    if not dist_arg or not Path(dist_arg).is_dir():
+        raise DeployError(
+            "--adopt-legacy: port %d owner serves no existing --dist directory; "
+            "refusing to guess the bundle" % env["port"])
+    if not workers_arg or not Path(workers_arg).is_dir():
+        raise DeployError(
+            "--adopt-legacy: port %d owner uses no existing --workers-dir; "
+            "refusing to guess the worker tree" % env["port"])
+    port_arg = flags.get("--port")
+    try:
+        recorded_port = int(port_arg) if port_arg else env["port"]
+    except ValueError as exc:
+        raise DeployError(
+            "--adopt-legacy: port %d owner has an invalid --port %r"
+            % (env["port"], port_arg)) from exc
+    if recorded_port != env["port"]:
+        raise DeployError(
+            "--adopt-legacy: port %d owner was started with --port %s"
+            % (env["port"], port_arg))
+    return {
+        "pid": pid,
+        "started": process_start(pid),
+        "command": command,
+        "binary": str(binary.resolve()),
+        "dist": str(Path(dist_arg).resolve()),
+        "workers": str(Path(workers_arg).resolve()),
+        "data": str(env["data"]),
+        "port": env["port"],
+    }
+
+
+def _capture_legacy_assets(legacy: dict, env: dict, recovery: Path) -> dict:
+    recovery.mkdir(parents=True, exist_ok=True)
+    legacy_root = recovery / "legacy"
+    legacy_root.mkdir(parents=True, exist_ok=True)
+    binary = Path(legacy["binary"])
+    shutil.copy2(binary, legacy_root / "binary.prev")
+    copy_tree(Path(legacy["dist"]), legacy_root / "dist.prev", ignore=())
+    copy_tree(Path(legacy["workers"]), legacy_root / "workers.prev", ignore=())
+    legacy = dict(legacy)
+    legacy["dbExisted"] = sqlite_backup(env["data"] / "store.sqlite",
+                                        legacy_root / "store.sqlite")
+    write_json_atomic(legacy_root / "legacy.json", legacy)
+    return legacy
+
+
+def _verify_recorded_legacy(legacy: dict, env: dict, state_root: Path) -> None:
+    pid = int(legacy.get("pid", 0))
+    if pid <= 0 or not pid_alive(pid):
+        raise DeployError(
+            "--adopt-legacy: recorded legacy pid %s is no longer running"
+            % legacy.get("pid"))
+    if legacy.get("started") and process_start(pid) != legacy["started"]:
+        raise DeployError(
+            "--adopt-legacy: recorded legacy pid %s was replaced" % pid)
+    current = _legacy_from_process(env, pid, process_command(pid))
+    for key in ("binary", "dist", "workers", "data", "port"):
+        if current[key] != legacy.get(key):
+            raise DeployError(
+                "--adopt-legacy: running process %s no longer matches the "
+                "recorded legacy %s" % (key, key))
+
+
+def adopt_legacy_process(env: dict, state_root: Path, recovery: Path) -> dict:
+    """Adopt a pre-isolation production process explicitly and safely.
+
+    The port owner must be a single process whose command line names the
+    intended production binary and data directory. Its actual --dist and
+    --workers-dir arguments are read from that process, so the recovery copy
+    is exactly the bundle and worker tree it serves, never a configured guess.
+    A retry after a failed rollback re-captures those same actual assets. Once
+    a migration completes, a second --adopt-legacy is refused.
+    """
+    adoption_path = state_root / env["name"] / "adoption.json"
+    existing = read_pid(state_root, env["name"])
+    if existing:
+        if not _pid_matches(existing, env["binary"]):
+            raise DeployError(
+                "--adopt-legacy: recorded %s pid %s does not match %s; refusing "
+                "to adopt or stop it" % (env["name"], existing.get("pid"),
+                                         env["binary"]))
+        adoption = read_json(adoption_path)
+        if not adoption:
+            raise DeployError(
+                "--adopt-legacy: a pid record already exists for %s but no "
+                "adoption record does; inspect %s before replacing it"
+                % (env["name"], pid_path(state_root, env["name"])))
+        if adoption.get("completedAt"):
+            raise DeployError(
+                "--adopt-legacy: %s was already migrated at %s; deploy without "
+                "--adopt-legacy" % (env["name"], adoption["completedAt"]))
+        _verify_recorded_legacy(adoption, env, state_root)
+        return _capture_legacy_assets(adoption, env, recovery)
+
+    if port_free(env["port"]):
+        raise DeployError(
+            "--adopt-legacy: nothing is listening on %s port %d; start the "
+            "existing server first or deploy without --adopt-legacy"
+            % (env["name"], env["port"]))
+    pids = listening_pids(env["port"])
+    if len(pids) != 1:
+        raise DeployError(
+            "--adopt-legacy: expected one listener on %s port %d, found %s; "
+            "refusing to adopt an ambiguous port occupant"
+            % (env["name"], env["port"], pids or "none"))
+    pid = pids[0]
+    legacy = _legacy_from_process(env, pid, process_command(pid))
+    legacy = _capture_legacy_assets(legacy, env, recovery)
+    write_json_atomic(adoption_path, legacy)
+    write_pid(state_root, env["name"], {
+        "pid": pid, "started": process_start(pid), "binary": legacy["binary"],
+        "data": legacy["data"], "dist": legacy["dist"],
+        "workers": legacy["workers"], "port": env["port"], "adopted": True,
+    })
+    print("sift-deploy: adopted legacy %s pid %d serving %s / %s"
+          % (env["name"], pid, legacy["dist"], legacy["workers"]))
+    return legacy
+
+
+def restore_legacy_artifacts(recovery: Path, env: dict, legacy: dict) -> None:
+    """Restore the assets the adopted process actually served, and remove new ones."""
+    legacy_root = recovery / "legacy"
+    if not (legacy_root / "legacy.json").is_file():
+        raise DeployError("legacy recovery record is missing at %s"
+                          % (legacy_root / "legacy.json"))
+    for key, flag in (("binary", "binary"), ("dist", "dist"),
+                      ("workers", "workers")):
+        target = Path(legacy[flag])
+        if target.exists():
+            if target.is_dir():
+                shutil.rmtree(target)
+            else:
+                target.unlink()
+        src = legacy_root / (key + ".prev")
+        if not src.exists():
+            raise DeployError("legacy recovery copy for %s is missing" % key)
+        if src.is_dir():
+            copy_tree(src, target, ignore=())
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, target)
+            target.chmod(0o755)
+    # New isolated destinations are restored by restore_artifacts(): their
+    # pre-deploy state (present or absent) must not be altered by adoption.
+    shutil.copy2(legacy_root / "binary.prev", env["binary"])
+    env["binary"].chmod(0o755)
+
+
 # ── artifact publishing and recovery ────────────────────────────────────────
 
 def _copy_or_move(src: Path, dst: Path) -> None:
@@ -757,7 +1200,7 @@ def _copy_or_move(src: Path, dst: Path) -> None:
             src.unlink()
 
 
-def publish_artifacts(candidate: Path, cfg: dict, recovery: Path) -> None:
+def backup_artifacts(cfg: dict, recovery: Path) -> None:
     recovery.mkdir(parents=True, exist_ok=True)
     existed = {
         "binary": cfg["binary"].is_file(),
@@ -772,6 +1215,8 @@ def publish_artifacts(candidate: Path, cfg: dict, recovery: Path) -> None:
     if existed["workers"]:
         copy_tree(cfg["workers"], recovery / "workers.prev", ignore=())
 
+
+def publish_artifacts(candidate: Path, cfg: dict) -> None:
     for key, target in (("binary", cfg["binary"]), ("dist", cfg["dist"]),
                         ("workers", cfg["workers"])):
         src = candidate / ("sifty" if key == "binary" else key)
@@ -819,22 +1264,44 @@ def artifact_hashes(cfg: dict) -> dict:
 
 # ── staging data refresh ────────────────────────────────────────────────────
 
+RUNTIME_DATA_NAMES = {"store.sqlite", "store.sqlite-wal", "store.sqlite-shm",
+                      "server.pid", "deploy.state.json"}
+
+
+def _payload_names(data: Path) -> list[str]:
+    """Top-level user data entries, excluding SQLite/runtime operational files."""
+    if not data.is_dir():
+        return []
+    names = []
+    for name in sorted(os.listdir(data)):
+        if name in RUNTIME_DATA_NAMES:
+            continue
+        if name.startswith("store.sqlite.backup."):
+            continue
+        if name.startswith(".refresh-backup") or name.startswith(".refresh-incoming-"):
+            continue
+        if name.startswith(".refresh-") or name.endswith(".log"):
+            continue
+        names.append(name)
+    return names
+
+
+def _copy_entry(src: Path, dst: Path) -> None:
+    if src.is_dir():
+        copy_tree(src, dst, ignore=())
+    else:
+        shutil.copy2(src, dst)
+
+
 def _backup_staging_data(staging: dict, backup: Path) -> dict:
     backup.mkdir(parents=True, exist_ok=False)
-    meta = {"db": False, "dirs": {}, "files": {}}
+    meta = {"db": False, "entries": []}
     db = staging["data"] / "store.sqlite"
     if sqlite_backup(db, backup / "store.sqlite"):
         meta["db"] = True
-    for name in DATA_DIRS:
-        src = staging["data"] / name
-        if src.is_dir():
-            copy_tree(src, backup / name, ignore=())
-            meta["dirs"][name] = True
-    for name in DATA_FILES:
-        src = staging["data"] / name
-        if src.is_file():
-            shutil.copy2(src, backup / name)
-            meta["files"][name] = True
+    for name in _payload_names(staging["data"]):
+        _copy_entry(staging["data"] / name, backup / name)
+        meta["entries"].append(name)
     write_json_atomic(backup / "meta.json", meta)
     return meta
 
@@ -850,24 +1317,28 @@ def _restore_staging_data(staging: dict, backup: Path) -> None:
             db.unlink()
         except FileNotFoundError:
             pass
-    for name in DATA_DIRS:
-        dst = staging["data"] / name
-        if dst.exists():
-            shutil.rmtree(dst)
-        if meta.get("dirs", {}).get(name):
-            copy_tree(backup / name, dst, ignore=())
-    for name in DATA_FILES:
-        dst = staging["data"] / name
-        if dst.exists():
-            dst.unlink()
-        if meta.get("files", {}).get(name):
-            shutil.copy2(backup / name, dst)
+    # Remove every payload currently present, then restore the snapshot. The
+    # refresh backup directory itself is not a payload and is preserved.
+    for name in _payload_names(staging["data"]):
+        target = staging["data"] / name
+        if target.is_dir():
+            shutil.rmtree(target)
+        else:
+            target.unlink()
+    for name in meta.get("entries", []):
+        src = backup / name
+        if src.exists():
+            _copy_entry(src, staging["data"] / name)
 
 
 def refresh_staging_data(prod: dict, staging: dict, shared: dict,
                          log_path: Path, state_root: Path,
-                         restart: bool = True) -> Path:
+                         restart: bool = True,
+                         cfg: dict[str, str] | None = None,
+                         main_repo: Path | None = None) -> Path:
     """Explicitly replace staging data with a consistent production snapshot."""
+    if cfg is not None and main_repo is not None:
+        preview_conflict(staging, main_repo, cfg)
     prod_db = prod["data"] / "store.sqlite"
     if not prod_db.is_file():
         raise DeployError("production database not found at %s" % prod_db)
@@ -876,6 +1347,7 @@ def refresh_staging_data(prod: dict, staging: dict, shared: dict,
             "production config directory not found at %s" % (prod["data"] / "config"))
 
     was_running = False
+    stopped = False
     backup: Path | None = None
     try:
         info = read_pid(state_root, staging["name"])
@@ -892,6 +1364,7 @@ def refresh_staging_data(prod: dict, staging: dict, shared: dict,
 
         if was_running:
             stop_server(staging, state_root, log_path)
+            stopped = True
 
         staging["data"].mkdir(parents=True, exist_ok=True)
         backup = staging["data"] / ".refresh-backup" / unique_stamp()
@@ -903,17 +1376,13 @@ def refresh_staging_data(prod: dict, staging: dict, shared: dict,
         incoming.mkdir(parents=True)
         try:
             sqlite_backup(prod_db, incoming / "store.sqlite")
-            for name in DATA_DIRS:
-                src = prod["data"] / name
-                if src.is_dir():
-                    copy_tree(src, incoming / name, ignore=())
-            for name in DATA_FILES:
-                src = prod["data"] / name
-                if src.is_file():
-                    shutil.copy2(src, incoming / name)
+            for name in _payload_names(prod["data"]):
+                _copy_entry(prod["data"] / name, incoming / name)
 
             # Replace consistently: SQLite first, after removing any WAL/SHM
-            # files from the old generation.
+            # files from the old generation. Then mirror the payload entries
+            # (config, config-backups, kb/, evidence, answers, feedback and any
+            # other root-relative candidate file or directory).
             target_db = staging["data"] / "store.sqlite"
             remove_sqlite_sidecars(target_db)
             try:
@@ -921,20 +1390,14 @@ def refresh_staging_data(prod: dict, staging: dict, shared: dict,
             except FileNotFoundError:
                 pass
             os.replace(incoming / "store.sqlite", target_db)
-            for name in DATA_DIRS:
-                dst = staging["data"] / name
-                src = incoming / name
-                if dst.exists():
-                    shutil.rmtree(dst)
-                if src.is_dir():
-                    os.replace(src, dst)
-            for name in DATA_FILES:
-                dst = staging["data"] / name
-                src = incoming / name
-                if dst.exists():
-                    dst.unlink()
-                if src.is_file():
-                    os.replace(src, dst)
+            for name in _payload_names(staging["data"]):
+                target = staging["data"] / name
+                if target.is_dir():
+                    shutil.rmtree(target)
+                else:
+                    target.unlink()
+            for name in _payload_names(incoming):
+                os.replace(incoming / name, staging["data"] / name)
         finally:
             shutil.rmtree(incoming, ignore_errors=True)
 
@@ -946,20 +1409,42 @@ def refresh_staging_data(prod: dict, staging: dict, shared: dict,
         if restart and was_running:
             start_server(staging, state_root, log_path, "", expect_version=False)
         return backup
-    except Exception:
-        # Put the old staging data back when the refresh failed midway, and
-        # restart the previous server when it was running.
-        if backup is not None and backup.is_dir():
+    except Exception as exc:
+        errors = [str(exc)]
+        safe_to_restore = True
+        if was_running and not stopped:
+            safe_to_restore = False
+            errors.append(
+                "target could not be safely stopped; backup retained and no "
+                "restore attempted")
+        elif stopped and not port_free(staging["port"]):
+            safe_to_restore = False
+            errors.append(
+                "staging port %d is occupied by an unverified process; backup "
+                "retained and no restore attempted" % staging["port"])
+
+        restore_ok = safe_to_restore
+        if safe_to_restore and backup is not None and (backup / "meta.json").is_file():
             try:
                 _restore_staging_data(staging, backup)
-            except Exception:
-                pass
-        if was_running and staging["binary"].is_file():
+            except Exception as restore_exc:
+                restore_ok = False
+                errors.append("data restore failed: %s" % restore_exc)
+
+        restart_ok = True
+        if restore_ok and was_running and staging["binary"].is_file():
             try:
                 start_server(staging, state_root, log_path, "", expect_version=False)
-            except Exception:
-                pass
-        raise
+            except Exception as restart_exc:
+                restart_ok = False
+                errors.append("previous server restart failed: %s" % restart_exc)
+
+        result = ("REFRESH_FAILED" if safe_to_restore and restore_ok and restart_ok
+                  else "REFRESH_INCOMPLETE")
+        write_deploy_state(state_root, "staging", result=result,
+                           error="; ".join(errors),
+                           backup=str(backup) if backup else None)
+        raise DeployError("; ".join(errors)) from exc
 
 
 # ── deploy / refresh command entry points ──────────────────────────────────
@@ -972,6 +1457,14 @@ def deploy_main(script_path: str, argv: list[str] | None = None) -> int:
                         help="build and publish artifacts without stopping or starting a server")
     parser.add_argument("--refresh-data", action="store_true",
                         help="staging only: explicitly replace staging data from production first")
+    parser.add_argument("--source", default=None, metavar="REVISION",
+                        help="build the exact committed revision instead of the checkout HEAD")
+    parser.add_argument("--adopt-legacy", action="store_true",
+                        help="explicitly adopt the current pre-isolation process "
+                             "on the target port before deploying")
+    parser.add_argument("--recover", default=None, metavar="DIR",
+                        help="standalone: restore the captured recovery point "
+                             "and restart the previous server")
     args = parser.parse_args(argv)
 
     app_home, main_repo = repo_roots(script_path)
@@ -980,34 +1473,104 @@ def deploy_main(script_path: str, argv: list[str] | None = None) -> int:
     env = prod if args.env == "prod" else staging
     if args.refresh_data and args.env != "staging":
         raise DeployError("--refresh-data is only valid for staging")
+    if args.refresh_data and args.build_only:
+        raise DeployError("--refresh-data and --build-only are separate operations")
+    if args.adopt_legacy and args.build_only:
+        raise DeployError("--adopt-legacy requires a full deploy, not --build-only")
+    if args.recover and any((args.source, args.adopt_legacy, args.build_only,
+                             args.refresh_data)):
+        raise DeployError("--recover is a standalone operation")
     state_root = shared["state_root"]
+    acquire_environment_lock(state_root, env["name"])
     state_dir = state_root / env["name"]
-    build_id, commit, dirty = build_identity(app_home)
+    if args.recover:
+        recovery = resolve_path(args.recover, main_repo)
+        if not (recovery / "artifacts.json").is_file():
+            raise DeployError("recovery point %s has no artifacts.json" % recovery)
+        meta = read_json(recovery / "meta.json") or {}
+        legacy = None
+        legacy_file = recovery / "legacy" / "legacy.json"
+        if legacy_file.is_file():
+            legacy = read_json(legacy_file)
+        preview_conflict(env, main_repo, cfg)
+        _rollback(env, None, state_root, recovery,
+                  str(meta.get("buildId") or recovery.name),
+                  "explicit release recovery: %s" % recovery,
+                  env["server_log"], legacy=legacy)
+        result = (read_json(deploy_state_path(state_root, env["name"])) or {}).get("result")
+        print("sift-deploy: recovery result=%s recovery=%s"
+              % (result, recovery))
+        return 0 if result == "ROLLBACK" else 1
+    source_dir = None
+    if args.source:
+        source_commit = git(main_repo, "rev-parse", "--verify",
+                            args.source + "^{commit}")
+        source_dir = materialize_source(main_repo, source_commit, state_root)
+        build_id, commit, dirty = source_identity(source_commit)
+        # A pinned source supplies its own workers; an explicit configured
+        # source still wins for a deliberate external worker tree.
+        if not setting(cfg, "SIFTY_WORKERS_SOURCE") and \
+                "SIFTY_WORKERS_SOURCE" not in os.environ:
+            shared["workers_source"] = source_dir / "backend" / "workers"
+    else:
+        source_commit = None
+        build_id, commit, dirty = build_identity(app_home)
+    build_root = source_dir or app_home
     candidate_id = "%s-%s-%s" % (env["name"], unique_stamp(), build_id[:8])
     candidate = state_dir / "candidates" / candidate_id
     build_log = candidate / "build.log"
     candidate.mkdir(parents=True, exist_ok=False)
     cfg_doc = {"buildId": build_id, "commit": commit, "dirty": dirty,
-               "source": str(app_home), "env": env["name"]}
+               "source": str(build_root), "sourceSha": commit,
+               "env": env["name"]}
+    mutation = False
+    refresh_backup = None
+    legacy = None
+    recovery = state_dir / ("build-recovery" if args.build_only else "recovery") / candidate_id
 
     try:
         write_deploy_state(state_root, env["name"], result="BUILDING",
                            buildId=build_id, commit=commit, dirty=dirty,
-                           candidate=str(candidate))
-        if not args.build_only:
-            owner = probe_port_owner(env, state_root)
-            if owner and not args.refresh_data:
-                pass  # stop_server will verify ownership immediately before swapping
-        build_binary(app_home / "backend", candidate / "sifty", build_id, build_log)
-        build_frontend(app_home / "frontend", candidate / "dist", build_log,
+                           sourceSha=commit, candidate=str(candidate))
+        # A live preview owns its port and data; never replace either behind it.
+        preview_conflict(env, main_repo, cfg)
+        if args.adopt_legacy:
+            legacy = adopt_legacy_process(env, state_root, recovery)
+        if not args.build_only and not args.refresh_data:
+            if not env["data"].is_dir():
+                raise DeployError(
+                    "%s data directory %s does not exist; for staging use "
+                    "--refresh-data to create an explicit snapshot" %
+                    (env["name"], env["data"]))
+            probe_port_owner(env, state_root)
+
+        build_binary(build_root / "backend", candidate / "sifty", build_id, build_log)
+        build_frontend(build_root / "frontend", candidate / "dist", build_log,
                        build_id, shared["frontend_cache"])
         build_workers(shared["workers_source"], candidate / "workers",
                       shared["workers_cache"], build_log)
         write_json_atomic(candidate / "meta.json", cfg_doc)
 
         if args.build_only:
-            recovery = state_dir / "build-recovery" / candidate_id
-            publish_artifacts(candidate, env, recovery)
+            # Publishing over a running environment is unsafe. The candidate
+            # is retained so an operator can inspect it, but this command fails.
+            if not port_free(env["port"]):
+                raise DeployError(
+                    "refusing build-only publish for %s: port %d is in use "
+                    "(candidate kept at %s)" % (env["name"], env["port"], candidate))
+            backup_ok = False
+            try:
+                backup_artifacts(env, recovery)
+                backup_ok = True
+                publish_artifacts(candidate, env)
+            except Exception as exc:
+                if backup_ok:
+                    try:
+                        restore_artifacts(recovery, env)
+                    except Exception as restore_exc:
+                        raise DeployError(
+                            "%s; artifact restore failed: %s" % (exc, restore_exc)) from exc
+                raise
             hashes = artifact_hashes(env)
             write_deploy_state(state_root, env["name"], result="BUILT",
                                buildId=build_id, commit=commit, dirty=dirty,
@@ -1019,100 +1582,200 @@ def deploy_main(script_path: str, argv: list[str] | None = None) -> int:
                   (env["name"], build_id))
             return 0
 
-        if not env["data"].is_dir():
-            raise DeployError(
-                "%s data directory %s does not exist; for staging use "
-                "--refresh-data to create an explicit snapshot" %
-                (env["name"], env["data"]))
+        # Artifact copies may precede the stop. The final SQLite snapshot must
+        # follow a verified stop so writes before shutdown are not lost.
+        backup_artifacts(env, recovery)
+        db_existed = False
+        db = env["data"] / "store.sqlite"
 
-        refresh_backup = None
         if args.refresh_data:
-            refresh_backup = refresh_staging_data(prod, staging, shared,
-                                                  build_log, state_root,
-                                                  restart=False)
+            try:
+                refresh_backup = refresh_staging_data(
+                    prod, staging, shared, build_log, state_root,
+                    restart=False, cfg=cfg, main_repo=main_repo)
+                mutation = True
+                write_json_atomic(recovery / "meta.json", {
+                    "dbExisted": False,
+                    "refreshBackup": str(refresh_backup) if refresh_backup else None,
+                    "refreshRequested": True,
+                    "legacyAdopted": bool(legacy),
+                })
+                publish_artifacts(candidate, env)
+                hashes = artifact_hashes(env)
+                append_deploy_log(env, "%s env=%s build=%s hash=%s result=DEPLOYING"
+                                  % (now_stamp(), env["name"], build_id,
+                                     (hashes["binary"] or "")[:16]))
+                start_server(env, state_root, env["server_log"], build_id)
+            except Exception as exc:
+                if mutation:
+                    _rollback(env, staging, state_root, recovery, build_id,
+                              str(exc), build_log, legacy=legacy)
+                raise
         else:
             stop_server(env, state_root, env["server_log"])
+            mutation = True
+            try:
+                db_existed = sqlite_backup(db, recovery / "store.sqlite")
+            except Exception as backup_exc:
+                # Artifacts are untouched and no database snapshot exists.
+                # Restart the old server; never restore a missing snapshot.
+                restart_error = None
+                try:
+                    start_server(env, state_root, env["server_log"], "",
+                                 expect_version=False)
+                except Exception as restart_exc:
+                    restart_error = str(restart_exc)
+                message = "database backup after stop failed: %s" % backup_exc
+                if restart_error:
+                    message += "; previous server restart failed: %s" % restart_error
+                    write_deploy_state(state_root, env["name"],
+                                       result="ROLLBACK_INCOMPLETE",
+                                       buildId=build_id, error=message,
+                                       recovery=str(recovery))
+                else:
+                    write_deploy_state(state_root, env["name"], result="FAILED",
+                                       buildId=build_id, error=message,
+                                       recovery=str(recovery))
+                append_deploy_log(env, "%s env=%s build=%s result=BACKUP_FAILED error=%s"
+                                  % (now_stamp(), env["name"], build_id,
+                                     message.replace("\n", " ")[:300]))
+                raise DeployError(message) from backup_exc
 
-        recovery = state_dir / "recovery" / candidate_id
-        recovery.mkdir(parents=True, exist_ok=True)
-        db = env["data"] / "store.sqlite"
-        db_existed = sqlite_backup(db, recovery / "store.sqlite")
-        write_json_atomic(recovery / "meta.json", {
-            "dbExisted": db_existed, "refreshBackup": str(refresh_backup) if refresh_backup else None,
-            "refreshRequested": bool(args.refresh_data),
-        })
-
-        publish_artifacts(candidate, env, recovery)
-        hashes = artifact_hashes(env)
-        append_deploy_log(env, "%s env=%s build=%s hash=%s result=DEPLOYING"
-                          % (now_stamp(), env["name"], build_id,
-                             (hashes["binary"] or "")[:16]))
-        try:
-            start_server(env, state_root, env["server_log"], build_id)
-        except Exception as exc:
-            _rollback(env, staging if args.refresh_data else None, state_root,
-                      recovery, build_id, str(exc), build_log)
-            raise
+            try:
+                write_json_atomic(recovery / "meta.json", {
+                    "dbExisted": db_existed,
+                    "refreshBackup": None,
+                    "refreshRequested": False,
+                    "legacyAdopted": bool(legacy),
+                })
+                publish_artifacts(candidate, env)
+                hashes = artifact_hashes(env)
+                append_deploy_log(env, "%s env=%s build=%s hash=%s result=DEPLOYING"
+                                  % (now_stamp(), env["name"], build_id,
+                                     (hashes["binary"] or "")[:16]))
+                start_server(env, state_root, env["server_log"], build_id)
+            except Exception as exc:
+                _rollback(env, None, state_root, recovery, build_id,
+                          str(exc), build_log, legacy=legacy)
+                raise
 
         write_deploy_state(state_root, env["name"], result="OK",
                            buildId=build_id, commit=commit, dirty=dirty,
-                           artifacts=hashes, recovery=str(recovery),
+                           sourceSha=commit, artifacts=hashes,
+                           recovery=str(recovery),
                            paths={"binary": str(env["binary"]), "dist": str(env["dist"]),
                                   "workers": str(env["workers"]), "data": str(env["data"])})
+        if legacy:
+            adoption_path = state_root / env["name"] / "adoption.json"
+            adoption = read_json(adoption_path) or dict(legacy)
+            adoption.update({"completedAt": now_iso(),
+                             "completedBuild": build_id,
+                             "completedSource": commit})
+            write_json_atomic(adoption_path, adoption)
         append_deploy_log(env, "%s env=%s build=%s hash=%s result=OK"
                           % (now_stamp(), env["name"], build_id,
                              (hashes["binary"] or "")[:16]))
         print("sift-deploy: %s deployed %s on port %d" %
               (env["name"], build_id, env["port"]))
+        print("sift-deploy: source %s build %s" % (commit, build_id))
         print("sift-deploy: url http://localhost:%d" % env["port"])
         return 0
     except Exception as exc:
         if isinstance(exc, DeployError):
-            write_deploy_state(state_root, env["name"], result="FAILED",
-                               buildId=build_id, commit=commit, dirty=dirty,
-                               error=str(exc))
+            existing = read_json(deploy_state_path(state_root, env["name"])) or {}
+            if existing.get("result") not in ("ROLLBACK", "ROLLBACK_INCOMPLETE",
+                                              "REFRESH_INCOMPLETE"):
+                write_deploy_state(state_root, env["name"], result="FAILED",
+                                   buildId=build_id, commit=commit, dirty=dirty,
+                                   error=str(exc), candidate=str(candidate))
             append_deploy_log(env, "%s env=%s build=%s result=FAILED error=%s"
                               % (now_stamp(), env["name"], build_id,
                                  str(exc).replace("\n", " ")[:300]))
             print("sift-deploy: ERROR: %s" % exc, file=sys.stderr)
             return 1
         raise
-
+    finally:
+        if source_dir is not None:
+            try:
+                shutil.rmtree(source_dir)
+            except OSError as cleanup_exc:
+                print("sift-deploy: WARNING: could not remove pinned source "
+                      "checkout %s: %s" % (source_dir, cleanup_exc),
+                      file=sys.stderr)
 
 def _rollback(env: dict, refresh_env: dict | None, state_root: Path,
-              recovery: Path, build_id: str, error: str, log_path: Path) -> None:
+              recovery: Path, build_id: str, error: str, log_path: Path,
+              legacy: dict | None = None) -> None:
+    errors = [error]
+    result = "ROLLBACK"
+    stop_ok = True
     try:
         stop_server(env, state_root, env["server_log"], timeout=10)
-    except Exception:
-        pass
-    try:
-        restore_artifacts(recovery, env)
-    except Exception as restore_exc:
-        error += "; artifact restore failed: %s" % restore_exc
-    meta = read_json(recovery / "meta.json") or {}
-    db = env["data"] / "store.sqlite"
-    try:
-        if meta.get("refreshRequested") and refresh_env is not None:
-            backup = Path(meta.get("refreshBackup") or "")
-            if backup.is_dir():
-                # The refresh backup holds the full pre-refresh staging data tree.
-                _restore_staging_data(env, backup)
-        else:
-            restore_sqlite(recovery / "store.sqlite", db,
-                           bool(meta.get("dbExisted")))
-    except Exception as restore_exc:
-        error += "; data restore failed: %s" % restore_exc
-    if env["binary"].is_file():
+    except Exception as stop_exc:
+        stop_ok = False
+        results_error = "target could not be stopped; no restore attempted: %s" % stop_exc
+        errors.append(results_error)
+        result = "ROLLBACK_INCOMPLETE"
+
+    if stop_ok:
+        artifacts_ok = True
         try:
-            start_server(env, state_root, env["server_log"], "",
-                         expect_version=False, timeout=20)
-        except Exception as restart_exc:
-            error += "; previous server restart failed: %s" % restart_exc
-    write_deploy_state(state_root, env["name"], result="ROLLBACK",
-                       buildId=build_id, error=error, recovery=str(recovery))
-    append_deploy_log(env, "%s env=%s build=%s result=ROLLBACK error=%s"
-                      % (now_stamp(), env["name"], build_id,
-                         error.replace("\n", " ")[:300]))
+            restore_artifacts(recovery, env)
+            if legacy:
+                # The adopted process served different dist/worker paths than
+                # the new defaults; restore exactly those captured paths.
+                restore_legacy_artifacts(recovery, env, legacy)
+        except Exception as restore_exc:
+            artifacts_ok = False
+            errors.append("artifact restore failed: %s" % restore_exc)
+            result = "ROLLBACK_INCOMPLETE"
+
+        data_ok = artifacts_ok
+        if artifacts_ok:
+            meta = read_json(recovery / "meta.json")
+            db = env["data"] / "store.sqlite"
+            try:
+                if not isinstance(meta, dict) or "dbExisted" not in meta:
+                    raise DeployError(
+                        "recovery metadata missing or invalid at %s; existing "
+                        "database preserved" % (recovery / "meta.json"))
+                if meta.get("refreshRequested") and refresh_env is not None:
+                    backup = Path(meta.get("refreshBackup") or "")
+                    if not (backup / "meta.json").is_file():
+                        raise DeployError("refresh backup incomplete at %s" % backup)
+                    # The refresh backup holds the full pre-refresh staging data tree.
+                    _restore_staging_data(env, backup)
+                else:
+                    # Only trusted metadata may assert that no database existed.
+                    restore_sqlite(recovery / "store.sqlite", db,
+                                   bool(meta["dbExisted"]))
+            except Exception as restore_exc:
+                data_ok = False
+                errors.append("data restore failed: %s" % restore_exc)
+                result = "ROLLBACK_INCOMPLETE"
+
+        if artifacts_ok and data_ok and env["binary"].is_file():
+            try:
+                if legacy:
+                    # The captured old binary does not speak the new runtime
+                    # interface; restart its exact original argv instead.
+                    restart_legacy_server(legacy, env, state_root,
+                                          env["server_log"], timeout=20)
+                else:
+                    start_server(env, state_root, env["server_log"], "",
+                                 expect_version=False, timeout=20)
+            except Exception as restart_exc:
+                errors.append("previous server restart failed: %s" % restart_exc)
+                result = "ROLLBACK_INCOMPLETE"
+
+    message = "; ".join(errors)
+    write_deploy_state(state_root, env["name"], result=result,
+                       buildId=build_id, error=message, recovery=str(recovery))
+    append_deploy_log(env, "%s env=%s build=%s result=%s error=%s"
+                      % (now_stamp(), env["name"], build_id, result,
+                         message.replace("\n", " ")[:300]))
+    print("sift-deploy: %s: %s" % (result, message), file=sys.stderr)
+
 
 
 def refresh_main(script_path: str, argv: list[str] | None = None) -> int:
@@ -1130,17 +1793,23 @@ def refresh_main(script_path: str, argv: list[str] | None = None) -> int:
     if args.source:
         prod = dict(prod)
         prod["data"] = resolve_path(args.source, main_repo)
+    validate_refresh_source(prod, staging, shared)
+    preview_conflict(staging, main_repo, cfg)
     state_root = shared["state_root"]
+    acquire_environment_lock(state_root, staging["name"])
     log_path = state_root / "staging" / "refresh.log"
     try:
-        backup = refresh_staging_data(prod, staging, shared, log_path, state_root,
-                                      restart=not args.no_restart)
+        backup = refresh_staging_data(
+            prod, staging, shared, log_path, state_root,
+            restart=not args.no_restart, cfg=cfg, main_repo=main_repo)
         print("sift-data-refresh: staging data refreshed from %s" % prod["data"])
         print("sift-data-refresh: previous staging data preserved at %s" % backup)
         return 0
     except Exception as exc:
-        write_deploy_state(state_root, "staging", result="REFRESH_FAILED",
-                           error=str(exc))
+        existing = read_json(deploy_state_path(state_root, "staging")) or {}
+        if existing.get("result") != "REFRESH_INCOMPLETE":
+            write_deploy_state(state_root, "staging", result="REFRESH_FAILED",
+                               error=str(exc))
         print("sift-data-refresh: ERROR: %s" % exc, file=sys.stderr)
         return 1
 

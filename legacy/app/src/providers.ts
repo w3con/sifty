@@ -102,7 +102,7 @@ export async function assess(store: Store, id: number, override?: string, infere
   const config = providers(), name = override ?? config.stages.assessment, p = config.providers[name];
   c=contextForRole(bindFeedback(c),job.id,id=>store.resolveId(id));
   if (!p) throw new Error(`Unknown provider ${name}`);
-  const prompt = readFileSync(rootPath('prompts/assessment.md'),'utf8');
+  const prompt = readFileSync(rootPath('config/prompts/assessment.md'),'utf8');
   try {
     const jobData = { title:job.title,company:job.company,description:job.description,descriptionStatus:job.descriptionStatus,location:job.location };
     const overhead = prompt.length + JSON.stringify(JSON_SCHEMA).length + JSON.stringify(jobData).length + 1200;

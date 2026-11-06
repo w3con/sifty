@@ -7,7 +7,7 @@ export async function generateApplication(store:Store,id:number,provider='openai
  const base=applicationDraft(store,id),job=store.get(id),p=providers().providers[provider];if(!p)throw Error('Unknown preparation provider');
  let context=store.context();if(!context)throw Error('Build candidate context before preparing answers');context=bindAnswerMemories(store,job.id,contextForRole(bindFeedback(context),job.id,n=>store.resolveId(n)));
   const fields=base.fields.filter(f=>!f.removed&&f.labelStatus!=='uncertain'&&f.type!=='file'&&(fieldId?f.id===fieldId:!f.edited&&!(Array.isArray(f.value)?f.value.length:f.value.trim())));if(!fields.length)throw Error('No unanswered readable questions; inspect, add questions or regenerate an individual answer. Controls with uncertain question wording require source review.');
- const promptText=readFileSync(rootPath('prompts/application-preparation.md'),'utf8'),questions=JSON.stringify(fields.map(({value,evidence,unknowns,edited,revision,...q})=>q));
+  const promptText=readFileSync(rootPath('config/prompts/application-preparation.md'),'utf8'),questions=JSON.stringify(fields.map(({value,evidence,unknowns,edited,revision,...q})=>q));
  const schema=z.object({language:z.string(),selectedFile:z.enum(['cv.pdf','profile.pdf']),answers:z.array(z.object({id:z.string(),value:z.union([z.string(),z.array(z.string())]),evidenceIds:z.array(z.string()),unknowns:z.array(z.string())}).strict())}).strict();
  const overhead=promptText.length+questions.length+job.description.length+JSON.stringify(z.toJSONSchema(schema)).length+3000;
  function request(budget:number){

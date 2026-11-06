@@ -9,6 +9,29 @@ estimate: 23
 
 ## Statement of work
 
+**Final owner acceptance/release approval — 2026-11-06 23:13 CET:** owner said «принимай и закрывай» after 6.2/6.3 delivery and staging handback. This authorizes final prototype-mode acceptance, the explicit first legacy-to-isolated production transition, and normal checked card completion. Derive the exact approved source from the already accepted implementation plus final records; no new feature/code scope is included. Coordinator accepts; the executor performs all builds, preservation, Git and deployment mechanics. Final stage complexity is 3; AI preparation/preservation 2–4 minutes, acceptance preparation 3–6, release 3–6, verification 1–3, overall approximately 10–20 minutes, with stop boundary 23:35 CET. No new paid service; monetary usage cost unknown. Source checkpoint history and owner pending work must remain recoverable.
+
+**Latest acceptance/renewal:** 6.2 is technically accepted through `a89625a`; twenty original steps are accepted. Owner renewed «доделывай 6.2, 6.3 (через субагентов)» after the pause. Remaining estimate communicated at 22:26 CET is 25–45 minutes AI, with stop boundary 23:11 CET. Assign only 6.3 next, preserving the existing prototype/no-suites policy and explicit owner approval for any live production release. The implementation must support the actual old-layout production process, not only a newly managed scratch server.
+
+**Approved continuation — 2026-11-06 21:00 CET:** owner requested «ну давай уж тогда и 6.2 и 6.3 - это вроде закроет большой кусок функциональности», approved adding one-card squash integration («ок, можешь сделать, как дойдут руки») and acknowledged continuation. Deliver independent environment artifacts with deliberate staging data refresh, then checked owner-approved release and final completion. Demonstrate the normal command path and one controlled failed release/restore on temporary data/ports. Apply the accepted command implementation to this project and leave the currently running staging available for owner review; no live production release is authorized by implementation approval. General path centralization, existing-history rewriting and the cancelled enforcement plugin are excluded.
+
+### Continuation estimate and steps
+
+**Complexity:** 8: process ownership, filesystem artifacts, SQLite recovery and Git integration are coupled. Keep them in this existing card as one release outcome, but assign/review 6.2 and 6.3 independently. **AI preparation:** 5–10 minutes. **AI implementation:** 25–40 minutes, including executor context and expected corrections. **AI acceptance:** 10–20 minutes. **Total:** 40–70 minutes, excluding owner waiting; stop at the upper bound. No new paid service is required; monetary usage cost is unknown.
+
+| Step | Result | Why it is needed and how it will be used | AI time |
+|---|---|---|---|
+| Review saved implementation/current runtime | One coherent continuation and preserved owner edits | The executor builds on current main/staging rather than an obsolete partial snapshot | 5–10 min |
+| Complete 6.2 | Separate environment artifacts, explicit data refresh and recovery | Staging updates preserve production and current staging input; use the actual deploy command on isolated data | 15–25 min |
+| Complete 6.3 | Checked card-granularity squash/release/completion | The owner approves staging once; the normal finish path deploys that revision before successful closure | 10–15 min |
+| Accept and hand back | Observe success and one failure/restore; current instructions/site | Establish working use of the commands and preserve recovery before owner release | 10–20 min |
+
+These estimates partition the same total; do not add phase estimates again. Checks are builds, code review and a bounded scratch command demonstration, not preserved automated suites or new test infrastructure. Work started at 21:00 CET; stop boundary is 22:10 CET unless the owner revises scope/cost.
+
+**Latest scope/result:** the owner authorized 6.1 only after the relocation and separately requested moving root prompts into config. Continuous preview is now running on 8081 from the main checkout with observed automatic uncommitted frontend rebuild and live HTML update; 6.1 is technically accepted under the prototype build/code/site-review policy. Nineteen original steps are accepted. The new preview is handed back for owner review; remaining environment/release automation and full verification are deferred. Do not treat the original 23-step card as fully complete.
+
+**Current delivery status (supersedes old execution directions, not the original checklist):** the owner authorized applying the prepared relocation to the main checkout, which is now done. Eighteen steps through 5.3 are technically accepted. Step 6.1 is checked by its executor but remains unaccepted and has not been activated on live staging. Step 6.2 (complete environment isolation/explicit data refresh) and 6.3 (automatic checked merge/release/completion) remain incomplete and deferred. Step 7.1's comprehensive workflow/recovery verification was not performed; automated suites were later disabled by owner instruction. Step 7.2 is partly delivered: the main checkout now has the new structure and current records, but the new preview has not been handed back for owner review. No `done.md` is written and the original 23-step plan is not represented as fully complete.
+
 Restructure the repository around `frontend/`, `backend/`, `mcp/`, `legacy/app/`, `docs/`, `work/` and `tools/`; preserve unfinished work and runtime data. Repair acceptance and publication checks, simplify task tracking, establish requirement-to-code navigation and implement the agreed automatic staging / owner-approved production loop. The coordinator plans and reviews; coding runs in visible subagents on `opencode-go/deepseek-v4.1-flash` through the owner's subscription. Verify actual executor identity and results; do not silently substitute another provider/model. New bug reports and ideas are recorded without changing the active task. The exclusions and source conversation are in `description.md`.
 
 ## Target structure
@@ -76,15 +99,17 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 *Gate: uncommitted development changes appear on 8081; 8080 changes only after owner acceptance of that task.*
 
 - [x] 6.1 — Watch the active task's sources: refresh frontend and rebuild/restart backend/workers automatically with visible failure status.
-- [ ] 6.2 — Isolate production binary, bundle, workers and data; refresh staging data explicitly rather than on every code update.
-- [ ] 6.3 — Wire approved completion to checked merge and production deployment; retain recovery state until deployment succeeds.
+- [x] 6.2 — Isolate production binary, bundle, workers and data; refresh staging data explicitly rather than on every code update.
+- [x] 6.3 — Wire approved completion to a checked one-card squash merge and production deployment; retain recovery until success.
+
+The owner approved card-granularity squash integration: intermediate commits remain recoverable on work branches, and each completed card contributes one meaningful main commit. Implement this with 6.3's release path while preserving readiness/revision/data safeguards. Existing-history consolidation remains the separately recorded history-review work; this approval does not rewrite it.
 
 ### Phase 7 — Verify and hand back
 
-*Gate: the complete workflow passes in a fresh clone and scratch environments, and staging is ready for owner review.*
+*Gate under the owner's prototype policy: the accepted source builds, recorded scratch recovery evidence is reviewed, staging is owner-accepted, and the actual release is healthy. Preserved automated suites stay skipped; they are not represented as passed.*
 
-- [ ] 7.1 — Run application and workflow checks, including hook setup, continuous preview, failed-release recovery and clean-clone setup.
-- [ ] 7.2 — Update project instructions and this card's new location; hand back staging for approval before merging/releasing.
+- [x] 7.1 — Complete prototype acceptance using builds, recorded workflow/recovery evidence and live review; keep automated suites skipped.
+- [x] 7.2 — Finalize current instructions and records; record owner staging acceptance and prepare the pinned approved release.
 
 ## Acceptance criteria
 
@@ -100,7 +125,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 - Building the application and running the core task commands/checks from a public clone do not require access to another private repository or the owner's global agent configuration.
 - Real secret patterns are checked in every tracked area without printing secret values. Task identifiers and development commands are legal in work records, tooling, agent instructions and commit references. Formatting policy is explicit per area; `work/` may use Russian.
 - Failed checks, dirty worktrees, open steps, unresolved blockers, changed tested revisions or a wrong target branch prevent finishing. No force option bypasses data-preservation checks, and rejection does not destroy recoverable work.
-- GitHub discovers root workflows; acceptance covers changes to build/deploy scripts as well as application source. Functional tests exercise lifecycle failures rather than only syntax and command help.
+- GitHub discovers the root manual-only workflow; acceptance covers app/build changes with builds and the recorded bounded command/recovery demonstrations. Automated suites are paused by owner instruction and are never reported passed when skipped.
 - Staging on 8081 follows the active task's working sources automatically, including uncommitted changes. Failed rebuilds are visible; staging identifies the revision/working state it actually serves. Only one task owns the shared preview at a time.
 - Production on 8080 uses isolated artifacts, including workers. Code refreshes do not overwrite staging edits or user inputs. An explicitly requested staging-data refresh uses a consistent snapshot.
 - Owner approval is the single release decision. Pre-approval review uses staging; the approved revision is checked and merged to main, production is verified, and only then is the task marked done. Release failure preserves a usable production version and task recovery state; closing this foundational task follows the same approval rule.

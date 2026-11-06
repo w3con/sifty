@@ -383,3 +383,86 @@ Exit: 0
 ```
 
 ```
+
+## 2026-11-06 — 1.4 full lifecycle tests (failure, moved revisions, dirty copies, rejection, finish)
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.151s
+
+OK
+```
+
+## 2026-11-06 — 1.4 harness self-test with lifecycle suite
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.4 plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 1.4 whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Stage handback — steps 1.3–1.4 complete; stop before 2.1.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step 1.3 commit: `f9fc222`; the 1.4 commit is the checkpoint containing this entry.
+- Completed: 1.3 — shared acceptance/finish readiness (base branch, clean source and target including untracked, all steps closed, attention resolved, no terminal outcome, captured source/target SHA and branch), exact-SHA scratch checks, pre-existing scratch preservation, non-force cleanup, rejection that preserves work, `--force` limited to skipping the acceptance command, `sift-accept` always runs the harness self-test and treats build/deploy/config changes as application-touching with a fatal `npm ci`, and the `work-note` single-trailing-newline fix. 1.4 — 30 isolated lifecycle tests covering failed checks, moved source/target revisions, changed target branch, open steps/attention, dirty tracked/untracked source and target, `--force` refusal, pre-existing scratch, dirty-during-acceptance, rejection preservation and a successful fixed-revision finish; integrated into `bin/work-test`.
+- Open: 21 of 23 steps (2.1 onward). They are context only; none is assigned to this session.
+- Checks: `python3 -m unittest discover -s bin/tests -p 'test_*.py'` — 30 tests, OK; `python3 bin/work-test` — PASS; `python3 bin/work-plan OPS-4` — fit, 23 steps; `git diff --check` — exit 0.
+- Technical decisions: `WORK_BASE_BRANCH` (default `main`) is the target; readiness and snapshot helpers live in `_work_lib.py`; acceptance scratch is detached at the captured source SHA and removed non-force; finish merges the exact tested SHA, re-checks source/target before merge, and writes `done.md` only after the merge; rejection commits only `rejected.md` and leaves branch/worktree/dirty files intact; `sift-accept` writes the frontend build to a temporary `BUILD_OUTDIR` so the scratch stays removable.
+- Failures and corrections: the first successful-finish test asserted an un-bolded `Tested revision:` string; corrected to the actual markdown. The first `sift-accept` fixtures wrote byte-identical content for build/config changes, so no commit was created; the fixtures now change the content. No product behavior failed.
+- Findings for coordinator review: tracked `sifty/dist-staging` and untracked `sifty/dist` remain (phase 3.3 ignore/untrack work); `sift-accept` runs the Go/frontend suites for `app/` changes but not the legacy `app/` test suite (existing behavior, not changed here); if non-force cleanup fails after a successful merge, `work-finish` reports a warning and exits 0 with `done.md` written and the worktree/branch preserved; `work-note` preserves check output verbatim, so trailing spaces inside a check's own output can still be reported by `git diff --check`.
+- Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 2.1. Do not run `work-accept` or `work-finish` for OPS-4: 21 steps remain open. No merge, push, deploy or finish was run on the real repository.

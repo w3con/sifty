@@ -17,7 +17,46 @@ EXIT_REFUSED = 2          # a refusal fired (plan not fit, attention open, ...)
 EXIT_USAGE = 64           # bad arguments
 EXIT_HANDED_TO_SESSION = 97  # the prompt was printed for a live session to run
 
-TERMINAL_FILES = ("done.md", "rejected.md", "cancelled.md", "question.md")
+# A card has four normal states. Rejection and cancellation are archived
+# unsuccessful outcomes, not successful completion. question.md is a blocker,
+# not a terminal outcome.
+NORMAL_STATES = ("backlog", "in progress", "review", "done")
+OUTCOME_FILES = {
+    "done.md": "done",
+    "rejected.md": "rejected",
+    "cancelled.md": "cancelled",
+}
+TERMINAL_FILES = tuple(OUTCOME_FILES)
+BLOCKER_FILE = "question.md"
+STATUS_LINE_RE = re.compile(r"^\s*\*\*Status:\*\*\s*(.*)$", re.IGNORECASE)
+BLOCKER_LINE_RE = re.compile(r"^\s*\*\*Blocker:\*\*\s*(.*)$", re.IGNORECASE)
+KIND_LINE_RE = re.compile(r"^\s*\*\*Kind:\*\*\s*([A-Za-z]+)\s*$",
+                          re.IGNORECASE)
+HEADER_LINE_RE = re.compile(r"^\s*\*\*[^*]+:\*\*")
+
+# Legacy prose statuses map onto the four normal states, except `descoped`,
+# which is an archived cancellation. Anything else is reported, never guessed.
+STATE_ALIASES = {
+    "backlog": "backlog",
+    "founded": "backlog",
+    "new": "backlog",
+    "idea": "backlog",
+    "bug": "backlog",
+    "in progress": "in progress",
+    "in-progress": "in progress",
+    "started": "in progress",
+    "wip": "in progress",
+    "review": "review",
+    "in review": "review",
+    "done": "done",
+    "complete": "done",
+    "completed": "done",
+    "rejected": "rejected",
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+    "descoped": "cancelled",
+    "abandoned": "cancelled",
+}
 
 
 # ── Process / repo helpers ──────────────────────────────────────────────────
@@ -367,25 +406,58 @@ ID_RE = re.compile(r"^[A-Z0-9]+-\d+$")
 CARD_DIR_RE = re.compile(r"^([A-Z0-9]+-\d+)_[a-z0-9-]+$")
 
 
-def find_card_dir(card_id, root=None):
-    """Return the absolute card folder for an ID, or None.
+CARD_FILES = ("description.md", "plan.md", "log.md", "comments.md",
+              "attention.md", "done.md", "rejected.md", "cancelled.md",
+              "question.md")
 
-    `root` defaults to the current repository. Pass a worktree root to read the
-    card state that lives on the work branch rather than the base checkout."""
+
+def is_card_dir(path):
+    """True when a folder carries any card file (an empty leftover is not)."""
+    return any(os.path.exists(os.path.join(path, name)) for name in CARD_FILES)
+
+
+def find_card_dirs(card_id, root=None):
+    """Return every canonical card folder for an ID.
+
+    Canonical `work/tasks/` wins over the pre-relocation `ai/tasks/` fallback.
+    Two folders with the same ID in the same location are ambiguous and are a
+    refusal, never a silent first match. Folders without description.md are
+    not cards (for example an empty leftover directory)."""
     root = root or repo_root()
     for tasks in (os.path.join(root, "work", "tasks"),
                   os.path.join(root, "ai", "tasks")):
         if not os.path.isdir(tasks):
             continue
+        found = []
         for epic in sorted(os.listdir(tasks)):
             epic_path = os.path.join(tasks, epic)
             if not os.path.isdir(epic_path):
                 continue
             for entry in sorted(os.listdir(epic_path)):
                 m = CARD_DIR_RE.match(entry)
-                if m and m.group(1) == card_id:
-                    return os.path.join(epic_path, entry)
-    return None
+                if not m or m.group(1) != card_id:
+                    continue
+                path = os.path.join(epic_path, entry)
+                if is_card_dir(path):
+                    found.append(path)
+        if found:
+            if len(found) > 1:
+                refuse([
+                    "duplicate card ID %r: %s" % (
+                        card_id,
+                        ", ".join(os.path.relpath(p, root) for p in found)),
+                ])
+            return found
+    return []
+
+
+def find_card_dir(card_id, root=None):
+    """Return the absolute card folder for an ID, or None.
+
+    `root` defaults to the current repository. Pass a worktree root to read the
+    card state that lives on the work branch rather than the base checkout."""
+    found = find_card_dirs(card_id, root=root)
+    return found[0] if found else None
 
 
 def require_card_dir(card_id):
@@ -394,6 +466,49 @@ def require_card_dir(card_id):
         die("no card folder found for id %r under work/tasks/ "
             "(legacy ai/tasks/ is also checked)" % card_id)
     return d
+
+
+def iter_cards(root=None):
+    """Every canonical card under `work/tasks/`, or the legacy fallback."""
+    root = root or repo_root()
+    tasks = os.path.join(root, "work", "tasks")
+    if not os.path.isdir(tasks):
+        tasks = os.path.join(root, "ai", "tasks")
+    cards = []
+    if not os.path.isdir(tasks):
+        return cards
+    for epic in sorted(os.listdir(tasks)):
+        epic_path = os.path.join(tasks, epic)
+        if not os.path.isdir(epic_path):
+            continue
+        for entry in sorted(os.listdir(epic_path)):
+            m = CARD_DIR_RE.match(entry)
+            if not m:
+                continue
+            path = os.path.join(epic_path, entry)
+            if not is_card_dir(path):
+                continue
+            cards.append({
+                "id": m.group(1),
+                "path": path,
+                "epic": epic,
+                "slug": entry.split("_", 1)[1] if "_" in entry else "",
+            })
+    return cards
+
+
+def duplicate_card_ids(root=None):
+    """Mapping of duplicated IDs to their card paths (empty when unique)."""
+    by_id = {}
+    for card in iter_cards(root=root):
+        by_id.setdefault(card["id"], []).append(card["path"])
+    return {card_id: paths for card_id, paths in by_id.items()
+            if len(paths) > 1}
+
+
+def card_sort_key(card):
+    m = re.match(r"^([A-Z0-9]+)-(\d+)$", card["id"])
+    return (m.group(1), int(m.group(2))) if m else (card["id"], 0)
 
 
 def is_short_card(card_dir):
@@ -504,6 +619,361 @@ def read_estimate(card_dir):
     return None
 
 
+# ── Task state inference ────────────────────────────────────────────────────
+def parse_state_token(value):
+    """Map a legacy or canonical Status value to a state, or None if unknown."""
+    raw = (value or "").strip()
+    if not raw:
+        return None
+    # The leading words before a separator carry the state; the rest is legacy
+    # prose such as "backlog; preparation not started" or "founded (deferred)".
+    m = re.match(r"^([A-Za-z][A-Za-z -]*?)(?=\s*[;(—–]|\s*$)", raw)
+    token = (m.group(1) if m else raw).strip().lower()
+    token = re.sub(r"\s+", " ", token)
+    return STATE_ALIASES.get(token)
+
+
+def card_title(card_dir):
+    for line in read_lines(os.path.join(card_dir, "description.md")):
+        if line.startswith("# "):
+            title = line[2:].strip()
+            m = re.match(r"^[A-Z0-9]+-\d+\s*[—-]\s*(.*)$", title)
+            return m.group(1).strip() if m else title
+    return os.path.basename(card_dir)
+
+
+def question_reason(card_dir):
+    """The first substantive line of question.md, or None when absent."""
+    path = os.path.join(card_dir, BLOCKER_FILE)
+    if not os.path.exists(path):
+        return None
+    for line in read_lines(path):
+        text = line.strip()
+        if text and not text.startswith("#") and not text.startswith("- [x]"):
+            return text
+    return "unanswered question in question.md"
+
+
+def read_state_metadata(card_dir):
+    statuses, blockers, kinds = [], [], []
+    for line in read_lines(os.path.join(card_dir, "description.md")):
+        m = STATUS_LINE_RE.match(line)
+        if m:
+            statuses.append(m.group(1).strip())
+        m = BLOCKER_LINE_RE.match(line)
+        if m:
+            blockers.append(m.group(1).strip())
+        m = KIND_LINE_RE.match(line)
+        if m:
+            kinds.append(m.group(1).lower())
+    return {"statuses": statuses, "blockers": blockers, "kinds": kinds}
+
+
+def card_state(card_dir):
+    """Infer one card's state, blockers and next step.
+
+    Precedence, documented in bin/templates/convention.md:
+      1. An outcome file is authoritative: done.md, rejected.md or cancelled.md.
+      2. question.md, **Blocker:** and open attention items block a nonterminal
+         card without changing its state.
+      3. description.md's leading **Status:** value, with legacy aliases.
+      4. No metadata means backlog.
+    Contradictions (several outcomes, an outcome plus a blocker, a status
+    naming an outcome without its evidence) are returned in `errors` and are
+    refused by the commands rather than guessed around.
+    """
+    info = {
+        "card_dir": card_dir,
+        "errors": [],
+        "warnings": [],
+        "blockers": [],
+        "attention": open_attention(card_dir),
+        "kind": "task",
+        "state": "backlog",
+        "state_source": "legacy default (no outcome file or **Status:**)",
+        "status_value": None,
+        "next_step": None,
+        "steps_open": 0,
+        "steps_closed": 0,
+        "terminal": False,
+        "successful": False,
+    }
+    meta = read_state_metadata(card_dir)
+    if len(meta["statuses"]) > 1:
+        info["errors"].append("multiple **Status:** lines in description.md")
+    if len(meta["blockers"]) > 1:
+        info["errors"].append("multiple **Blocker:** lines in description.md")
+    if len(meta["kinds"]) > 1:
+        info["errors"].append("multiple **Kind:** lines in description.md")
+
+    explicit = None
+    if meta["statuses"]:
+        info["status_value"] = meta["statuses"][0]
+        explicit = parse_state_token(info["status_value"])
+        if explicit is None:
+            info["errors"].append(
+                "unknown **Status:** value %r (expected backlog, in progress, "
+                "review, done, rejected or cancelled)"
+                % info["status_value"])
+
+    if meta["kinds"]:
+        kind = meta["kinds"][0]
+        if kind in ("bug", "idea", "task"):
+            info["kind"] = kind
+        else:
+            info["errors"].append(
+                "unknown **Kind:** value %r (expected bug, idea or task)"
+                % kind)
+
+    outcomes = [name for name in TERMINAL_FILES
+                if os.path.exists(os.path.join(card_dir, name))]
+    if len(outcomes) > 1:
+        info["errors"].append(
+            "multiple terminal outcomes: %s" % ", ".join(outcomes))
+    outcome = OUTCOME_FILES[outcomes[0]] if len(outcomes) == 1 else None
+    if outcome:
+        info["state"] = outcome
+        info["state_source"] = outcomes[0]
+        info["terminal"] = True
+        info["successful"] = outcome == "done"
+        if explicit in ("done", "rejected", "cancelled") and explicit != outcome:
+            info["errors"].append(
+                "**Status:** %r contradicts %s"
+                % (info["status_value"], outcomes[0]))
+    elif explicit:
+        info["state"] = explicit
+        info["state_source"] = "**Status:**"
+        if explicit in ("done", "rejected", "cancelled"):
+            expected = {
+                "done": "done.md",
+                "rejected": "rejected.md",
+                "cancelled": "cancelled.md",
+            }[explicit]
+            info["errors"].append(
+                "**Status:** %r requires %s; no terminal outcome file found"
+                % (info["status_value"], expected))
+
+    for reason in meta["blockers"]:
+        if reason:
+            info["blockers"].append("**Blocker:** " + reason)
+    unanswered = question_reason(card_dir)
+    if unanswered:
+        info["blockers"].append("question.md: " + unanswered)
+    if info["terminal"] and info["blockers"]:
+        info["errors"].append(
+            "terminal outcome %s cannot carry a blocker: %s"
+            % (info["state"], "; ".join(info["blockers"])))
+    if info["terminal"] and info["attention"]:
+        info["errors"].append(
+            "terminal outcome %s still has open attention" % info["state"])
+
+    if os.path.exists(steps_file(card_dir)):
+        steps = all_steps(card_dir)
+        info["steps_open"] = sum(1 for status, _ in steps if status == "open")
+        info["steps_closed"] = sum(1 for status, _ in steps
+                                   if status == "closed")
+        if not info["terminal"]:
+            opens = [text for status, text in steps if status == "open"]
+            info["next_step"] = opens[0] if opens else None
+    return info
+
+
+def state_transition(card_dir, requested):
+    """Return reasons a state transition is refused. Empty = allowed."""
+    info = card_state(card_dir)
+    problems = list(info["errors"])
+    if requested == "done":
+        problems.append("done is written only by work-finish after its checks; "
+                        "run bin/work-finish <id>")
+        return problems
+    if requested in ("rejected", "cancelled"):
+        problems.append("%s is an archived outcome; use bin/work-finish <id> "
+                        "--reject <reason> or bin/work-cancel <id> --reason "
+                        "<reason>" % requested)
+        return problems
+    if requested not in NORMAL_STATES:
+        problems.append("unknown state %r" % requested)
+    if info["terminal"]:
+        problems.append("card already has terminal outcome %s; archived "
+                        "evidence is not reopened" % info["state"])
+    return problems
+
+
+def rewrite_status_metadata(card_dir, state=None, block=None, unblock=False):
+    """Update explicit status/blocker metadata in description.md.
+
+    Only the metadata lines change; all other prose is preserved. Returns True
+    when the file changed."""
+    path = os.path.join(card_dir, "description.md")
+    lines = read_lines(path)
+    status_idxs = [i for i, line in enumerate(lines) if STATUS_LINE_RE.match(line)]
+    blocker_idxs = [i for i, line in enumerate(lines) if BLOCKER_LINE_RE.match(line)]
+    if len(status_idxs) > 1 or len(blocker_idxs) > 1:
+        refuse(["cannot rewrite contradictory metadata in %s"
+                % os.path.relpath(path, repo_root())])
+    changed = False
+
+    if state is not None:
+        new_line = "**Status:** %s" % state
+        if status_idxs:
+            idx = status_idxs[0]
+            if lines[idx] != new_line:
+                lines[idx] = new_line
+                changed = True
+        else:
+            header = [i for i, line in enumerate(lines[:20])
+                      if HEADER_LINE_RE.match(line)]
+            idx = header[-1] if header else 0
+            lines.insert(idx + 1, new_line)
+            changed = True
+
+    if block is not None:
+        new_line = "**Blocker:** %s" % block
+        if blocker_idxs:
+            idx = blocker_idxs[0]
+            if lines[idx] != new_line:
+                lines[idx] = new_line
+                changed = True
+        else:
+            status_idxs = [i for i, line in enumerate(lines)
+                           if STATUS_LINE_RE.match(line)]
+            if status_idxs:
+                idx = status_idxs[0]
+            else:
+                header = [i for i, line in enumerate(lines[:20])
+                          if HEADER_LINE_RE.match(line)]
+                idx = header[-1] if header else 0
+            lines.insert(idx + 1, new_line)
+            changed = True
+
+    if unblock and blocker_idxs:
+        for idx in sorted(blocker_idxs, reverse=True):
+            del lines[idx]
+        changed = True
+
+    if changed:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write("\n".join(lines).rstrip("\n") + "\n")
+    return changed
+
+
+def commit_paths(paths, message, cwd=None):
+    """Commit only `paths`, preserving unrelated staged and unstaged work."""
+    cwd = cwd or repo_root()
+    rels = [os.path.relpath(path, cwd) for path in paths]
+    add = run(["git", "add", "--"] + rels, cwd=cwd)
+    if add.returncode != 0:
+        die("git add failed: %s" % (add.stderr or add.stdout).strip())
+    has_head = run(["git", "rev-parse", "--verify", "--quiet", "HEAD"],
+                   cwd=cwd).returncode == 0
+    if has_head:
+        cp = run(["git", "commit", "-q", "--only", "-m", message, "--"] + rels,
+                 cwd=cwd)
+    else:
+        # A repository without HEAD cannot take a partial commit; this is the
+        # initial card in a fresh clone.
+        cp = run(["git", "commit", "-q", "-m", message], cwd=cwd)
+    if cp.returncode != 0:
+        die("git commit failed: %s" % (cp.stderr or cp.stdout).strip())
+
+
+def fenced_block(text):
+    """Fence `text` without changing its bytes (choose a longer fence)."""
+    runs = [len(m) for m in re.findall(r"`+", text)] or [0]
+    fence = "`" * max(3, max(runs) + 1)
+    return "%stext\n%s\n%s" % (fence, text, fence)
+
+
+def words_in_card(card_dir, words):
+    """True when the exact owner wording already appears in the card."""
+    for name in ("description.md", "comments.md"):
+        path = os.path.join(card_dir, name)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as fh:
+                if words in fh.read():
+                    return True
+    return False
+
+
+def matching_cards_for_words(words, root=None):
+    return [card for card in iter_cards(root=root)
+            if words_in_card(card["path"], words)]
+
+
+# ── Worktree / base navigation ──────────────────────────────────────────────
+def base_checkout_root():
+    """The checkout that carries the base branch, or the current root."""
+    root = repo_root()
+    wt = find_worktree(base_branch(), cwd=root)
+    return wt or root
+
+
+def worktree_info(card_id, root=None):
+    """Describe the active work/<id> worktree and how it differs from base."""
+    root = root or repo_root()
+    branch = "work/%s" % card_id
+    wt = find_worktree(branch, cwd=root)
+    if not wt or not os.path.isdir(wt):
+        return None
+    base_root = base_checkout_root()
+    base = base_branch()
+    tip = git_rev(branch, cwd=root)
+    base_tip = git_rev(base, cwd=base_root)
+    ahead = behind = 0
+    if tip and base_tip:
+        cp = run(["git", "rev-list", "--left-right", "--count",
+                  "%s...%s" % (base_tip, tip)], cwd=root)
+        if cp.returncode == 0:
+            parts = cp.stdout.split()
+            if len(parts) == 2:
+                behind, ahead = int(parts[0]), int(parts[1])
+    dirty = git_status_lines(wt)
+    wt_card = find_card_dir(card_id, root=wt)
+    base_card = find_card_dir(card_id, root=base_root)
+    wt_state = card_state(wt_card) if wt_card else None
+    base_state = card_state(base_card) if base_card else None
+    state_differs = bool(wt_state and base_state
+                         and wt_state["state"] != base_state["state"])
+    differs = (tip != base_tip) or bool(dirty) or state_differs
+    return {
+        "path": wt,
+        "display_path": os.path.relpath(wt, base_root),
+        "branch": branch,
+        "tip": tip,
+        "base": base,
+        "base_tip": base_tip,
+        "ahead": ahead,
+        "behind": behind,
+        "dirty": dirty,
+        "wt_state": wt_state,
+        "base_state": base_state,
+        "state_differs": state_differs,
+        "differs": differs,
+    }
+
+
+def worktree_note(info):
+    if not info:
+        return None
+    short_tip = (info["tip"] or "?")[:7]
+    parts = ["worktree %s @ %s" % (info["display_path"], short_tip)]
+    if info["ahead"] or info["behind"]:
+        parts.append("%d ahead / %d behind %s"
+                     % (info["ahead"], info["behind"], info["base"]))
+    if info["dirty"]:
+        parts.append("dirty working copy")
+    if info["state_differs"]:
+        parts.append("worktree state %s (base %s)"
+                     % (info["wt_state"]["state"],
+                        info["base_state"]["state"]))
+    if info["differs"]:
+        base_short = (info["base_tip"] or "?")[:7]
+        parts.append("differs from base %s @ %s" % (info["base"], base_short))
+    else:
+        parts.append("at base")
+    return "; ".join(parts)
+
+
 # ── Plan fitness (shared by work-plan and work-handover) ─────────────────────
 def plan_fitness_problems(card_dir):
     """Return a list of reasons the plan is not fit to hand over. Empty = fit."""
@@ -606,6 +1076,10 @@ def readiness_problems(card_id, target_root=None):
             if attention:
                 problems.append("unresolved attention (%d open item(s))"
                                 % len(attention))
+            state = card_state(card_dir)
+            problems.extend(state["errors"])
+            for blocker in state["blockers"]:
+                problems.append("unresolved blocker: %s" % blocker)
             terminal = terminal_file_present(card_dir)
             target_card = find_card_dir(card_id, root=target_root)
             if not terminal and target_card and target_card != card_dir:

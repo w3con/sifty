@@ -2,7 +2,8 @@
 
 **Epic:** {{epic}}
 **Created:** {{date}}
-**Status:** founded
+**Status:** backlog
+**Kind:** task
 **Short card:** steps and acceptance criteria live here.
 
 ## Why this work exists

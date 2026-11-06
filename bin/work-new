@@ -50,24 +50,19 @@ def main():
             fh.write(w.render_template(template, id=card_id, slug=args.slug,
                                        epic=args.epic, title=title, date=date))
 
+    files = []
     if args.short:
-        write("description.md", "short-description.md")
-        write("comments.md", "comments.md")
+        files = ["description.md", "comments.md"]
     else:
-        write("description.md", "description.md")
-        write("plan.md", "plan.md")
-        write("log.md", "log.md")
-        write("comments.md", "comments.md")
-        write("attention.md", "attention.md")
+        files = ["description.md", "plan.md", "log.md", "comments.md",
+                 "attention.md"]
+    for name in files:
+        write(name, "short-description.md" if name == "description.md"
+              and args.short else name)
 
     rel = os.path.relpath(card_dir, w.repo_root())
-    add = w.run(["git", "add", "--", rel], cwd=w.repo_root())
-    if add.returncode != 0:
-        w.die("git add failed: %s" % add.stderr.strip())
-    commit = w.run(["git", "commit", "-q", "-m",
-                    "chore(work): found card %s" % card_id], cwd=w.repo_root())
-    if commit.returncode != 0:
-        w.die("git commit failed: %s" % (commit.stderr or commit.stdout).strip())
+    w.commit_paths([os.path.join(card_dir, name) for name in files],
+                   "chore(work): found card %s" % card_id, cwd=w.repo_root())
 
     sys.stdout.write("%s\n" % card_id)
     w.info("founded %s at %s" % (card_id, rel))

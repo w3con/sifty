@@ -19,10 +19,11 @@ BIN = os.path.join(ROOT, "bin")
 TEMPLATES = os.path.join(BIN, "templates")
 
 COMMANDS = ["work-new", "work-plan", "work-handover", "work-note",
-            "work-commit", "work-resume", "work-accept", "work-finish"]
+            "work-commit", "work-resume", "work-accept", "work-finish",
+            "work-status", "work-list", "work-capture", "work-cancel"]
 TEMPLATE_FILES = ["convention.md", "description.md", "short-description.md",
                   "plan.md", "log.md", "comments.md", "attention.md",
-                  "executor-brief.md"]
+                  "executor-brief.md", "capture.md"]
 
 failures = []
 

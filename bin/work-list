@@ -1,0 +1,106 @@
+#!/usr/bin/env python3
+"""work-list — derive task, backlog and bug views from canonical cards.
+
+Usage:
+    work-list [--state STATE] [--kind bug|idea|task] [--epic EPIC]
+
+The list is generated from `work/tasks/**/description.md` and the conditional
+outcome files. It is a view, not a second copy of the descriptions; sequence
+and epic outcomes stay curated in `work/ROADMAP.md`. Use `--state backlog` for
+the backlog and `--kind bug` for the bug view. The historical `work/backlog.md`
+is product material and is not used by this command.
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+STATE_ORDER = {
+    "backlog": 0,
+    "in progress": 1,
+    "review": 2,
+    "done": 3,
+    "rejected": 4,
+    "cancelled": 5,
+}
+STATE_ARG_ALIASES = {
+    "backlog": "backlog",
+    "in-progress": "in progress",
+    "in progress": "in progress",
+    "in_progress": "in progress",
+    "review": "review",
+    "done": "done",
+    "rejected": "rejected",
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+    "all": None,
+}
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-list")
+    ap.add_argument("--state", default=None,
+                    help="backlog, in progress, review, done, rejected, "
+                         "cancelled or all")
+    ap.add_argument("--kind", default=None, choices=("bug", "idea", "task"))
+    ap.add_argument("--epic", default=None)
+    args = ap.parse_args()
+
+    state_filter = None
+    if args.state is not None:
+        key = args.state.strip().lower()
+        if key not in STATE_ARG_ALIASES:
+            w.die("unknown --state %r" % args.state)
+        state_filter = STATE_ARG_ALIASES[key]
+
+    duplicates = w.duplicate_card_ids()
+    if duplicates:
+        w.refuse(["duplicate card ID(s): %s"
+                  % "; ".join("%s (%s)" % (card_id,
+                                           ", ".join(os.path.relpath(p, w.repo_root())
+                                                     for p in paths))
+                              for card_id, paths in sorted(duplicates.items()))])
+
+    rows = []
+    for card in w.iter_cards():
+        state = w.card_state(card["path"])
+        if state["errors"]:
+            w.refuse(["cannot read %s: %s"
+                      % (card["id"], "; ".join(state["errors"]))])
+        if state_filter is not None and state["state"] != state_filter:
+            continue
+        if args.kind is not None and state["kind"] != args.kind:
+            continue
+        if args.epic is not None and card["epic"] != args.epic:
+            continue
+        rows.append((card, state, w.worktree_info(card["id"])))
+
+    rows.sort(key=lambda row: (STATE_ORDER.get(row[1]["state"], 99),
+                               w.card_sort_key(row[0])))
+
+    print("Tasks — derived from canonical cards under work/tasks/")
+    if not rows:
+        print("(no matching cards)")
+    for card, state, wt_info in rows:
+        rel = os.path.relpath(card["path"], w.repo_root())
+        label = state["state"]
+        if state["terminal"] and not state["successful"]:
+            label += " (archived)"
+        print("%-8s  %-22s  %-5s  %-22s  %s"
+              % (card["id"], label, state["kind"], card["epic"], rel))
+        if state["blockers"]:
+            print("          blocker: %s" % "; ".join(state["blockers"]))
+        if state["next_step"]:
+            print("          next: %s" % state["next_step"])
+        elif not state["terminal"] and not state["steps_closed"]:
+            print("          next: none (not prepared)")
+        if wt_info and (wt_info["differs"] or wt_info["state_differs"]):
+            print("          %s" % w.worktree_note(wt_info))
+    print()
+    print("Sequence and epic outcomes: work/ROADMAP.md (curated; not duplicated here).")
+
+
+if __name__ == "__main__":
+    main()

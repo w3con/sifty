@@ -34,10 +34,35 @@ def main():
     if not card_dir:
         w.refuse(["card %s is not present in %s; the work branch is incomplete"
                   % (args.id, worktree)])
+    state = w.card_state(card_dir)
+    if state["errors"]:
+        w.refuse(["cannot resume %s: %s"
+                  % (args.id, "; ".join(state["errors"]))])
+    if state["terminal"]:
+        w.refuse(["cannot resume %s: terminal outcome %s present"
+                  % (args.id, state["state"])])
+    if state["blockers"]:
+        w.refuse(["cannot resume %s: unresolved blocker: %s"
+                  % (args.id, "; ".join(state["blockers"]))])
+    attention = w.open_attention(card_dir)
+    if attention:
+        w.refuse(["cannot resume %s: unresolved attention (%d open item(s))"
+                  % (args.id, len(attention))])
+
     rel_card = os.path.relpath(card_dir, worktree)
     rel_steps = os.path.relpath(w.steps_file(card_dir), worktree)
     steps = w.open_steps(card_dir)
     open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none — all steps closed)"
+    next_step = state["next_step"] or (
+        "none — all steps closed" if state["steps_closed"] else
+        "none — no steps prepared")
+    base_root = w.base_checkout_root()
+    base_card = w.find_card_dir(args.id, root=base_root)
+    base_state = w.card_state(base_card) if base_card else None
+    context = ""
+    if base_state and base_state["state"] != state["state"]:
+        context = ("- Base checkout still records: %s\n"
+                   % base_state["state"])
     brief = w.render_template(
         "executor-brief.md",
         id=args.id,
@@ -45,6 +70,10 @@ def main():
         worktree=worktree,
         steps_file=rel_steps,
         open_steps=open_block,
+        state=state["state"],
+        blocker="; ".join(state["blockers"]) or "none",
+        next_step=next_step,
+        state_context=context,
     )
     w.info("resuming %s in %s" % (branch, worktree))
     w.dispatch(brief)

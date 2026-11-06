@@ -3,6 +3,7 @@
 **Epic:** ops
 **Created:** 2026-11-06
 **Status:** backlog; preparation not started
+**Kind:** idea
 
 ## Why this work exists
 

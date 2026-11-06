@@ -29,11 +29,14 @@ def card_has_uncommitted_changes(card_rel):
     return bool(cp.stdout.strip())
 
 
-def build_brief(card_id, card_dir, worktree):
+def build_brief(card_id, card_dir, worktree, state, state_context=""):
     steps = w.open_steps(card_dir)
     open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none)"
     rel_card = os.path.relpath(card_dir, w.repo_root())
     rel_steps = os.path.relpath(w.steps_file(card_dir), w.repo_root())
+    next_step = state["next_step"] or (
+        "none — all steps closed" if state["steps_closed"] else
+        "none — no steps prepared")
     return w.render_template(
         "executor-brief.md",
         id=card_id,
@@ -41,6 +44,10 @@ def build_brief(card_id, card_dir, worktree):
         worktree=worktree,
         steps_file=rel_steps,
         open_steps=open_block,
+        state=state["state"],
+        blocker="; ".join(state["blockers"]) or "none",
+        next_step=next_step,
+        state_context=state_context,
     )
 
 
@@ -55,6 +62,9 @@ def main():
     # ── Refusals (all inside the command) ────────────────────────────────────
     reasons = []
     reasons += w.plan_fitness_problems(card_dir)
+    state = w.card_state(card_dir)
+    reasons += state["errors"]
+    reasons += ["unresolved blocker: %s" % b for b in state["blockers"]]
     att = w.open_attention(card_dir)
     if att:
         reasons.append("unanswered attention (%d open item(s))" % len(att))
@@ -86,8 +96,36 @@ def main():
         w.die("git worktree add failed: %s" % add.stderr.strip())
     w.info("cut worktree %s on branch %s" % (worktree, branch))
 
+    # State lives on the work branch, not on the base copy. Mark the card in
+    # progress there before the brief is rendered, without asking the owner for
+    # a separate technical approval.
+    wt_card = w.find_card_dir(args.id, root=worktree)
+    if not wt_card:
+        w.refuse(["worktree %s was cut but the card is missing from it; "
+                  "preserved for work-resume %s" % (worktree, args.id)])
+    wt_state = w.card_state(wt_card)
+    if wt_state["errors"]:
+        w.refuse(["cannot start %s: card state is contradictory in the "
+                  "worktree: %s" % (args.id, "; ".join(wt_state["errors"]))])
+    if wt_state["terminal"]:
+        w.refuse(["cannot start %s: worktree card already has terminal "
+                  "outcome %s" % (args.id, wt_state["state"])])
+    if wt_state["state"] != "in progress":
+        changed = w.rewrite_status_metadata(wt_card, state="in progress")
+        if changed:
+            w.commit_paths(
+                [os.path.join(wt_card, "description.md")],
+                "chore(work): start %s" % args.id, cwd=worktree)
+            wt_state = w.card_state(wt_card)
+
     # ── Hand off the brief through the cross-tool seam ────────────────────────
-    brief = build_brief(args.id, card_dir, worktree)
+    base_state = w.card_state(card_dir)
+    context = ""
+    if base_state["state"] != wt_state["state"]:
+        context = ("- Base checkout still records: %s (state changes for active "
+                   "work belong to `work/%s`)\n"
+                   % (base_state["state"], args.id))
+    brief = build_brief(args.id, wt_card, worktree, wt_state, context)
     w.dispatch(brief)
 
 

@@ -60,6 +60,10 @@ def commit_card(card_dir, message, only=None):
 
 def reject_card(card_dir, card_id, branch, target_root, reason):
     """Record the rejection on the base branch without touching the work copy."""
+    state = w.card_state(card_dir)
+    if state["errors"]:
+        w.refuse(["cannot reject %s: %s"
+                  % (card_id, "; ".join(state["errors"]))])
     wt = w.find_worktree(branch, cwd=target_root)
     source_card = w.find_card_dir(card_id, root=wt) if wt else None
     existing = w.terminal_file_present(card_dir)

@@ -2,7 +2,8 @@
 
 **Epic:** {{epic}}
 **Created:** {{date}}
-**Status:** founded
+**Status:** backlog
+**Kind:** task
 
 ## Why this work exists
 

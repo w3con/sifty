@@ -10,6 +10,12 @@ You are the executor for one bounded stage of one card. Follow AGENTS.md and the
 
 Work only inside your working copy. Never touch another worktree. Never switch off branch `work/{{id}}`.
 
+## Card state
+
+- State: {{state}}
+- Blocker: {{blocker}}
+- Next open step: {{next_step}}
+{{state_context}}
 ## Assigned stage
 
 Before starting, require the coordinator to supply the exact assigned step IDs, checks and stopping point with this brief. If missing, return the missing prerequisites without editing. The list of open steps below is background, not authorization to execute all remaining work.

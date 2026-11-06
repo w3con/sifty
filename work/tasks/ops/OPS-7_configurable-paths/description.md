@@ -4,6 +4,7 @@
 **Created:** 2026-11-06
 **Author:** coordinator, based on the owner's request
 **Status:** backlog; prepare the plan after the repository-structure relocation
+**Kind:** idea
 
 ## Owner's request
 

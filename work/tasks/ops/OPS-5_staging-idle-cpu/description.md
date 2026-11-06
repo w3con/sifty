@@ -3,6 +3,7 @@
 **Epic:** ops
 **Created:** 2026-11-06
 **Status:** backlog; reported, not investigated
+**Kind:** bug
 
 ## Why this work exists
 

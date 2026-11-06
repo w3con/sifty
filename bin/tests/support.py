@@ -6,6 +6,7 @@ touches the real main checkout, its worktrees, runtime data or servers.
 """
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -177,3 +178,95 @@ class LifecycleTest(unittest.TestCase):
                       self.git("branch", "--list", "work/%s" % self.card_id))
         self.assertFalse((self.card_dir / "done.md").exists(),
                          "done.md was written on a failed finish")
+
+
+class CardRepoTest(unittest.TestCase):
+    """A temp repo containing real card folders, for task-management tests."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.git("init", "-q", "-b", "main")
+        self.git("config", "user.name", "Work Test")
+        self.git("config", "user.email", "work-test@example.com")
+        (self.root / ".gitignore").write_text(
+            ".worktrees/\n.work-scratch/\nignored/\ndata-staging/\n",
+            encoding="utf-8")
+        (self.root / "README").write_text("base\n", encoding="utf-8")
+        shutil.copytree(BIN / "templates", self.root / "bin" / "templates")
+        (self.root / "work" / "tasks").mkdir(parents=True)
+        self.git("add", "-A")
+        self.git("commit", "-qm", "base")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def git(self, *args, cwd=None):
+        result = run_cmd(["git", *args], cwd=cwd or self.root)
+        if result.returncode != 0:
+            raise AssertionError(
+                "git %s failed (%d):\n%s"
+                % (" ".join(str(a) for a in args), result.returncode,
+                   result.stdout))
+        return result.stdout.strip()
+
+    def write(self, relative, text):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def make_card(self, card_id="TEST-1", epic="test", slug="demo",
+                  status="backlog", kind=None,
+                  steps=("- [ ] 1.1 — do the thing",),
+                  acceptance=True, short=False, extra_description="",
+                  plan_steps=None):
+        rel = Path("work", "tasks", epic, "%s_%s" % (card_id, slug))
+        card = self.root / rel
+        card.mkdir(parents=True, exist_ok=True)
+        header = "# %s — demo card\n\n**Epic:** %s\n**Created:** 2026-11-06\n" % (
+            card_id, epic)
+        if status is not None:
+            header += "**Status:** %s\n" % status
+        if kind is not None:
+            header += "**Kind:** %s\n" % kind
+        body = ("\n## Why this work exists\n\nA test card.\n\n"
+                "## Must not touch\n\nNothing.\n" + extra_description)
+        if short:
+            body += "\n## Steps\n\n%s\n" % "\n".join(steps)
+            if acceptance:
+                body += "\n## Acceptance criteria\n\n- Works.\n"
+        self.write(rel / "description.md", header + body)
+        if not short:
+            steps_text = "\n".join(plan_steps if plan_steps is not None
+                                   else steps)
+            plan = ("# %s — plan\n\n## Statement of work\n\nTest.\n\n"
+                    "## Steps\n\n%s\n" % (card_id, steps_text))
+            if acceptance:
+                plan += "\n## Acceptance criteria\n\n- Works.\n"
+            self.write(rel / "plan.md", plan)
+            self.write(rel / "log.md", "# %s — log\n" % card_id)
+            self.write(rel / "attention.md", "# %s — attention\n" % card_id)
+        self.write(rel / "comments.md", "# %s — comments\n" % card_id)
+        return card
+
+    def add_file(self, card, name, text):
+        path = card / name
+        path.write_text(text, encoding="utf-8")
+        return path
+
+    def commit_all(self, message="chore(test): cards"):
+        self.git("add", "-A")
+        self.git("commit", "-qm", message)
+
+    def work(self, command, *args, env=None, cwd=None):
+        return run_cmd(
+            [sys.executable, str(BIN / command), *args],
+            cwd=cwd or self.root, env=env)
+
+    def head(self, cwd=None):
+        return self.git("rev-parse", "HEAD", cwd=cwd)
+
+    def assert_refused(self, result, fragment):
+        self.assertEqual(result.returncode, 2, result.stdout)
+        self.assertIn(fragment, result.stdout)

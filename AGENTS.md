@@ -59,7 +59,7 @@ Work only inside your worktree, on branch `work/<id>`, within the assigned stage
 
 ## Setup and tests
 
-`bin/work-setup` wires a fresh clone: it sets `core.hooksPath` to the relative `.githooks` and makes the hooks and commands executable. `bin/work-test` runs the harness's own checks, including the isolated lifecycle tests under `bin/tests/`, and is the single test entry used by continuous integration and by `work-accept`.
+`bin/work-setup` wires a fresh clone: it sets `core.hooksPath` to the relative `.githooks`, makes the hooks, pre-commit steps, harness commands and leak-scanner adapters executable, and verifies the effective relative path and executable set instead of only printing success. The optional knowledge-base integration skips when no `kb/` directory exists; a missing shared tool is reported explicitly only when it applies. `bin/work-test` runs the harness's own checks, including the isolated lifecycle and hook tests under `bin/tests/` and the scanner policy/integration tests, and is the single test entry used by continuous integration and by `work-accept`.
 
 ## Current two-environment deploy loop
 

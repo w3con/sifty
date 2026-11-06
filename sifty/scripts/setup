@@ -3,15 +3,24 @@
 # leak scanner executable. core.hooksPath is local config and is not cloned, so every clone
 # runs this once. The path is relative, so it resolves correctly from the primary checkout and
 # from any linked worktree, on any machine.
+#
+# In this repository the project-level setup owns the current layout; delegate to it when it is
+# present. The standalone fallback below keeps this script useful if the sifty tree is checked
+# out on its own, where the scanner lives at scripts/leakcheck/.
 set -euo pipefail
 
 ROOT="$(git rev-parse --show-toplevel)"
-cd "$ROOT"
 
+if [ -x "$ROOT/bin/work-setup" ]; then
+    exec "$ROOT/bin/work-setup"
+fi
+
+cd "$ROOT"
 git config core.hooksPath .githooks
 chmod +x .githooks/* scripts/leakcheck/commit-diff-check scripts/leakcheck/commit-msg-check \
     scripts/leakcheck/range-check scripts/leakcheck/tree-check \
-    scripts/leakcheck/leak_census.py scripts/leakcheck/leakcheck-selftest 2>/dev/null || true
+    scripts/leakcheck/leak_census.py scripts/leakcheck/leak_git.py \
+    scripts/leakcheck/leakcheck-selftest 2>/dev/null || true
 
 echo "setup: core.hooksPath = $(git config --get core.hooksPath)"
 echo "setup: leak-check hooks installed (pre-commit, commit-msg, pre-push)"

@@ -2,5 +2,17 @@
 # Rebuild the generated navigation map after a rebase or an amend.
 # `git pull --rebase` never fires post-merge, so without this hook the most
 # common way of syncing this repository would leave a stale map behind.
+#
+# The knowledge base and its shared tooling are optional: a public clone with
+# no kb/ directory must still rebase and commit ordinary work. The shared tool is
+# required only when kb/ exists, and its absence is reported explicitly.
+set -u
 unset GIT_DIR GIT_WORK_TREE
-exec "$(git rev-parse --show-toplevel)/ai/tools/kb-index-refresh"
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+[ -d "$PROJECT_ROOT/kb" ] || exit 0
+TOOL="$PROJECT_ROOT/ai/bin/kb-index"
+if [ ! -x "$TOOL" ]; then
+    echo "[post-rewrite] kb/ exists but ai/bin/kb-index is missing; generated index not refreshed" >&2
+    exit 1
+fi
+exec "$TOOL"

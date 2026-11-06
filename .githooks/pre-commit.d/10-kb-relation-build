@@ -5,15 +5,19 @@
 #
 # kb/_index.md is deliberately NOT re-staged and never was committable since
 # it left version control: it is generated, it is listed in .gitignore, and it
-# is rebuilt by ai/tools/kb-index-refresh from the post-merge, post-checkout
-# and post-rewrite hooks and at session start.
+# is rebuilt by ai/bin/kb-index from the post-merge, post-checkout and
+# post-rewrite hooks and at session start.
 #
-# Non-blocking by design: if relation-build or the claude CLI fails for any
-# reason (network, missing key, timeout), the hook prints a warning and still
-# exits 0 so the commit is never blocked.  Use git commit --no-verify only as
-# a manual emergency bypass.
+# Optional integration: a public clone with no kb/ directory skips this step
+# entirely and does not need the shared submodule. If kb/ docs are staged and
+# the shared tool is absent, the missing required tool is reported explicitly
+# and the commit is refused. A tool that runs but fails for a transient reason
+# (network, model key, timeout) is still non-blocking, so unrelated work is not
+# held hostage to the knowledge-base service.
 
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+KB_DIR="$PROJECT_ROOT/kb"
+[ -d "$KB_DIR" ] || exit 0
 
 # ── Collect staged kb/ markdown (Added, Copied, Modified — not Deleted) ──────
 # core.quotePath=false: emit non-ASCII paths as raw UTF-8 bytes, not as
@@ -54,6 +58,13 @@ if [ -z "$CONTENT_KB" ]; then
     exit 0
 fi
 
+RELATION_BUILD="$PROJECT_ROOT/ai/bin/relation-build"
+if [ ! -x "$RELATION_BUILD" ]; then
+    echo "[pre-commit] ERROR: kb/ docs are staged but ai/bin/relation-build is missing." >&2
+    echo "[pre-commit] Initialise the optional shared submodule or unstage the kb/ docs." >&2
+    exit 1
+fi
+
 echo "[pre-commit] kb/ docs staged — running relation-build..." >&2
 
 # ── Run relation-build on exactly those paths ─────────────────────────────────
@@ -63,7 +74,7 @@ while IFS= read -r rel; do
     ABS_PATHS+=("$PROJECT_ROOT/$rel")
 done <<< "$CONTENT_KB"
 
-"$PROJECT_ROOT/ai/bin/relation-build" --ids "${ABS_PATHS[@]}"
+"$RELATION_BUILD" --ids "${ABS_PATHS[@]}"
 RB_EXIT=$?
 
 if [ $RB_EXIT -ne 0 ]; then

@@ -1,7 +1,12 @@
 #!/bin/sh
-# commit-msg — refuses a commit message that carries a forbidden form, or that names a card
-# identifier when the commit touches a public subtree declared in the census.
+# commit-msg — refuses a commit message that carries a forbidden form, or that is not
+# Conventional-Commits shaped where the census requires it.
 # Delegates to the leak scanner vendored under sifty/scripts/leakcheck/, resolved from the
 # repository root so this one file works from both the primary checkout and every worktree.
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-exec python3 "$PROJECT_ROOT/sifty/scripts/leakcheck/commit-msg-check" "$1" --repo "$PROJECT_ROOT"
+SCANNER="$PROJECT_ROOT/sifty/scripts/leakcheck/commit-msg-check"
+if [ ! -f "$SCANNER" ]; then
+    echo "[commit-msg] ERROR: leak scanner missing: sifty/scripts/leakcheck/commit-msg-check" >&2
+    exit 1
+fi
+exec python3 "$SCANNER" "$1" --repo "$PROJECT_ROOT"

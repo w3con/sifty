@@ -4,26 +4,96 @@
 # core.hooksPath is local git config and is never cloned, so every clone runs
 # this once. It is set to the RELATIVE path .githooks so it resolves correctly
 # in the main checkout and in every linked worktree. Idempotent.
+#
+# The setup verifies what it installed rather than only printing success: the
+# effective hooksPath must be the relative value, and every hook, pre-commit
+# step, harness command and leak-scanner adapter must exist and be executable.
+# The optional knowledge-base integration is not required: a public clone with
+# no kb/ directory and no ai/shared submodule still sets up the core harness.
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
 cd "$ROOT"
 
 git config core.hooksPath .githooks
-echo "set core.hooksPath = .githooks (relative)"
 
-# Make the hooks and their steps executable.
-chmod +x .githooks/* 2>/dev/null || true
+chmod_executable() {
+    if [ -f "$1" ]; then
+        chmod +x "$1"
+    fi
+}
+
+# Hooks and their dispatch steps.
+for hook in .githooks/*; do
+    chmod_executable "$hook"
+done
 if [ -d .githooks/pre-commit.d ]; then
-    chmod +x .githooks/pre-commit.d/* 2>/dev/null || true
+    for step in .githooks/pre-commit.d/*; do
+        chmod_executable "$step"
+    done
 fi
 
-# Make the harness commands executable.
-chmod +x bin/work-* bin/work-setup 2>/dev/null || true
+# Harness commands. work.config is configuration, not an adapter.
+COMMANDS="work-new work-plan work-handover work-note work-commit work-resume work-accept work-finish work-setup work-test"
+for command in $COMMANDS; do
+    chmod_executable "bin/$command"
+done
 
-echo "hooks and bin/work-* are executable"
+# The leak scanner used by the project hooks.
+SCANNERS="commit-diff-check commit-msg-check range-check tree-check leakcheck-selftest leak_census.py leak_git.py"
+if [ -d sifty/scripts/leakcheck ]; then
+    for scanner in $SCANNERS; do
+        chmod_executable "sifty/scripts/leakcheck/$scanner"
+    done
+fi
+
+# ── Verification ────────────────────────────────────────────────────────────
+fail=0
+effective="$(git config --get core.hooksPath || true)"
+if [ "$effective" != ".githooks" ]; then
+    echo "work-setup: ERROR effective core.hooksPath is '$effective', not the relative '.githooks'" >&2
+    fail=1
+fi
+for hook in .githooks/*; do
+    [ -f "$hook" ] || continue
+    if [ ! -x "$hook" ]; then
+        echo "work-setup: ERROR hook is not executable: $hook" >&2
+        fail=1
+    fi
+done
+if [ -d .githooks/pre-commit.d ]; then
+    for step in .githooks/pre-commit.d/*; do
+        [ -f "$step" ] || continue
+        if [ ! -x "$step" ]; then
+            echo "work-setup: ERROR pre-commit step is not executable: $step" >&2
+            fail=1
+        fi
+    done
+fi
+for command in $COMMANDS; do
+    if [ ! -f "bin/$command" ] || [ ! -x "bin/$command" ]; then
+        echo "work-setup: ERROR harness command missing or not executable: bin/$command" >&2
+        fail=1
+    fi
+done
+if [ -d sifty/scripts/leakcheck ]; then
+    for scanner in $SCANNERS; do
+        if [ ! -f "sifty/scripts/leakcheck/$scanner" ] \
+                || [ ! -x "sifty/scripts/leakcheck/$scanner" ]; then
+            echo "work-setup: ERROR leak scanner missing or not executable: sifty/scripts/leakcheck/$scanner" >&2
+            fail=1
+        fi
+    done
+fi
+if [ "$fail" -ne 0 ]; then
+    echo "work-setup: setup incomplete" >&2
+    exit 1
+fi
+
+echo "set core.hooksPath = .githooks (relative, effective: $(git config --get core.hooksPath))"
+echo "hooks, pre-commit steps, harness commands and leak scanners are executable"
 echo
-echo "If this repository uses the ai/shared submodule, also run:"
-echo "  git submodule update --init ai/shared"
+echo "The optional knowledge-base integration is not required for a public clone."
+echo "If this checkout uses ai/shared, run: git submodule update --init ai/shared"
 echo
 echo "harness ready. Run bin/work-test to verify."

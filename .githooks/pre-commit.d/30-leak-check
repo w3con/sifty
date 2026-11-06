@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# pre-commit.d/30-leak-check — refuses staged added lines that carry a form the census names.
-# Lines under a census-declared public subtree (sifty/) are held to the full public rules;
-# lines under private paths are checked for irreversible forms only.
-# Delegates to the leak scanner vendored under sifty/scripts/leakcheck/, resolved from the
-# repository root so this step works in both the primary checkout and every worktree.
+# pre-commit.d/30-leak-check — refuses staged content that carries a form the census names.
+# Credential forms apply everywhere; formatting forms apply only under a formatting-required
+# subtree. Delegates to the leak scanner vendored under sifty/scripts/leakcheck/, resolved from
+# the repository root so this step works in both the primary checkout and every worktree.
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-exec python3 "$PROJECT_ROOT/sifty/scripts/leakcheck/commit-diff-check" --repo "$PROJECT_ROOT"
+SCANNER="$PROJECT_ROOT/sifty/scripts/leakcheck/commit-diff-check"
+if [ ! -f "$SCANNER" ]; then
+    echo "[pre-commit] ERROR: leak scanner missing: sifty/scripts/leakcheck/commit-diff-check" >&2
+    exit 1
+fi
+exec python3 "$SCANNER" --repo "$PROJECT_ROOT"

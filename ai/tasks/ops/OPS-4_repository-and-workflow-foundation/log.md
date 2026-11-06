@@ -735,3 +735,28 @@ Ran 32 tests in 3.607s
 
 OK
 ```
+
+## 2026-11-06 — 2.3 hook adapters and fresh-clone setup
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_hooks.py'`
+Exit: 0
+
+```
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 5.470s
+
+OK
+```
+
+## 2026-11-06 — note
+
+Stage handback — steps 2.1–2.3 complete; stop before 3.1.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step 2.1: `5c30848`. Step 2.2: `f3a34ea`. Step 2.3 and this handback: the checkpoint containing this entry.
+- Completed: 2.1 separated credential/security rules from formatting rules, made task identifiers and `bin/work-*` commands ordinary content, and moved Russian formatting to a path-based formatting-required subtree. 2.2 reads staged index blobs and historical commit blobs, scans renamed files (including pure renames), root commits and ranges, uses NUL Git output for paths, skips symlinks and gitlinks, fails loudly on Git errors, and redacts every diagnostic. 2.3 made the optional kb integration skip when no `kb/` exists, made missing required tools and scanners fail explicitly, repaired current-layout paths, and made `bin/work-setup` verify the effective relative hooksPath and executable adapters. Added isolated hook tests and scanner policy/integration tests; integrated them into `bin/work-test`.
+- Checks: `python3 bin/work-test` — PASS (47 harness tests, scanner self-test, 32 scanner tests, scanner sources clean); `python3 -m unittest discover -s bin/tests -p 'test_*.py'` — 47 tests OK; `python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'` — 32 tests OK; `python3 sifty/scripts/leakcheck/leakcheck-selftest` — PASS; `python3 bin/work-plan OPS-4` — fit, 23 steps; `git diff --check` — exit 0.
+- Technical decisions: two explicit rule groups (credential/security always; formatting path-based); the census's formatting-required subtree is `sifty/`, with the scanner directory formatting-exempt and work records/tooling outside it; tests assemble synthetic values at runtime rather than receiving a test-path exemption; staged and historical checks read blobs, never unstaged working-tree content; diagnostics print form, safe path and line only; symlinks and gitlinks are skipped by mode; the kb adapter uses `ai/bin/kb-index` for the current layout and delegates nothing to the shared submodule.
+- Failures and corrections: the first rule split made the scanner flag its own URL/SSH/PEM pattern definitions; these were corrected by constructing those literals so they do not match themselves (not by exempting the scanner directory). A minified bundle false positive and a `password: decodeURIComponent(...)` false positive were tightened narrowly; real credential assignments still fail. The whole-tree output was rewritten to omit matched values and whole lines.
+- Findings for coordinator review: whole-tree `tree-check` reports 6 pre-existing findings — 4 synthetic URL/IP fixtures in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, and 2 `FCTO_STATE_DIR` literals in `sifty/web/model/core.ts`. They were reported, not rewritten, and no security rule was weakened. Tracked `sifty/dist-staging` remains for phase 3.3. `sifty/scripts/setup` now delegates to `bin/work-setup` in this layout. Legacy test fixtures still carry literal fake user:pass URL values.
+- Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 3.1. Do not run `work-accept` or `work-finish` for OPS-4; 16 steps remain open. No merge, push, deploy, production promotion, global configuration or subagent was run.

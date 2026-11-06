@@ -43,7 +43,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 
 - [x] 2.1 — Separate secret detection from configurable formatting rules; permit task identifiers and work commands in management/tooling files.
 - [x] 2.2 — Keep secret checks active everywhere, including scanner sources, messages and renamed files; redact detected values in reports.
-- [ ] 2.3 — Repair project hook adapters and applicability checks, preserve shared implementations, and verify installation from a fresh clone.
+- [x] 2.3 — Repair project hook adapters and applicability checks, preserve shared implementations, and verify installation from a fresh clone.
 
 ### Phase 3 — Relocate code and project records
 

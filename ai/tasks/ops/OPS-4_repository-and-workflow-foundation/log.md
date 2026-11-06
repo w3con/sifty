@@ -1,5 +1,9 @@
 # OPS-4 — execution log
 
+## Current coordinator checkpoint — 2026-11-06
+
+Reviewed lifecycle stage through `fdd1b9b`. Independent focused tests passed (37 tests); whitespace check passed. Runtime metadata for the executor session contains 131 assistant messages, exclusively `opencode-go/deepseek-v4.1-flash`, including its correction continuation. Initial review found three substantive gaps: rejection swept staged target changes into its commit, absent/invalid plans could appear complete, and non-force worktree removal still deleted ignored files. The same executor corrected all three with regression coverage. Steps 1.3–1.4 are technically accepted; four of 23 steps are complete and 19 remain. A successful finish may retain an ignored-artifact-bearing worktree and branch with an explicit report; phase 6 still owns production release semantics. Next bounded stage: 2.1–2.3, publication-policy separation, credential-check coverage/redaction and local hook/setup verification. Stop before relocation (3.1). The main checkout remains the pre-implementation snapshot; active records and implementation are in `.worktrees/OPS-4`.
+
 The owner approved the complete coordinator-authored plan on 2026-11-06 and added cleanup of obsolete directories after verified relocation. The live session now exposes the configured executor; initial-stage handover is being prepared. Earlier entries describe the state at their recorded checkpoint; the latest entry is current.
 
 ## Executor configuration — 2026-11-06

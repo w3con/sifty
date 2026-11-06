@@ -69,7 +69,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 
 - [x] 5.1 — Create the product/architecture map for current capabilities, distinguishing implemented, planned and known-broken behavior.
 - [x] 5.2 — Link epics/tasks to requirements, frontend/backend/worker/storage areas, checks and dependencies; validate local links.
-- [ ] 5.3 — Document runtime data provenance and create a separate data-layout migration task with live-reference and backup requirements.
+- [x] 5.3 — Document runtime data provenance and create a separate data-layout migration task with live-reference and backup requirements.
 
 ### Phase 6 — Implement the staging and release loop
 

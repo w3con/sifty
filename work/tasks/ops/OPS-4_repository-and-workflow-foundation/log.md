@@ -2250,3 +2250,17 @@ Ran 10 tests in 0.015s
 
 OK
 ```
+
+## 2026-11-06 — 5.3 — data provenance, proposed separation and OPS-8 migration card
+
+Check: `python3 bin/map-check && python3 -m unittest discover -s bin/tests -p 'test_map.py' && git diff --check`
+Exit: 0
+
+```
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.015s
+
+OK
+```

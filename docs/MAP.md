@@ -141,7 +141,7 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Checks.** [records tests](../backend/internal/records/records_test.go), [store schema tests](../backend/internal/store/store_test.go), [config save tests](../backend/internal/config/save_test.go).
 
-**Tasks.** `OPS-4` step 5.3 documents the current state. `OPS-8` owns the live-reference audit, consistency, backup, restore/rollback and owner-approved migration. `OPS-7` owns centralized path configuration.
+**Tasks.** `OPS-4` step 5.3 documents the current state. [`OPS-8`](../work/tasks/ops/OPS-8_data-layout-migration/description.md) owns the live-reference audit, consistency, backup, restore/rollback and owner-approved migration. `OPS-7` owns centralized path configuration.
 
 <a id="req-rel"></a>
 ### R-REL — Develop, preview, accept and release
@@ -291,6 +291,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [OPS-5](../work/tasks/ops/OPS-5_staging-idle-cpu/description.md) | R-REL | backlog (bug) | OPS-3 |
 | [OPS-6](../work/tasks/ops/OPS-6_git-history-cleanup/description.md) | R-HARNESS | backlog (idea) | — |
 | [OPS-7](../work/tasks/ops/OPS-7_configurable-paths/description.md) | R-DATA | backlog (idea) | OPS-4 |
+| [OPS-8](../work/tasks/ops/OPS-8_data-layout-migration/description.md) | R-DATA | backlog | OPS-4, OPS-7 |
 | [SET-1](../work/tasks/settings/SET-1_first-time-answer-preparation/description.md) | R-SET | backlog (blocked: owner questions) | GO-2 |
 | [SET-2](../work/tasks/settings/SET-2_config-live-reload/description.md) | R-SET | [done](../work/tasks/settings/SET-2_config-live-reload/done.md) | GO-2 |
 | [SET-3](../work/tasks/settings/SET-3_stage-model-selection/description.md) | R-SET | [done](../work/tasks/settings/SET-3_stage-model-selection/done.md) | SET-2 |

@@ -18,6 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ACTIVE_DOCS = (
     "docs/MAP.md",
     "docs/README.md",
+    "docs/architecture/data-directory.md",
     "work/WORKFLOW.md",
     "work/ROADMAP.md",
 )

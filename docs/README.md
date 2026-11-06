@@ -7,7 +7,7 @@ Current entry points after the 2026-11 repository relocation:
 - `architecture/` — the Go backend architecture, HTTP contract, runtime data directory and provenance, worker protocol, the parity audit and the development-setup research notes.
 - `../work/` — canonical task cards, decisions, backlog and the build roadmap (`../work/ROADMAP.md`); decisions are in `../work/decisions/`. `../work/incidents.md` is a local, ignored incident record and is not published.
 
-The active navigation documents (`docs/MAP.md`, this page, `../work/WORKFLOW.md` and `../work/ROADMAP.md`) are link-checked by `../bin/map-check`. Archived historical prose is deliberately outside that scope.
+The active navigation documents (`docs/MAP.md`, this page, `architecture/data-directory.md`, `../work/WORKFLOW.md` and `../work/ROADMAP.md`) are link-checked by `../bin/map-check`. Archived historical prose is deliberately outside that scope.
 
 ## Current and historical material
 

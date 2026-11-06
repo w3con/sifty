@@ -18,7 +18,20 @@ frontend/dist/
 frontend/dist-staging/
 legacy/app/dist/
 legacy/app/dist-staging/
+sifty/dist/
+sifty/dist-staging/
 bin/sifty
+
+# Backend build and test outputs
+/backend/bin/
+/backend/dist/
+/backend/build/
+/backend/*.test
+/backend/*.out
+
+# Runtime/local logs (task records are markdown and stay tracked)
+*.log
+/logs/
 
 # Python build artifacts
 bin/__pycache__/
@@ -32,6 +45,9 @@ bin/__pycache__/
 # Local runtime state
 .local/
 .env
+
+# Local incident record: contents stay on this machine, never published
+/work/incidents.md
 
 # Obsidian vault internals
 .obsidian/

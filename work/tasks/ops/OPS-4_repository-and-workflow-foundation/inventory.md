@@ -122,3 +122,52 @@ Recorded verbatim in `log.md` by `bin/work-note` on 2026-11-06:
 - `data-staging/` is dominated by ten timestamped SQLite backups (~1 GB). They are not obsolete source directories; if cleanup is ever wanted it needs its own explicit decision.
 - The main checkout is 66 commits ahead of `origin/main`. Publication steps must not assume the remote is current.
 - `bin/work-note` appends each entry with a blank line at EOF, so `git diff --check` fails on the card log it just wrote (`new blank line at EOF`, exit 2). The log was normalized (trailing blank lines stripped, evidence lines untouched) before the passing check above. This is a harness defect for the coordinator to schedule; it was not fixed in this stage because changing `bin/work-note` is outside the assigned scope.
+
+## 9. Step 3.3 retention requirements for the main checkout (2026-11-06)
+
+The executor's worktree preserves the local files, but a merge into `main` will
+remove the tracked paths listed here. **The coordinator must perform these
+copies in the main checkout before `bin/work-finish` / the merge.** This section
+records requirements only; the executor did not write to the main checkout.
+
+1. **Incident record.** Source: `/Volumes/SSD/Dev/tknff/sifty/ai/incidents.md`
+   (tracked at `main` `c0181a1`, SHA-256
+   `ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae`).
+   Destination: `/Volumes/SSD/Dev/tknff/sifty/work/incidents.md` (ignored).
+
+   ```sh
+   mkdir -p /Volumes/SSD/Dev/tknff/sifty/work
+   cp -p /Volumes/SSD/Dev/tknff/sifty/ai/incidents.md \
+      /Volumes/SSD/Dev/tknff/sifty/work/incidents.md
+   shasum -a 256 /Volumes/SSD/Dev/tknff/sifty/work/incidents.md
+   ```
+
+   The destination hash must equal the value above before merging.
+
+2. **Pre-relocation staging bundle.** Source:
+   `/Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging/` (20 tracked files,
+   manifest SHA-256 `ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824`,
+   computed as `find … -type f | sort | xargs shasum -a 256 | shasum -a 256`).
+   Destination: `/Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106/`
+   (ignored local material).
+
+   ```sh
+   mkdir -p /Volumes/SSD/Dev/tknff/sifty/.local/retained
+   cp -a /Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging \
+      /Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106
+   find /Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106 \
+      -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256
+   ```
+
+   The destination manifest must equal the value above before merging. The
+   bundle is generated and rebuildable, but the owner asked that its local bytes
+   not be discarded.
+
+3. **No history rewrite.** Both paths stop being tracked in the OPS-4 commit;
+   earlier commits retain them. Never delete the local copies or force-remove
+   the main checkout's material. `bin/work-finish` also refuses to delete a
+   worktree that contains ignored local material, so the worktree copy of
+   `work/incidents.md` stays available if the coordinator needs to recover it.
+
+The worktree hashes recorded in the step 3.3 log entry are the same as the main
+checkout values above, so the copies are verifiable byte for byte.

@@ -1463,3 +1463,62 @@ ROADMAP — now add DEMO-1 to work/ROADMAP.md: place it in the queue with its or
 DEMO-1
 FRESH_CLONE_OK
 ```
+
+## 2026-11-06 — 3.3 artifacts — ignored local incident and staging bundle, untracked with preserved bytes
+
+Check: `bash /tmp/ops4_33_check.sh`
+Exit: 0
+
+```
+== tracked files matching an ignore rule (must be empty) ==
+== ignored generated/local paths ==
+.gitignore:50:/work/incidents.md	work/incidents.md
+.gitignore:22:sifty/dist-staging/	sifty/dist-staging/index.html
+.gitignore:17:frontend/dist/	frontend/dist/x
+.gitignore:19:legacy/app/dist/	legacy/app/dist/x
+backend/.gitignore:37:/bin/	backend/bin/x
+backend/.gitignore:39:*.test	backend/foo.test
+.gitignore:33:*.log	server.log
+== source and task evidence remain visible to Git ==
+not ignored: frontend/src/main.tsx
+not ignored: backend/internal/server/routes.go
+not ignored: docs/README.md
+not ignored: work/tasks/ops/OPS-4_repository-and-workflow-foundation/log.md
+== retained local bytes ==
+incidents_sha256 ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+dist_files 20
+dist_manifest ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+== index entries (must be 0) ==
+tracked_incident 0
+tracked_dist 0
+== mcp placeholder ==
+# Sifty MCP adapter (not implemented)
+RELOCATION_33_OK
+```
+
+## 2026-11-06 — 3.3 artifacts — staged/tree scanner, harness suite and whitespace
+
+Check: `set -e; git diff --cached --check; python3 backend/scripts/leakcheck/commit-diff-check --staged --repo .; python3 backend/scripts/leakcheck/tree-check .; python3 bin/work-test 2>&1 | tail -5; echo RELOCATION_33_SCANNER_OK`
+Exit: 0
+
+```
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+RELOCATION_33_SCANNER_OK
+```
+
+## 2026-11-06 — note
+
+3.2–3.3 handback notes (2026-11-06).
+
+- Relocation: planning moved to `work/` (tasks, decisions, ROADMAP, WORKFLOW, backlog); product/architecture docs moved to `docs/product/` and `docs/architecture/`; the optional shared tooling moved to `tools/`. Card IDs are unchanged (46 canonical cards including OPS-5, OPS-6 and APP-8). The card is resumable at `work/tasks/ops/OPS-4_repository-and-workflow-foundation/`; `find_card_dir` prefers that path and keeps `ai/tasks/` as a migration fallback.
+- Shared wiring: `tools/shared` keeps the pinned gitlink `aebbcda835ab708be1b465cfcb566b1994f09b19`, `.gitmodules` now consistently names path `tools/shared` with the same upstream URL, and `tools/bin|harness|templates` keep the byte-identical relative targets `shared/bin|harness|templates`. The linked worktree cannot initialize the private upstream and does not try; the symlinks are intentionally dangling there. A fresh public clone without the submodule passed `work-setup`, `work-test`, `work-plan OPS-4` and `work-new`.
+- 3.3: `mcp/README.md` is a placeholder only (GO-9 keeps implementation). `work/incidents.md` is ignored/untracked with SHA-256 `ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae`; `sifty/dist-staging` is ignored/untracked with 20 files and manifest SHA-256 `ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824`. No incident contents were printed or committed. The main checkout still has the same hashes.
+- Mandatory coordinator action before merge: the merge deletes main's tracked `ai/incidents.md` and `sifty/dist-staging`. Preserve both in the main checkout first, using the exact source/destination commands in `inventory.md` §9 (`main ai/incidents.md` -> `main work/incidents.md`; `main sifty/dist-staging` -> `main .local/retained/sifty-dist-staging-20261106`). The executor did not write to main.
+- Historical handling: old MIT/private-repository material in MAP, backlog and dev-setup notes is labeled historical; current license stays Elastic License 2.0. Historical logs/inventory were not rewritten. Legacy transfer tooling still describes the old `ai/shared` archive layout and is documented as historical.
+- Failures/corrections: the first clean-export check used the stale index and exercised the old harness; corrected by staging before the check. Adding `docs/` to formatting checks exposed two literal internal-name mentions in the dated architecture reference; they were neutralized as historical prose and the tree scanner is clean. No application code or product behavior changed.
+- Next action: coordinator reviews 3.2–3.3; 3.4 (root GitHub workflows and path coverage) remains open. Stop before 3.4.

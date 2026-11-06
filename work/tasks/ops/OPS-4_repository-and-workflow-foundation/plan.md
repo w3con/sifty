@@ -51,7 +51,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 
 - [x] 3.1 — Move frontend, backend and legacy implementation; repoint build, serve, worker and legacy-relative paths together.
 - [x] 3.2 — Move planning to work, documentation to docs and shared tooling to tools; repair submodule and symlink wiring.
-- [ ] 3.3 — Add the mcp placeholder, update ignore rules and untrack incident/build artifacts while preserving local copies.
+- [x] 3.3 — Add the mcp placeholder, update ignore rules and untrack incident/build artifacts while preserving local copies.
 - [ ] 3.4 — Move GitHub workflows to root, correct their paths and cover backend, frontend, workers and harness checks.
 - [ ] 3.5 — Audit old paths and local contents; remove obsolete directories after relocation checks, preserving retained data and work.
 

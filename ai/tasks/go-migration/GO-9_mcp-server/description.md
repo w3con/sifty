@@ -2,7 +2,13 @@
 
 **Epic:** go-migration
 **Created:** 2026-11-04
-**Status:** founded
+**Status:** founded — approach revised (see Decision)
+
+## Decision (2026-11-06, owner)
+
+MCP stays TypeScript; it is not rewritten in Go. It lives as a small standalone TypeScript adapter under `sifty/mcp` that drives the Go backend over its HTTP API (not in-process service calls). It is an independent part of the tree, built and run on its own. Any backend operation an MCP tool needs that the Go HTTP API does not yet expose is added to the Go HTTP API and consumed from `sifty/mcp` over HTTP. This supersedes the "rewrite the MCP server in Go" premise in the section below and the planning question about a Go MCP library and stdio transport.
+
+This card is also where the project's remaining operational/entry-point needs are scoped: the owner does not use a CLI or cron (GO-8 is descoped), so the only shell-driven surface still wanted is whatever MCP requires, and it is handled here as HTTP endpoints plus the `sifty/mcp` adapter. For `app/src` to be deleted in GO-5, the MCP implementation must first be carved out of `app/src/mcp.ts` into `sifty/mcp`.
 
 ## Why this work exists
 

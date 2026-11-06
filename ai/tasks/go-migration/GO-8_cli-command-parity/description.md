@@ -2,11 +2,15 @@
 
 **Epic:** go-migration
 **Created:** 2026-11-04
-**Status:** founded
+**Status:** descoped (see Decision)
+
+## Decision (2026-11-06, owner)
+
+The owner confirmed he does not operate the backend from a command line or cron, so a general CLI port is not wanted and this card is not planned as written — do not port the fifteen commands. This also removes the CLI as a blocker for deleting `app/src` in GO-5: the deletion no longer waits on a Go CLI. The only shell/entry-point surface the project still needs is whatever the MCP integration requires; that need is owned by the MCP card (GO-9), which exposes any missing operation through the Go HTTP API rather than through a CLI. This card is kept only as a record of what the old TypeScript CLI did, in case a specific command is ever wanted later.
 
 ## Why this work exists
 
-The Go binary exposes only `version`, `serve`, `help` and `selfcheck` (`cmd/sifty/main.go`). The retired TypeScript backend's command-line entry point (`app/src/cli.ts`) exposed roughly fifteen commands the owner uses to operate and script the backend from a terminal or a cron job: `validate`, `context`, `search`, `list`, `detail`, `status`, `import`, `read`, `assess`, `health`, `daily`, `provider-check`, `session`, `backup`, and a launchd template. Without them the Go backend is operable only through the HTTP interface: there is no way to run a collection from cron, assess a single role from a shell, or take a backup without the browser. This is a named part of the port the architecture document calls one of the two alternate entry points over the same orchestration, and it is a blocker for deleting `app/src` in GO-5 (the TypeScript CLI is the only CLI that exists). Confirmed in the 2026-11-04 parity audit.
+The Go binary exposes only `version`, `serve`, `help` and `selfcheck` (`cmd/sifty/main.go`). The retired TypeScript backend's command-line entry point (`app/src/cli.ts`) exposed roughly fifteen commands that were available to operate and script the backend from a terminal or a cron job: `validate`, `context`, `search`, `list`, `detail`, `status`, `import`, `read`, `assess`, `health`, `daily`, `provider-check`, `session`, `backup`, and a launchd template. (The owner has since confirmed he does not use a CLI or cron — see Decision above; this section is retained only as a record of the old command set.) Without them the Go backend is operable only through the HTTP interface. Confirmed in the 2026-11-04 parity audit.
 
 Each command wires an existing Go service or store call to a verb; this is surface, not new orchestration.
 

@@ -7,3 +7,14 @@
 .job-row.seen .score{color:#74747e}
 .job-row.seen .web3-mark{filter:grayscale(1);opacity:.5}
 @media(max-width:767px){.list-toolbar{padding:10px 12px;gap:6px}.list-toolbar .filter-popover{position:fixed;top:196px;left:16px;max-height:calc(100dvh - 220px)}.list-toolbar button{padding:7px 9px}}
+.search-columns{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;align-items:start;margin-top:16px}
+.search-col{background:#1e1e21;border-radius:10px;padding:16px}
+.search-col h3{margin-bottom:12px}
+.col-input{display:flex;gap:6px;margin-bottom:12px}
+.col-input input{flex:1}
+.col-input button{flex:none;padding:6px 12px}
+.term-chips{display:flex;flex-wrap:wrap;gap:6px}
+.term-chip{display:inline-flex;align-items:center;gap:4px;background:#222225;border-radius:6px;padding:4px 8px 4px 10px;font-size:13px}
+.term-chip button{background:transparent;padding:0;min-width:0;width:20px;height:20px;border-radius:4px;font-size:14px;line-height:1;color:#a3a3aa;display:flex;align-items:center;justify-content:center;font-weight:400}
+.term-chip button:hover{background:#3a3a3e;color:#ececee}
+@media(max-width:767px){.search-columns{grid-template-columns:1fr}}

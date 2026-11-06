@@ -23,7 +23,7 @@ Refine the Search, Sources and Archive screens from the owner's first day of use
 
 *Gate: `tsc --noEmit` passes; adding/removing a term in any column persists without a Save button.*
 
-- [ ] 2.1 — Replace the group builder with three columns (OR, AND, Exclusions), each showing existing entries as tag chips with a remove "×" and an add field at the top of the column.
+- [x] 2.1 — Replace the group builder with three columns (OR, AND, Exclusions), each showing existing entries as tag chips with a remove "×" and an add field at the top of the column.
 - [ ] 2.2 — Make every add and remove persist immediately: OR/AND write via `PUT /api/search/expressions` (send only the non-empty groups); exclusions via the existing stop-word add/remove. Remove the draft state, the Save button and the "Unsaved changes" indicator. Update the help copy to the AND-between-columns meaning.
 
 ### Phase 3 — Sources: table, coverage removed

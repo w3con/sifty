@@ -36,3 +36,13 @@ ok  	github.com/w3con/sifty/internal/background	(cached)
 ok  	github.com/w3con/sifty/internal/server	(cached)
 ```
 
+
+## 2026-11-06 — 2.1
+
+Check: `cd app && npx tsc --noEmit`
+Exit: 0
+
+```
+
+```
+

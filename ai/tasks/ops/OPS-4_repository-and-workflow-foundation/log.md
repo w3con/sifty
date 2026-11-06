@@ -141,3 +141,73 @@ Exit: 0
 ## 2026-11-06 — note
 
 Harness defect found while recording 1.1: bin/work-note ends each appended entry with a blank line at EOF, so the subsequent required 'git diff --check' failed with '__new blank line at EOF__' (exit 2, entry above). Correction: the card log was normalized (trailing blank lines removed; recorded evidence unchanged) and the check then passed. bin/work-note was not edited because harness changes are outside this stage; the coordinator should schedule the fix (likely with the 1.3/2.x workflow work).
+
+## 2026-11-06 — 1.2 executor profile — resolved model and mode
+
+Check: `opencode debug agent executor 2>&1 | grep -E '"(name|mode|providerID|modelID)"'`
+Exit: 0
+
+```
+  "name": "executor",
+  "mode": "subagent",
+    "providerID": "opencode-go",
+    "modelID": "deepseek-v4.1-flash"
+```
+
+
+## 2026-11-06 — 1.2 executor profile — subagent-only dispatch (task permission deny)
+
+Check: `opencode debug agent executor 2>&1 | grep -A2 '"permission": "task"'`
+Exit: 0
+
+```
+      "permission": "task",
+      "action": "deny",
+      "pattern": "*"
+```
+
+
+## 2026-11-06 — 1.2 runtime metadata — provider/model/agent on the streaming call
+
+Check: `grep 'message=stream providerID=opencode-go modelID=deepseek-v4.1-flash session.id=ses_e4ed72437ffeL8VjH7t0Gi23ru' ~/.local/share/opencode/log/opencode.log | grep -v 'message=evaluated' | tail -1`
+Exit: 0
+
+```
+timestamp=2026-11-06T14:08:09.232Z level=INFO run=fbbdcd50 message=stream providerID=opencode-go modelID=deepseek-v4.1-flash session.id=ses_e4ed72437ffeL8VjH7t0Gi23ru small=false agent=executor mode=subagent
+```
+
+
+## 2026-11-06 — 1.2 session metadata — agent, model and available usage
+
+Check: `sqlite3 -header -separator ' | ' ~/.local/share/opencode/opencode.db "select id,agent,model,cost,tokens_input,tokens_output,tokens_reasoning,tokens_cache_read from session where id='ses_e4ed72437ffeL8VjH7t0Gi23ru';"`
+Exit: 0
+
+```
+id | agent | model | cost | tokens_input | tokens_output | tokens_reasoning | tokens_cache_read
+ses_e4ed72437ffeL8VjH7t0Gi23ru | executor | {"id":"deepseek-v4.1-flash","providerID":"opencode-go","variant":"default"} | 0.04189728 | 66264 | 15237 | 19613 | 3682560
+```
+
+
+## 2026-11-06 — 1.2 visible dispatch — session parent relationship
+
+Check: `sqlite3 -header -separator ' | ' ~/.local/share/opencode/opencode.db "select id,parent_id,agent,model from session where id='ses_e4ed72437ffeL8VjH7t0Gi23ru';"`
+Exit: 0
+
+```
+id | parent_id | agent | model
+ses_e4ed72437ffeL8VjH7t0Gi23ru | ses_e4ed90c39ffeVGdkVhVpkwmHD2 | executor | {"id":"deepseek-v4.1-flash","providerID":"opencode-go","variant":"default"}
+```
+
+
+## 2026-11-06 — note
+
+Step 1.2 verification interpretation. The project profile `.opencode/agents/executor.md` resolves as mode=subagent with model providerID=opencode-go, modelID=deepseek-v4.1-flash and permission task=deny (no subagent nesting). This session (ses_e4ed72437ffeL8VjH7t0Gi23ru) is a child of the coordinator's build session (ses_e4ed90c39ffeVGdkVhVpkwmHD2), agent=executor; the streaming log line above is OpenCode's own runtime record naming providerID=opencode-go modelID=deepseek-v4.1-flash for each inference call, not executor self-report and not the profile declaration. The session row records the same model and the available usage counters (cost/tokens continue to grow). No fallback or provider switch occurred and the profile was not edited. Available metadata does not expose OpenCode Go remaining allowance or quota. Correction during recording: an earlier runtime-metadata command matched work-note's own permission-evaluated log line because that line echoes the grep pattern; the check was corrected with `grep -v 'message=evaluated'` and the log was re-recorded before commit. The coordinator must still re-verify the session metadata before accepting 1.2 and assigning the next independent stage.
+
+## 2026-11-06 — 1.2 stage diff check
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```

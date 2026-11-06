@@ -33,7 +33,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 *Gate: focused command tests prove that incomplete or dirty work cannot be discarded, merged or marked done.*
 
 - [x] 1.1 — Inventory active worktrees, unfinished tasks and local artifacts; record preservation requirements and baseline checks.
-- [ ] 1.2 — Define a project-local executor profile with an explicit model and visible session dispatch; verify actual model identity.
+- [x] 1.2 — Define a project-local executor profile with an explicit model and visible session dispatch; verify actual model identity.
 - [ ] 1.3 — Harden acceptance: require main, clean source/target copies, closed steps, resolved blockers and unchanged tested revision.
 - [ ] 1.4 — Test failed checks, moved branches and dirty/rejected work; preserve branches and working copies on failure.
 

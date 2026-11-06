@@ -95,3 +95,20 @@ bin/sift-accept:60:        npm --prefix "$APP_HOME/sifty/web" install --silent 2
 bin/sift-accept:65:    if npm --prefix "$APP_HOME/sifty/web" run build 2>&1; then
 ```
 
+
+## 2026-11-06 — 4.1
+
+Check: `cd sifty && go test -race ./... 2>&1 | tail -5 && cd ../sifty/web && npm run build 2>&1 | tail -3`
+Exit: 0
+
+```
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+../dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+../dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 399ms
+```
+

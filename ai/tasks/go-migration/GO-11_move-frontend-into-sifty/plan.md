@@ -37,7 +37,7 @@ Move the React frontend from `app/web` to `sifty/web` with its own build, and re
 
 *Gate: `go test -race ./...`, frontend `tsc --noEmit` and `vite build` all pass.*
 
-- [ ] 4.1 — Run `go test -race ./...` (from `sifty/`), and the frontend `tsc --noEmit` and `vite build`; record output.
+- [x] 4.1 — Run `go test -race ./...` (from `sifty/`), and the frontend `tsc --noEmit` and `vite build`; record output.
 - [ ] 4.2 — (Coordinator) Deploy staging from the branch and confirm the app serves and the UI loads from the new `sifty/web` build.
 
 ## Acceptance criteria

@@ -3,7 +3,7 @@
 **Epic:** ops
 **Created:** 2026-11-06
 **Author:** coordinator, based on the owner's conversation
-**Status:** approved; initial executor stage ready for handover
+**Status:** in progress; steps 1.1–1.2 technically accepted
 
 ## Why this work exists
 

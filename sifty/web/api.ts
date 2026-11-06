@@ -1,4 +1,4 @@
-import type {StopWord} from '../src/core';
+import type {StopWord} from './model/core';
 export async function api(path:string,method='GET',body?:unknown):Promise<any> {
   const r=await fetch(`/api/${path}`,{method,headers:method==='GET'?{}:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
   if(!r.headers.get('content-type')?.includes('application/json'))throw new Error(`API /api/${path} returned HTTP ${r.status} without JSON. Refresh after restarting the catalogue server.`);

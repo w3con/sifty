@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from 'react';import type {Job} from '../src/core';import {api} from './api';
+import React,{useEffect,useRef,useState} from 'react';import type {Job} from './model/core';import {api} from './api';
 export function DeleteRole({job,onClose,onDeleted}:{job:Job;onClose:()=>void;onDeleted:(id:number,cleanupIncomplete:boolean)=>void}){
  const dialog=useRef<HTMLDialogElement>(null),[busy,setBusy]=useState(false),[error,setError]=useState('');const pending=useRef(false);
  useEffect(()=>{const previous=document.activeElement as HTMLElement;dialog.current?.showModal();return()=>previous?.focus();},[]);

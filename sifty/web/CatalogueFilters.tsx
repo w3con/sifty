@@ -1,5 +1,5 @@
 import React from 'react';
-import type {Job} from '../src/core';
+import type {Job} from './model/core';
 import {type CatalogueSelection,assessmentStatus} from './filters';
 export function Filters({jobs,options,selection,setSelection,rows,shown,reset}:{jobs:Job[];options:any;selection:CatalogueSelection;setSelection:(s:CatalogueSelection)=>void;rows:any[];shown:number;reset:()=>void}){
  const toggle=(key:keyof CatalogueSelection,value:string,values:string[])=>{

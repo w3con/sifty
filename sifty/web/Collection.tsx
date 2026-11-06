@@ -1,6 +1,6 @@
 import React,{useEffect,useState} from 'react';
 import {api,listStopWords,addStopWord as apiAddStopWord,removeStopWord as apiRemoveStopWord,previewStopWord,getSearchExpressions,putSearchExpressions,getSearchSites,addSearchSite,removeSearchSite,toggleSearchSite} from './api';
-import type {StopWord} from '../src/core';
+import type {StopWord} from './model/core';
 import type {SearchExpression,SiteConfig} from './api';
 
 type Props={onRulesChanged:()=>void;onError:(s:string)=>void};

@@ -1,8 +1,8 @@
 import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
-import type {Job} from '../src/core';
-import type {Stage} from '../src/workflow';
-import {externalApplyUrl,archiveRetentionMs,validAppliedAt} from '../src/workflow';
+import type {Job} from './model/core';
+import type {Stage} from './model/workflow';
+import {externalApplyUrl,archiveRetentionMs,validAppliedAt} from './model/workflow';
 import {api,blockJob} from './api';
 import {Filters} from './CatalogueFilters';
 import {emptySelection,filterCatalogue,migrateSelection,selectionCount,sortCatalogue,type CatalogueSelection} from './filters';

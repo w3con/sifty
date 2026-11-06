@@ -19,3 +19,14 @@ preparation-error.ts
 workflow.ts
 ```
 
+
+## 2026-11-06 — 1.2
+
+Check: `grep -rn '../src/' sifty/web/ --include='*.ts' --include='*.tsx'; echo 'exit:' $?`
+Exit: 0
+
+```
+sifty/web/model/types.ts:1:// Frontend-owned types extracted from app/src/application-store.ts.
+exit: 0
+```
+

@@ -1,5 +1,5 @@
-import type { Job } from '../src/core';
-import type { Stage } from '../src/workflow';
+import type { Job } from './model/core';
+import type { Stage } from './model/workflow';
 import {managementTitle} from './filters';
 export type View=Exclude<Stage,'no'>|'collection';
 export type QuickFilters={web3:boolean;remote:boolean;strong:boolean;hideExpired:boolean;management:boolean};

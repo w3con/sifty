@@ -1,4 +1,4 @@
-import type { Job } from '../src/core';
+import type { Job } from './model/core';
 export const normalizeTerm=(s:string)=>s.toLowerCase().replace(/node\.?js/g,'nodejs').replace(/web3\.?js/g,'web3js').replace(/\blayer\s*2\b/g,'l2').replace(/\bchief technology officer\b/g,'cto').replace(/\btechnical lead\b/g,'tech lead').replace(/\bartificial intelligence\b/g,'ai').replace(/[^\p{L}\p{N}]+/gu,' ').trim();
 export const termMatch=(text:string,q:string)=>` ${normalizeTerm(text)} `.includes(` ${normalizeTerm(q)} `);
 export type CatalogueSelection={titles:string[]|null;keywords:string[]|null;sources:string[];assessment:string[]};

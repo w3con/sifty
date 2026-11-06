@@ -1,5 +1,5 @@
 import React,{useEffect,useRef,useState} from 'react';
-import type {Job} from '../src/core';
+import type {Job} from './model/core';
 
 export function ApplicationConfirmation({job,onClose,onConfirm}:{job:Job;onClose:()=>void;onConfirm:()=>Promise<boolean>}){
   const dialog=useRef<HTMLDialogElement>(null),[saving,setSaving]=useState(false),[failed,setFailed]=useState(false);

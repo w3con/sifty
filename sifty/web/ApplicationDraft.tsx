@@ -1,5 +1,5 @@
-import React,{useEffect,useRef,useState} from 'react';import {api} from './api';import type {ApplicationDraft as Draft,AnswerField} from '../src/application-store';
-import {concisePreparationError} from '../src/preparation-error';
+import React,{useEffect,useRef,useState} from 'react';import {api} from './api';import type {ApplicationDraft as Draft,AnswerField} from './model/types';
+import {concisePreparationError} from './model/preparation-error';
 function FieldEditor({field,save,regenerate,remember,busy,canPrepare}:{field:AnswerField;save:(change:any)=>Promise<number>;regenerate:()=>void;remember:(scope:string)=>Promise<any>;busy:boolean;canPrepare:boolean}){
  const [value,setValue]=useState(field.value),[dirty,setDirty]=useState(false),[base,setBase]=useState(field.revision),[saving,setSaving]=useState(false),[error,setError]=useState('');
  const [scope,setScope]=useState('job'),[remembered,setRemembered]=useState(''),[saved,setSaved]=useState(false);const editVersion=useRef(0);

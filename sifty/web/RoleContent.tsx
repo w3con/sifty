@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from 'react';
-import type {Job} from '../src/core';
+import type {Job} from './model/core';
 import {api} from './api';
 import {assessmentStatus} from './filters';
 import {ApplicationDraftView} from './ApplicationDraft';

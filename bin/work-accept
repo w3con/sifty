@@ -4,10 +4,16 @@
 Usage:
     work-accept <id>
 
-Creates a detached scratch worktree of work/<id>, runs the acceptance command
-(WORK_ACCEPT_CMD, default bin/work-test) there, prints the verbatim output and
-reports pass/fail. Never merges; acceptance is a judgement, work-finish does the
-merge. The scratch copy is always removed.
+Preconditions (shared with work-finish): the current checkout is the base
+branch (default main), the source worktree and target checkout are clean
+including untracked files, every plan step is closed, attention is resolved and
+no terminal outcome exists. The scratch worktree is detached at the exact
+captured source SHA; a pre-existing scratch path is preserved, never
+force-deleted.
+
+Runs the acceptance command (WORK_ACCEPT_CMD, default bin/work-test) in the
+scratch copy, prints the verbatim output and reports pass/fail. Never merges;
+acceptance is a judgement, work-finish does the merge.
 """
 import argparse
 import os
@@ -23,13 +29,26 @@ def main():
     args = ap.parse_args()
 
     w.require_card_dir(args.id)
-    code, output = w.run_accept(args.id)
+    snapshot = w.finish_snapshot(args.id)
+    problems = w.readiness_problems(args.id)
+    if problems:
+        w.refuse(["cannot accept %s:" % args.id] + problems)
+
+    w.info("accepting %s at source %s, target %s@%s"
+           % (args.id, snapshot["source_sha"], snapshot["target_branch"],
+              snapshot["target_sha"]))
+    code, output, problems = w.run_accept(
+        args.id, snapshot["source_sha"], snapshot["target_sha"],
+        snapshot["target_branch"])
     sys.stdout.write(output)
-    if not output.endswith("\n"):
+    if output and not output.endswith("\n"):
         sys.stdout.write("\n")
+    if problems:
+        w.refuse(["acceptance could not be verified for %s:" % args.id] + problems)
     if code != 0:
-        w.refuse(["acceptance checks for %s failed (exit %d)" % (args.id, code)])
-    w.info("accepted %s — checks pass" % args.id)
+        w.refuse(["acceptance checks for %s failed (exit %d); source worktree "
+                  "and branch preserved" % (args.id, code)])
+    w.info("accepted %s — checks pass at %s" % (args.id, snapshot["source_sha"]))
 
 
 if __name__ == "__main__":

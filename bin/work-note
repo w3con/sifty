@@ -36,10 +36,9 @@ def main():
     if not args.message and not args.check:
         w.die("nothing to record: pass --check or --message")
 
-    entry = ["", "## %s — %s" % (w.today(), args.step or "note"), ""]
-
+    body = []
     if args.message:
-        entry += [args.message, ""]
+        body += [args.message, ""]
 
     exit_code = 0
     if args.check:
@@ -49,18 +48,31 @@ def main():
                               cwd=os.getcwd())
         exit_code = proc.returncode
         output = proc.stdout if proc.stdout is not None else ""
-        entry += [
+        body += [
             "Check: `%s`" % args.check,
             "Exit: %d" % exit_code,
             "",
             "```",
             output.rstrip("\n"),
             "```",
-            "",
         ]
 
-    with open(log_path, "a", encoding="utf-8") as fh:
-        fh.write("\n".join(entry) + "\n")
+    # Rewrite the file so the log always ends with exactly one newline: an
+    # append of "entry + \n" used to leave a blank line at EOF, which made
+    # `git diff --check` fail on the log that had just been recorded. Existing
+    # bytes are preserved except for trailing newline normalisation.
+    existing = ""
+    if os.path.exists(log_path):
+        with open(log_path, "r", encoding="utf-8") as fh:
+            existing = fh.read()
+    if existing:
+        existing = existing.rstrip("\n") + "\n\n"
+    text = existing + "## %s — %s\n" % (w.today(), args.step or "note")
+    body_text = "\n".join(body).rstrip("\n")
+    if body_text:
+        text += "\n" + body_text + "\n"
+    with open(log_path, "w", encoding="utf-8") as fh:
+        fh.write(text)
 
     w.info("recorded to %s" % os.path.relpath(log_path, w.repo_root()))
     # Propagate a failing check so the executor notices.

@@ -313,3 +313,73 @@ Stage handback — steps 1.1 and 1.2 complete; stop before 1.3.
 Reviewed `c0181a1..7d76d2d`: changes are limited to inventory, log and two completed plan steps. Inventory preserves all four working copies, 16 nonterminal cards, runtime data, ignored artifacts and shared-tool wiring. Baseline harness checks and plan validation passed; no application behavior was tested or changed. Independent metadata query grouped every assistant message in session `ses_e4ed72437ffeL8VjH7t0Gi23ru` by provider/model: 63 rows, exclusively `opencode-go/deepseek-v4.1-flash`. Steps 1.1–1.2 are technically accepted. Recorded usage is cumulative, not context size or the owner's bill; quota was not established. Coordinator review needed no implementation correction; it found a summary error claiming dangling links in all worktrees, while the actual inventory correctly limits that finding to linked worktrees and says the main checkout resolves them.
 
 Next stage is steps 1.3–1.4 together: implement safe acceptance/finish preconditions and exercise lifecycle failure preservation in isolated test repositories. Stop before 2.1. Fix the observed work-note trailing-blank-line defect within this workflow stage and cover it narrowly rather than repeatedly normalizing logs by hand. Do not merge this foundation card, alter live servers/data or change the executor profile. The release integration remains phase 6. Owner final staging acceptance remains outstanding.
+
+## 2026-11-06 — 1.3 focused lifecycle tests (preconditions, sift-accept, work-note)
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 7.948s
+
+OK
+```
+
+## 2026-11-06 — 1.3 harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.3 plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 1.3 whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```

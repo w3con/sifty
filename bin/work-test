@@ -3,8 +3,9 @@
 
 Runs the harness's own checks: every work-* script and the shared lib compile,
 the template set is complete, the convention and AGENTS.md are present, AGENTS.md
-carries the rules inline (no @-import of the mechanism), and each command parses
-its --help. Exits non-zero if any check fails. The CI workflow and work-accept
+carries the rules inline (no @-import of the mechanism), each command parses its
+--help, and the lifecycle tests in bin/tests run against isolated temporary Git
+repositories. Exits non-zero if any check fails. The CI workflow and work-accept
 both call this.
 """
 import os
@@ -74,6 +75,22 @@ for c in COMMANDS:
                        stdout=subprocess.DEVNULL, stderr=subprocess.PIPE,
                        text=True)
     check("--help %s" % c, r.returncode == 0, r.stderr.strip()[:120])
+
+# 5. lifecycle tests, each in its own throwaway Git repository
+tests_dir = os.path.join(BIN, "tests")
+if not os.path.isdir(tests_dir):
+    check("lifecycle tests (bin/tests)", False, "missing bin/tests")
+else:
+    r = subprocess.run(
+        [sys.executable, "-m", "unittest", "discover",
+         "-s", tests_dir, "-p", "test_*.py"],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    ok = r.returncode == 0
+    check("lifecycle tests (bin/tests)", ok,
+          "" if ok else (r.stdout or "").strip()[-2000:])
+    if not ok:
+        print(r.stdout)
 
 print()
 if failures:

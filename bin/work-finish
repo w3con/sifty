@@ -5,10 +5,20 @@ Usage:
     work-finish <id> [--force]
     work-finish <id> --reject "<reason>"
 
-Accept path: run the acceptance checks in a scratch copy (unless --force), then
-fast-forward-only merge work/<id> into the current branch, write done.md, remove
-the worktree and delete the branch. Reject path: write rejected.md with the
-reason, remove the worktree and delete the branch; nothing is merged.
+Accept path: require the current checkout to be the base branch (default main),
+the source worktree and target checkout clean including untracked files, every
+step closed, attention resolved and no terminal outcome. Capture the source and
+target revisions, run acceptance checks in a scratch copy detached at the
+captured source SHA, verify both revisions/branches are unchanged, then
+fast-forward merge exactly that tested source SHA. Write done.md and remove the
+worktree and branch without force.
+
+--force skips only the acceptance command. It does not bypass readiness,
+cleanliness, revision or preservation checks.
+
+Reject path: write rejected.md with the reason and commit it on the base branch.
+The work branch, worktree and any uncommitted changes are preserved; nothing is
+removed or merged.
 
 No staging deploy is run after the merge. Staging previews in-progress work from
 its own worktree; finishing a card only merges to main. To update production, run
@@ -29,20 +39,45 @@ def write_terminal(card_dir, name, body):
         fh.write(body)
 
 
-def cleanup(card_id, branch, delete_branch=True):
-    wt = w.find_worktree(branch)
-    if wt:
-        w.run(["git", "worktree", "remove", "--force", wt])
-    if delete_branch:
-        w.run(["git", "branch", "-D", branch])
-
-
-def commit_card(card_dir, message):
+def commit_card(card_dir, message, only=None):
+    """Commit one terminal record, not unrelated uncommitted card changes."""
     rel = os.path.relpath(card_dir, w.repo_root())
-    w.run(["git", "add", "--", rel], cwd=w.repo_root())
+    path = os.path.join(rel, only) if only else rel
+    w.run(["git", "add", "--", path], cwd=w.repo_root())
     cp = w.run(["git", "commit", "-q", "-m", message], cwd=w.repo_root())
     if cp.returncode != 0:
         w.die("git commit failed: %s" % (cp.stderr or cp.stdout).strip())
+
+
+def reject_card(card_dir, card_id, branch, target_root, reason):
+    """Record the rejection on the base branch without touching the work copy."""
+    wt = w.find_worktree(branch, cwd=target_root)
+    source_card = w.find_card_dir(card_id, root=wt) if wt else None
+    existing = w.terminal_file_present(card_dir)
+    if not existing and source_card:
+        existing = w.terminal_file_present(source_card)
+    if existing in ("done.md", "rejected.md", "cancelled.md"):
+        w.refuse(["cannot reject %s: terminal file already present: %s"
+                  % (card_id, existing)])
+    tip = w.git_rev(branch, cwd=target_root)
+    if tip is None:
+        w.refuse(["cannot reject %s: no branch %s" % (card_id, branch)])
+
+    dirty = w.git_status_lines(wt) if wt else []
+    if dirty:
+        preservation = ("The work branch and worktree were preserved. Uncommitted "
+                        "changes remain in %s:\n\n%s\n"
+                        % (wt, "\n".join("    " + line for line in dirty)))
+    else:
+        preservation = ("The work branch and worktree were preserved. No "
+                        "uncommitted changes were present.")
+    body = ("# %s — rejected\n\n**Date:** %s\n**Branch tip was:** %s\n\n"
+            "## Reason\n\n%s\n\n## Preservation\n\n%s\n"
+            % (card_id, w.today(), tip, reason, preservation))
+    write_terminal(card_dir, "rejected.md", body)
+    commit_card(card_dir, "chore(work): reject %s" % card_id,
+                only="rejected.md")
+    w.info("rejected %s; branch %s and worktree preserved" % (card_id, branch))
 
 
 def main():
@@ -50,51 +85,93 @@ def main():
     ap.add_argument("id")
     ap.add_argument("--reject", default=None, metavar="REASON")
     ap.add_argument("--force", action="store_true",
-                    help="skip the acceptance check before merging")
+                    help="skip only the acceptance command; readiness, "
+                         "cleanliness and revision checks still apply")
     args = ap.parse_args()
 
     card_dir = w.require_card_dir(args.id)
     branch = "work/%s" % args.id
+    base = w.base_branch()
+    target_root = w.repo_root()
+
+    current = w.git_current_branch(target_root)
+    if current != base:
+        w.refuse(["target branch is %r, not %r; run work-finish from the base "
+                  "checkout" % (current, base)])
 
     # ── Reject path ──────────────────────────────────────────────────────────
     if args.reject is not None:
-        last = w.run(["git", "rev-parse", "--short", branch])
-        sha = last.stdout.strip() if last.returncode == 0 else "(unknown)"
-        write_terminal(card_dir, "rejected.md",
-                       "# %s — rejected\n\n**Date:** %s\n**Branch tip was:** %s\n\n"
-                       "## Reason\n\n%s\n" % (args.id, w.today(), sha, args.reject))
-        commit_card(card_dir, "chore(work): reject %s" % args.id)
-        cleanup(args.id, branch)
-        w.info("rejected %s" % args.id)
+        reject_card(card_dir, args.id, branch, target_root, args.reject)
         return
 
     # ── Accept path ──────────────────────────────────────────────────────────
-    if not w.find_worktree(branch):
-        w.refuse(["no worktree for %s — nothing to finish" % branch])
+    snapshot = w.finish_snapshot(args.id)
+    problems = w.readiness_problems(args.id)
+    if problems:
+        w.refuse(["cannot finish %s:" % args.id] + problems)
+
+    source_sha = snapshot["source_sha"]
+    target_sha = snapshot["target_sha"]
+    target_branch = snapshot["target_branch"]
 
     if not args.force:
-        code, output = w.run_accept(args.id)
+        code, output, accept_problems = w.run_accept(
+            args.id, source_sha, target_sha, target_branch)
         sys.stdout.write(output)
         if output and not output.endswith("\n"):
             sys.stdout.write("\n")
+        if accept_problems:
+            w.refuse(["acceptance could not be verified for %s:" % args.id]
+                     + accept_problems)
         if code != 0:
             w.refuse(["acceptance checks failed (exit %d) — not merging. "
-                      "Fix the work or pass --force." % code])
+                      "Work branch and worktree preserved." % code])
 
-    # Fast-forward-only merge into the current (base) branch.
-    base = w.git_current_branch()
-    merge = w.run(["git", "merge", "--ff-only", branch], cwd=w.repo_root())
+    # Re-verify the exact tested snapshot immediately before merging.
+    problems = w.readiness_problems(args.id)
+    if problems:
+        w.refuse(["cannot finish %s after acceptance:" % args.id] + problems)
+    now = w.finish_snapshot(args.id)
+    if now["source_sha"] != source_sha:
+        w.refuse(["source revision changed during acceptance: %s -> %s; "
+                  "work branch and worktree preserved"
+                  % (source_sha, now["source_sha"])])
+    if now["target_branch"] != target_branch or now["target_sha"] != target_sha:
+        w.refuse(["target moved during acceptance: %s@%s -> %s@%s; "
+                  "work branch and worktree preserved"
+                  % (target_branch, target_sha, now["target_branch"],
+                     now["target_sha"])])
+
+    merge = w.run(["git", "merge", "--ff-only", source_sha], cwd=target_root)
     if merge.returncode != 0:
-        w.refuse(["fast-forward merge of %s into %s failed — the base has moved. "
-                  "Rebase work/%s onto %s, then finish again.\n%s"
-                  % (branch, base, args.id, base, merge.stderr.strip())])
-    w.info("fast-forwarded %s into %s" % (branch, base))
+        w.refuse(["fast-forward merge of tested revision %s into %s failed — "
+                  "the base has moved. Work branch and worktree preserved.\n%s"
+                  % (source_sha, base,
+                     (merge.stderr or merge.stdout).strip())])
+    merged_sha = w.git_rev("HEAD", cwd=target_root)
+    if merged_sha != source_sha:
+        w.refuse(["merge produced %s instead of the tested %s; done.md not "
+                  "written and work branch preserved"
+                  % (merged_sha, source_sha)])
+    w.info("fast-forwarded tested revision %s into %s" % (source_sha, base))
+
+    # Re-resolve the card after the merge in case the work branch relocated it.
+    final_card = w.find_card_dir(args.id)
+    if not final_card:
+        w.die("merged tested revision %s but card %s is not present in the "
+              "target; done.md not written and work branch preserved"
+              % (source_sha, args.id))
+    card_dir = final_card
 
     write_terminal(card_dir, "done.md",
                    "# %s — done\n\n**Date:** %s\n**Merged into:** %s\n"
-                   % (args.id, w.today(), base))
-    commit_card(card_dir, "chore(work): finish %s" % args.id)
-    cleanup(args.id, branch)
+                   "**Tested revision:** %s\n"
+                   % (args.id, w.today(), base, source_sha))
+    commit_card(card_dir, "chore(work): finish %s" % args.id,
+                only="done.md")
+
+    for problem in w.cleanup_finished(args.id, source_sha):
+        w.info("WARNING: %s" % problem)
 
     if w.config_get("WORK_PUSH") == "1":
         push = w.run(["git", "push"], cwd=w.repo_root())

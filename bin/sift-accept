@@ -1,18 +1,25 @@
 #!/usr/bin/env bash
 # bin/sift-accept — acceptance check for a sifty card.
 #
-# Run by work-accept / work-finish as the WORK_ACCEPT_CMD. Detects whether the
-# card touched application code (sifty/** or app/**) and runs the appropriate
-# suite:
+# Run by work-accept / work-finish as the WORK_ACCEPT_CMD. The harness self-test
+# always runs. Application checks also run when the card changed application
+# source (sifty/** or app/**) or build/deploy/configuration inputs:
 #
-#   App-touching card  → go test -race ./...  +  tsc --noEmit  +  vite build
-#   Harness/docs card  → bin/work-test (the harness self-test)
+#   bin/sift-*  bin/work.config  Makefile  config/**  .github/**
 #
-# A card is considered app-touching when any committed file on this branch
-# (relative to the common ancestor with the base branch) is under sifty/ or
-# app/. The base branch defaults to main; set SIFTY_BASE_BRANCH to override.
+#   Harness self-test       → bin/work-test (always)
+#   Application checks      → go test -race ./...  +  npm ci  +  npm run build
+#                             (tsc --noEmit + vite build)
 #
-# Exit 0 = pass. Exit non-zero = fail (card is rejected before merge).
+# A card is app/build-touching when any committed file on this branch (relative
+# to the merge base with the base branch) matches those paths. The base branch
+# defaults to WORK_BASE_BRANCH, then SIFTY_BASE_BRANCH, then main.
+#
+# npm ci is required; a failure fails acceptance rather than silently falling
+# back to npm install. The frontend build writes to a temporary directory so the
+# scratch copy stays removable without force.
+#
+# Exit 0 = pass. Exit non-zero = fail (the card is not accepted or merged).
 
 set -euo pipefail
 
@@ -23,61 +30,57 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
     || die "not inside a git repository"
 
-BASE_BRANCH="${SIFTY_BASE_BRANCH:-main}"
+BASE_BRANCH="${WORK_BASE_BRANCH:-${SIFTY_BASE_BRANCH:-main}}"
 
 # Find the merge base between HEAD and the base branch.
 MERGE_BASE="$(git -C "$APP_HOME" merge-base "$BASE_BRANCH" HEAD 2>/dev/null \
     || git -C "$APP_HOME" merge-base origin/"$BASE_BRANCH" HEAD 2>/dev/null \
     || echo "")"
 
+APP_TOUCHING=0
+BUILD_TOUCHING=0
+
 if [[ -z "$MERGE_BASE" ]]; then
-    log "Cannot find merge base with $BASE_BRANCH; running full app suite to be safe."
+    log "Cannot find merge base with $BASE_BRANCH; running application checks to be safe."
     APP_TOUCHING=1
+    BUILD_TOUCHING=1
 else
-    # List files changed on this branch since the merge base.
     CHANGED="$(git -C "$APP_HOME" diff --name-only "$MERGE_BASE" HEAD 2>/dev/null || true)"
     if echo "$CHANGED" | grep -qE '^(sifty|app)/'; then
         APP_TOUCHING=1
-        log "App-touching card detected (files changed under sifty/ or app/)."
+    fi
+    if echo "$CHANGED" | grep -qE '^(bin/sift-[^/]+|bin/work\.config|Makefile|config/|\.github/)'; then
+        BUILD_TOUCHING=1
+    fi
+    if [[ "$APP_TOUCHING" -eq 1 || "$BUILD_TOUCHING" -eq 1 ]]; then
+        log "Application/build files changed; running application checks."
     else
-        APP_TOUCHING=0
-        log "No app files changed; running harness self-test only."
+        log "No application/build files changed; running harness self-test only."
     fi
 fi
 
-PASS=0
+# 1. The harness self-test always runs, whatever the card touched.
+log "--- Harness self-test (bin/work-test) ---"
+python3 "$APP_HOME/bin/work-test" || die "Harness self-test failed"
+log "Harness self-test: PASS"
 
-if [[ "$APP_TOUCHING" -eq 1 ]]; then
+# 2. Application checks when source, build, deploy or configuration inputs changed.
+if [[ "$APP_TOUCHING" -eq 1 || "$BUILD_TOUCHING" -eq 1 ]]; then
     log "--- Go tests (go test -race ./...) ---"
-    if (cd "$APP_HOME/sifty" && go test -race ./... 2>&1); then
-        log "Go tests: PASS"
-    else
-        die "Go tests failed"
-    fi
+    (cd "$APP_HOME/sifty" && go test -race ./...) || die "Go tests failed"
+    log "Go tests: PASS"
 
     log "--- Frontend dependencies (npm ci) ---"
-    if ! npm --prefix "$APP_HOME/sifty/web" ci --silent 2>/dev/null; then
-        npm --prefix "$APP_HOME/sifty/web" install --silent 2>/dev/null \
-            || die "frontend dependency install failed"
-    fi
+    (cd "$APP_HOME/sifty/web" && npm ci --silent) \
+        || die "frontend dependency install failed (npm ci); not falling back to npm install"
+    log "Frontend dependencies: PASS"
 
-    log "--- TypeScript check (tsc --noEmit) ---"
-    if npm --prefix "$APP_HOME/sifty/web" run build 2>&1; then
-        log "tsc + vite build: PASS"
-    else
-        die "tsc --noEmit or vite build failed"
-    fi
-
-    PASS=1
-else
-    log "--- Harness self-test (bin/work-test) ---"
-    if python3 "$APP_HOME/bin/work-test" 2>&1; then
-        log "Harness self-test: PASS"
-        PASS=1
-    else
-        die "Harness self-test failed"
-    fi
+    BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sifty-accept-build.XXXXXX")"
+    trap 'rm -rf "$BUILD_DIR"' EXIT
+    log "--- TypeScript check + Vite build (BUILD_OUTDIR=$BUILD_DIR) ---"
+    (cd "$APP_HOME/sifty/web" && BUILD_OUTDIR="$BUILD_DIR" npm run build) \
+        || die "tsc --noEmit or vite build failed"
+    log "tsc + vite build: PASS"
 fi
 
-[[ "$PASS" -eq 1 ]] || die "Acceptance check did not complete"
 log "Acceptance checks passed."

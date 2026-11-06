@@ -16,7 +16,7 @@ Move the React frontend from `app/web` to `sifty/web` with its own build, and re
 
 *Gate: no `../src` import remains in `sifty/web`; `rg "\.\./src/" sifty/web` is empty.*
 
-- [ ] 1.1 — `git mv app/web sifty/web`; copy `app/src/{core,workflow,preparation-error}.ts` into `sifty/web` (e.g. `sifty/web/model/`) and add a frontend-owned types file with `ApplicationDraft` and `AnswerField`; leave `app/src` untouched.
+- [x] 1.1 — `git mv app/web sifty/web`; copy `app/src/{core,workflow,preparation-error}.ts` into `sifty/web` (e.g. `sifty/web/model/`) and add a frontend-owned types file with `ApplicationDraft` and `AnswerField`; leave `app/src` untouched.
 - [ ] 1.2 — Rewrite every frontend import of `../src/{core,workflow,application-store,preparation-error}` to the new local paths; confirm no `../src` reference remains in `sifty/web`.
 
 ### Phase 2 — Frontend-owned build config

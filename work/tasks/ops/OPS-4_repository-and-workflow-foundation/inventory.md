@@ -125,6 +125,8 @@ Recorded verbatim in `log.md` by `bin/work-note` on 2026-11-06:
 
 ## 9. Step 3.3 retention requirements for the main checkout (2026-11-06)
 
+**Coordinator review correction (supersedes the pre-merge incident destination and manifest-equality instructions below):** before acceptance, copy main's incident record to its already-ignored `.local/retained/incidents-pre-OPS-4.md`, not `work/incidents.md`. The latter is not ignored on the old main and would make acceptance fail on an untracked file. After merge installs the new ignore rules, copy the retained incident into `work/incidents.md`, verifying the recorded file hash. Check for an existing destination before any copy and preserve newer bytes. For the staging bundle, compare relative filenames and bytes (`diff -qr` between source and retained directory must exit zero); the original manifest contains path prefixes, so its hash cannot be expected to match after moving the directory. No copies or main changes have been performed by this review.
+
 The executor's worktree preserves the local files, but a merge into `main` will
 remove the tracked paths listed here. **The coordinator must perform these
 copies in the main checkout before `bin/work-finish` / the merge.** This section
@@ -145,23 +147,52 @@ records requirements only; the executor did not write to the main checkout.
    The destination hash must equal the value above before merging.
 
 2. **Pre-relocation staging bundle.** Source:
-   `/Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging/` (20 tracked files,
-   manifest SHA-256 `ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824`,
-   computed as `find … -type f | sort | xargs shasum -a 256 | shasum -a 256`).
+   `/Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging/` (20 files).
    Destination: `/Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106/`
    (ignored local material).
 
+   **What the older `ef6f…` value means.** The step 3.3 log recorded
+   `ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824` from
+   `find sifty/dist-staging -type f -print0 | sort -z | xargs -0 shasum -a 256 |
+   shasum -a 256`. That is the SHA-256 of the sorted `shasum` output lines for
+   the source tree rooted at `sifty/dist-staging`; each line also carries the
+   source-relative path prefix `sifty/dist-staging/`. It reproduces for two source
+   checkouts invoked with that same relative prefix (main and the worktree both
+   produce it), but it **cannot** match a copy whose root is
+   `.local/retained/sifty-dist-staging-20261106/`, because the path text differs.
+   Do not use `ef6f…` as a destination check.
+
+   **Portable comparison.** This digest hashes only each file's bytes and its
+   path relative to the copied root, so it is independent of the absolute
+   location and of the root directory's own name:
+
    ```sh
-   mkdir -p /Volumes/SSD/Dev/tknff/sifty/.local/retained
-   cp -a /Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging \
-      /Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106
-   find /Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106 \
-      -type f -print0 | sort -z | xargs -0 shasum -a 256 | shasum -a 256
+   bundle_manifest() {
+     python3 -c 'import hashlib,pathlib,sys; r=pathlib.Path(sys.argv[1]); rows=[hashlib.sha256(p.read_bytes()).hexdigest()+"  "+p.relative_to(r).as_posix()+"\n" for p in sorted(r.rglob("*")) if p.is_file()]; print(len(rows), hashlib.sha256("".join(rows).encode("utf-8")).hexdigest())' "$1"
+   }
    ```
 
-   The destination manifest must equal the value above before merging. The
-   bundle is generated and rebuildable, but the owner asked that its local bytes
-   not be discarded.
+   Copy the contents, not the source directory as a nested child, and compare the
+   source and destination with the same function:
+
+   ```sh
+   DEST=/Volumes/SSD/Dev/tknff/sifty/.local/retained/sifty-dist-staging-20261106
+   mkdir -p "$DEST"
+   cp -a /Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging/. "$DEST"/
+   bundle_manifest /Volumes/SSD/Dev/tknff/sifty/sifty/dist-staging
+   bundle_manifest "$DEST"
+   ```
+
+   Both commands must print:
+
+   ```
+   20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+   ```
+
+   This was verified read-only against main and the worktree sources and against
+   a temporary destination copy; all three produced the same value. The bundle is
+   generated and rebuildable, but the owner asked that its local bytes not be
+   discarded.
 
 3. **No history rewrite.** Both paths stop being tracked in the OPS-4 commit;
    earlier commits retain them. Never delete the local copies or force-remove
@@ -169,8 +200,11 @@ records requirements only; the executor did not write to the main checkout.
    worktree that contains ignored local material, so the worktree copy of
    `work/incidents.md` stays available if the coordinator needs to recover it.
 
-The worktree hashes recorded in the step 3.3 log entry are the same as the main
-checkout values above, so the copies are verifiable byte for byte.
+The incident hash above is a direct byte hash. The `ef6f…` value in the step 3.3
+log is the historical source-relative, path-inclusive digest described in item 2;
+the portable destination check for the bundle is the relative-name manifest
+`cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064`. The
+historical log output is preserved unchanged; this note corrects its use.
 
 4. **Initialized private submodule in the main checkout.** The executor did not
    touch `/Volumes/SSD/Dev/tknff/sifty/ai/shared` or

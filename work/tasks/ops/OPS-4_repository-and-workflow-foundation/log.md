@@ -6,7 +6,13 @@ Step 3.1 is implemented on `work/OPS-4` and awaits coordinator review; 3.2 has n
 
 ## Current coordinator checkpoint — 2026-11-06
 
-Latest stop: eight of 23 steps remain technically accepted through 3.1; 3.2–3.3 did not start. Visible initial Task invocation for session `ses_e4e70ff06ffeR5KzHXIu5fgaUm` and continuation both returned `Task cancelled`. No reason was exposed by the tool, so cancellation cause is not established. Read-only inspection after the first cancellation found a clean worktree at `ac858a9` with no relocation output. No alternative executor/model was substituted. Next action is to inspect current status and resume this same bounded-stage executor if available, retaining its original brief and stopping before 3.4. All later plan steps remain open. No main merge, history rewrite, staging or production deployment was performed. The coordinator reported both the lack of progress and tool cancellations to the owner instead of counting the attempted dispatch as completed work.
+Latest review: 3.2–3.3 are technically accepted through `96b0e3d`; ten of 23 steps complete, 13 open. Reviewed relocation, task lookup, hook adapters, ignore changes, preservation inventory and resume-path correction. Independently passed `python3 bin/work-test`, `python3 -m unittest -v bin.tests.test_resume` and the stage whitespace check. Executor evidence records an uninitialized-submodule public clone, unchanged gitlink/symlink identity and complete card inventory. All 129 assistant-message metadata rows use `opencode-go/deepseek-v4.1-flash`. The executor's latest assistant message has `finish: stop`; no second writer was started. Next assignment: 3.4–3.5 only, then review before phase 4. Main is still `c0181a1`; no merge or deployment occurred.
+
+Correction to the earlier interruption record: `Task cancelled` did not stop the underlying executor. Read-only session inspection found ongoing tool calls and another coordinator session waiting on the same executor, not a second coding agent. The coordinator told the owner and waited for confirmed completion instead of dispatching again. The previous assertion that this stage had not started was stale. Also clarified that all implementation is in `.worktrees/OPS-4`, not the main checkout visible in Finder.
+
+Preservation-review correction: archive main's incident record in its already-ignored `.local/retained/` before acceptance and install `work/incidents.md` after merge; the old main does not yet ignore the latter. Bundle manifests with different absolute path prefixes cannot be compared as identical hashes; compare relative filenames and bytes. Inventory §9 carries the correction. The separate owner request for a later plan centralizing all configured paths is captured as OPS-7, without adding that refactor to the active scope.
+
+Friction: the executor repeated export, clone and inventory checks while polishing its handback, and the coordinator mistook a cancelled tool invocation for stopped work. Subsequent briefs must stop after the assigned checks pass and record concise evidence; session completion must be checked before any new writer is launched.
 
 Application relocation reviewed through `b817ea3`: source is now in `frontend/`, `backend/`, `legacy/app/` on the work branch; runtime data and other working copies remain in place. Reviewed build/deploy/accept path changes and worker/static lookup; independently reran `bin/work-test` and frontend TypeScript/Vite build successfully. Executor evidence records the backend race suite, backend aggregate, worker automation (5 tests), scanner tree sweep, legacy build and moved-reference tests. The transfer-suite provider-stage assertion predates this relocation and is recorded, not claimed green. All 122 assistant-message metadata rows for this stage use `opencode-go/deepseek-v4.1-flash`. Step 3.1 is technically accepted (eight of 23 complete, 15 open). Next stage: 3.2–3.3 only, relocating project records/docs/shared wiring, adding the MCP placeholder and preserving/untracking local incident/generated artifacts. Stop before 3.4. Newly reported Git-history cleanup and manual expired-vacancy outcome were captured in separate backlog cards, without execution.
 
@@ -1622,3 +1628,25 @@ canonical_card_ids: 46
 single_file_cards: 2
 LINK_INVENTORY_OK
 ```
+
+## 2026-11-06 — 3.3 correction — portable relative-name bundle manifest
+
+Check: `python3 /tmp/ops4_bundle_manifest.py`
+Exit: 0
+
+```
+old_style_main      = ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+old_style_worktree  = ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+manifest_main_files  = 20
+manifest_main        = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+manifest_worktree_files  = 20
+manifest_worktree        = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+manifest_temp_dest_files = 20
+manifest_temp_dest = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+incident_main     = ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+incident_worktree = ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+```
+
+## 2026-11-06 — note
+
+Correction to §9 preservation instructions: the earlier `ef6f…` bundle digest was a path-inclusive digest over the sorted `shasum -a 256` lines of the source tree rooted at `sifty/dist-staging/`. It matches main and the worktree only because both were scanned with the same relative prefix; it cannot match a retained copy rooted elsewhere. The inventory now specifies a path-independent algorithm: sort files by relative path, hash each file's bytes with SHA-256, feed `<hash>  <relative-path>\n` lines to SHA-256. All three locations (main source, worktree source, temporary destination copy) produce `20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064`. The old log output is left unchanged; this note and the corrected inventory supersede its use for destination verification. No main writes, backups, or file changes were made.

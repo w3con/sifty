@@ -3,7 +3,7 @@
 **Epic:** ops
 **Created:** 2026-11-06
 **Author:** coordinator, based on the owner's conversation
-**Status:** in progress; steps 1.1–1.2 technically accepted
+**Status:** in progress; steps 1.1–3.3 technically accepted
 
 ## Why this work exists
 

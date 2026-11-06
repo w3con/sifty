@@ -1922,3 +1922,7 @@ dist/assets/index-BmioAjSk.js                                 288.62 kB │ gzip
 ✓ built in 429ms
 OPS4_35_VERIFY_OK
 ```
+
+## 2026-11-06 — note
+
+3.5 retention correction: worktree work/incidents.md is a newer coordinator-written copy (7207 bytes, mtime 2026-11-06 17:49) than main's ai/incidents.md (6342 bytes, SHA-256 ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae). Step 3.5 did not modify it; the coordinator must preserve the newer copy when reconciling inventory §9. No product or tracked-content change.

@@ -262,3 +262,11 @@ writes and remains at `c0181a1`. Its tracked `ai/incidents.md`, initialized
 `ai/shared` submodule and `sifty/dist-staging` still exist there, so physical
 main relocation is **not** complete. The coordinator must perform the §9
 preservation copies before any merge that removes those paths.
+
+**Incident-record note.** The worktree's ignored `work/incidents.md` is newer
+than the copy recorded in §9: 7,207 bytes, modified 2026-11-06 17:49, while
+main's `ai/incidents.md` is 6,342 bytes (SHA-256
+`ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae`). The
+worktree file was not modified by step 3.5. The coordinator must preserve this
+newer local record when reconciling §9 and must not overwrite it with the older
+main copy.

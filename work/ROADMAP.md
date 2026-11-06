@@ -27,6 +27,7 @@ Updated: 2026-11-06.
 
 ### Incoming ideas and separate work (not scheduled)
 
+- [Centralize all paths in configuration](tasks/ops/OPS-7_configurable-paths/description.md): the owner requested a separate improvement plan after structural relocation, covering every path rather than deployment settings alone. Planning requested; implementation not approved.
 - [Review and simplify Git history](tasks/ops/OPS-6_git-history-cleanup/description.md): inspect the log and propose cleanup, with the method and any rewrite to be approved separately.
 - [Expired vacancy response in application confirmation](tasks/application-preparation/APP-8_expired-application-outcome/description.md): add the missing manual closed/expired outcome; persistence/visibility details remain to be prepared.
 

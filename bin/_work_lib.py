@@ -39,6 +39,7 @@ HEADER_LINE_RE = re.compile(r"^\s*\*\*[^*]+:\*\*")
 STATE_ALIASES = {
     "backlog": "backlog",
     "founded": "backlog",
+    "approved": "backlog",
     "new": "backlog",
     "idea": "backlog",
     "bug": "backlog",
@@ -744,14 +745,23 @@ def card_state(card_dir):
         info["state"] = explicit
         info["state_source"] = "**Status:**"
         if explicit in ("done", "rejected", "cancelled"):
-            expected = {
-                "done": "done.md",
-                "rejected": "rejected.md",
-                "cancelled": "cancelled.md",
-            }[explicit]
-            info["errors"].append(
-                "**Status:** %r requires %s; no terminal outcome file found"
-                % (info["status_value"], expected))
+            legacy_descoped = bool(re.match(
+                r"^\s*descoped\b", info["status_value"] or "", re.IGNORECASE))
+            if legacy_descoped and explicit == "cancelled":
+                # Older cards recorded only the prose "descoped" decision. The
+                # archived outcome is inferred; a cancelled.md can be added later.
+                info["state_source"] = "legacy **Status:** descoped"
+                info["terminal"] = True
+                info["successful"] = False
+            else:
+                expected = {
+                    "done": "done.md",
+                    "rejected": "rejected.md",
+                    "cancelled": "cancelled.md",
+                }[explicit]
+                info["errors"].append(
+                    "**Status:** %r requires %s; no terminal outcome file found"
+                    % (info["status_value"], expected))
 
     for reason in meta["blockers"]:
         if reason:

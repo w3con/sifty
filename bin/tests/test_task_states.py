@@ -75,6 +75,20 @@ class StateInferenceTest(CardRepoTest):
                              env={"WORK_SESSION": "1"})
         self.assert_refused(handover, "unresolved blocker")
 
+    def test_legacy_approved_status_is_backlog(self):
+        self.make_card(status="approved; ready for handover")
+        self.commit_all()
+        result = self.work("work-status", "TEST-1")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("State: backlog", result.stdout)
+
+    def test_legacy_descoped_status_is_an_archived_cancellation(self):
+        self.make_card(status="descoped (see Decision)")
+        self.commit_all()
+        result = self.work("work-status", "TEST-1")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn("cancelled (archived unsuccessful outcome)", result.stdout)
+
     def test_status_done_requires_done_evidence(self):
         self.make_card(status="done")
         self.commit_all()

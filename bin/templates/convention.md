@@ -50,7 +50,7 @@ Inference and precedence, used by `work-status`, `work-list`, `work-capture`, `w
 
 1. An outcome file wins: `done.md` → `done`; `rejected.md` → `rejected`; `cancelled.md` → `cancelled`. This is why an old completed card with stale `**Status:** founded` or an unchecked template line remains completed and is not reopened.
 2. `question.md`, a `**Blocker:**` line and open `attention.md` items block a nonterminal card without changing its state.
-3. Otherwise the leading value of `**Status:**` decides. Legacy `founded`, `new` and similar prose map to `backlog`; `descoped` maps to an archived cancellation. An unknown value is reported, never guessed.
+3. Otherwise the leading value of `**Status:**` decides. Legacy `founded`, `approved`, `new` and similar prose map to `backlog`; `descoped` maps to an archived cancellation even before a `cancelled.md` exists. An unknown value is reported, never guessed.
 4. A card with no metadata is `backlog`.
 
 Contradictions are refused: several outcome files, a `**Status:**` naming an outcome without its evidence file, a terminal outcome that still carries a blocker or open attention, several conflicting metadata lines, or duplicate IDs.

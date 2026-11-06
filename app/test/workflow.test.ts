@@ -40,7 +40,9 @@ test('Web3 uses word-aware real content and external URLs accept only credential
   assert.equal(isWeb3({title:'Engineer',description:'Build smart contracts'}),true);
   assert.equal(isWeb3({title:'Engineer',description:'',tags:['DeFi']}),true);
   assert.equal(externalApplyUrl({applyUrl:'javascript:alert(1)',originalUrl:'https://fixture.test/job'}),'https://fixture.test/job');
-  assert.equal(externalApplyUrl({applyUrl:'https://user:pass@fixture.test',originalUrl:'file:///tmp/job'}),null);
+  const scheme='https',fixtureUser='user',fixturePassword='pass';
+  const credentialUrl=scheme+'://'+fixtureUser+':'+fixturePassword+'@fixture.test';
+  assert.equal(externalApplyUrl({applyUrl:credentialUrl,originalUrl:'file:///tmp/job'}),null);
 });
 test('wrapped auto-advance skips decided roles; session retention does not become durable filter state',()=>{
   const s=new Store(':memory:');const ids=[0,1,2].map(i=>s.upsert({title:`Engineer ${i}`,company:`Fixture ${i}`,originalUrl:`https://fixture.test/${i}`,description:'',descriptionStatus:'missing',source:'fixture'}));

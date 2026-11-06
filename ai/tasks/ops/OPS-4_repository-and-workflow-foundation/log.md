@@ -768,3 +768,55 @@ Stage handback correction before review — diagnostics and ref scans.
 - `tree-check` now skips symlinks and gitlinks in `--ref` scans as well as the working tree, and redacts the repository label and origin URL in both clean and refused output. `commit-diff-check` redacts its source label too, and the watched-name finding no longer echoes the person's name.
 - Added a regression test for an origin URL carrying a synthetic credential: the clean message must not print it. Scanner tests are now 33 and pass; the scanner self-test passes.
 - No plan step was reopened. The final stage checkpoint is the commit containing this correction note.
+
+## 2026-11-06 — review corrections — dotted secrets, required setup files, fixture assembly
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (sifty/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — note
+
+Coordinator review corrections — 2.1–2.3.
+
+1. Narrowed `_looks_like_code_expression`: a dot alone is no longer an exemption. Function calls and code-context property expressions pass; dotted unquoted values in `=`/config assignments are refused. Regressions cover `PASSWORD=<dotted-value>`, `password: <dotted-value>` and `password: decodeURIComponent(proxy.password)`.
+2. `bin/work-setup` now checks an explicit required set: six hooks, three pre-commit steps, ten harness commands, and the scanner directory plus seven scanner files. Missing whole directory, hook, step, command or scanner file fails instead of printing ready. Isolated tests cover the whole scanner directory, each required hook and a missing scanner file.
+3. Assembled the synthetic fixtures at runtime in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, preserving the identical runtime values and behavior. Narrow checks: `go test ./internal/config -run TestSaveRejectsSecrets` PASS, `go test ./internal/config` PASS; the three changed legacy tests pass under `tsx` (the legacy test's `app/web` import is stale after the frontend move, so the check used a temporary local `app/web -> ../sifty/web` symlink, removed afterwards). Whole-tree `tree-check` now reports only the two `FCTO_STATE_DIR` formatting findings in `sifty/web/model/core.ts`; they are recorded as a formatting-only relocation issue and the compatibility references were not removed.
+
+Checks: `python3 bin/work-test` PASS (50 harness tests, 35 scanner tests, self-test, scanner sources clean); `python3 bin/work-plan OPS-4` fit; `git diff --check` exit 0. `e41098d` (OPS-5 CPU report) was preserved untouched. Exact next action: coordinator reviews these corrections, then assigns 3.1 in a fresh executor context. Stop before 3.1. No real setup run, global configuration change, deploy, merge, push or subagent.

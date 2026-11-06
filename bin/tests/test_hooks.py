@@ -105,6 +105,39 @@ class HookInstallTest(unittest.TestCase):
             if path.is_file():
                 self.assertTrue(os.access(path, os.X_OK), str(path))
 
+    def test_missing_whole_scanner_directory_fails(self):
+        self.install()
+        shutil.rmtree(self.root / "sifty" / "scripts" / "leakcheck")
+        result = run_cmd(["bash", str(self.root / "bin" / "work-setup")],
+                         cwd=self.root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("scanner directory missing", result.stdout)
+
+    def test_each_required_hook_must_exist(self):
+        hooks = ("pre-commit", "commit-msg", "pre-push",
+                 "post-checkout", "post-merge", "post-rewrite")
+        for hook in hooks:
+            with self.subTest(hook=hook):
+                self.install()
+                target = self.root / ".githooks" / hook
+                target.unlink()
+                result = run_cmd(
+                    ["bash", str(self.root / "bin" / "work-setup")],
+                    cwd=self.root)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(hook, result.stdout)
+                shutil.copy2(REPO_ROOT / ".githooks" / hook, target)
+        self.install()
+
+    def test_missing_required_scanner_file_fails(self):
+        self.install()
+        (self.root / "sifty" / "scripts" / "leakcheck" /
+         "commit-diff-check").unlink()
+        result = run_cmd(["bash", str(self.root / "bin" / "work-setup")],
+                         cwd=self.root)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("commit-diff-check", result.stdout)
+
     # ── optional integration ────────────────────────────────────────────────
     def test_ordinary_conventional_work_record_passes_without_shared_submodule(self):
         self.assertFalse((self.root / "ai").exists())

@@ -70,6 +70,20 @@ class CredentialRuleTest(unittest.TestCase):
                      "ai/tasks/demo/log.md", "bin/tool.py"):
             self.assertTrue(irreversible(line), path)
 
+    def test_dotted_unquoted_secret_assignment_is_still_refused(self):
+        value = "actual" + "." + "long" + "-" + "secret" + "123"
+        for line in ("PASSWORD=" + value,
+                     "SECRET_KEY=" + value,
+                     "password: " + value):
+            self.assertIn("secret assigned a real value",
+                          {f.form for f in irreversible(line)}, line)
+
+    def test_code_property_and_function_expressions_pass(self):
+        for line in ("password: decodeURIComponent(proxy.password)",
+                     "password: props.password,",
+                     "password: config.proxy.password }"):
+            self.assertEqual(irreversible(line), [], line)
+
     def test_credential_url_fails(self):
         line = "postgres" + "://app:" + "s3cr3t" + "value" + "@db.internal/app"
         self.assertIn("credentials in a URL",

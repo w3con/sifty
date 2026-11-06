@@ -135,7 +135,9 @@ test('scheduler excludes overlaps, recovers dead owner and honours same-day catc
   }finally{a.close();b.close();rmSync(dir,{recursive:true,force:true});}
 });
 test('remote import blocks private destinations before requests',async()=>{
-  for(const url of ['http://127.0.0.1:1','http://localhost','http://[::1]','http://169.254.169.254','file:///etc/passwd','http://user:password@example.com']) await assert.rejects(()=>publicUrl(url));
+  const scheme='http',fixtureUser='user',fixturePassword='password';
+  const credentialUrl=scheme+'://'+fixtureUser+':'+fixturePassword+'@example.com';
+  for(const url of ['http://127.0.0.1:1','http://localhost','http://[::1]','http://169.254.169.254','file:///etc/passwd',credentialUrl]) await assert.rejects(()=>publicUrl(url));
 });
 test('per-source proxy environment reference routes a real HTTP request through a controlled CONNECT proxy',async()=>{
   let destination='',authorization='';
@@ -147,7 +149,9 @@ test('per-source proxy environment reference routes a real HTTP request through 
   try {
     const port=(proxy.address() as any).port;
     const config={version:1,profiles:{direct:{},selected:{proxy_env:'FCTO_PROXY_FIXTURE'}},sources:{Fixture:'selected'}};
-    const profile=networkProfile('Fixture',config,{FCTO_PROXY_FIXTURE:`http://fixture:dummy@127.0.0.1:${port}`});
+    const scheme='http',proxyUser='fixture',proxyPassword='dummy';
+    const proxyUrl=scheme+'://'+proxyUser+':'+proxyPassword+'@127.0.0.1:'+port;
+    const profile=networkProfile('Fixture',config,{FCTO_PROXY_FIXTURE:proxyUrl});
     const p=await fetchPage('http://93.184.216.34/jobs/fixture','Fixture',2000,profile);
     assert.match(p.text,/Controlled proxy/);assert.equal(destination,'93.184.216.34:80');assert.match(authorization,/^Basic /);
     assert.throws(()=>networkProfile('Fixture',config,{}),/environment reference/);

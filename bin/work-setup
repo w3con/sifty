@@ -23,66 +23,74 @@ chmod_executable() {
     fi
 }
 
-# Hooks and their dispatch steps.
-for hook in .githooks/*; do
-    chmod_executable "$hook"
-done
-if [ -d .githooks/pre-commit.d ]; then
-    for step in .githooks/pre-commit.d/*; do
-        chmod_executable "$step"
-    done
-fi
-
-# Harness commands. work.config is configuration, not an adapter.
+REQUIRED_HOOKS="pre-commit commit-msg pre-push post-checkout post-merge post-rewrite"
+REQUIRED_STEPS="10-kb-relation-build 20-work-selfcheck 30-leak-check"
 COMMANDS="work-new work-plan work-handover work-note work-commit work-resume work-accept work-finish work-setup work-test"
+SCANNER_DIR="sifty/scripts/leakcheck"
+SCANNERS="commit-diff-check commit-msg-check range-check tree-check leakcheck-selftest leak_census.py leak_git.py"
+
+# Make the required adapters executable. Extra files are not part of the
+# contract and do not make a broken installation pass below.
+for hook in $REQUIRED_HOOKS; do
+    chmod_executable ".githooks/$hook"
+done
+for step in $REQUIRED_STEPS; do
+    chmod_executable ".githooks/pre-commit.d/$step"
+done
 for command in $COMMANDS; do
     chmod_executable "bin/$command"
 done
-
-# The leak scanner used by the project hooks.
-SCANNERS="commit-diff-check commit-msg-check range-check tree-check leakcheck-selftest leak_census.py leak_git.py"
-if [ -d sifty/scripts/leakcheck ]; then
+if [ -d "$SCANNER_DIR" ]; then
     for scanner in $SCANNERS; do
-        chmod_executable "sifty/scripts/leakcheck/$scanner"
+        chmod_executable "$SCANNER_DIR/$scanner"
     done
 fi
 
 # ── Verification ────────────────────────────────────────────────────────────
+# Check the required files explicitly. A clone that is missing an entire
+# directory, one hook, one pre-commit step, one command or one scanner adapter
+# must fail instead of printing ready.
 fail=0
 effective="$(git config --get core.hooksPath || true)"
 if [ "$effective" != ".githooks" ]; then
     echo "work-setup: ERROR effective core.hooksPath is '$effective', not the relative '.githooks'" >&2
     fail=1
 fi
-for hook in .githooks/*; do
-    [ -f "$hook" ] || continue
-    if [ ! -x "$hook" ]; then
-        echo "work-setup: ERROR hook is not executable: $hook" >&2
+
+check_adapter() {
+    # $1 = path, $2 = description
+    if [ ! -f "$1" ]; then
+        echo "work-setup: ERROR required $2 missing: $1" >&2
+        fail=1
+    elif [ ! -x "$1" ]; then
+        echo "work-setup: ERROR required $2 not executable: $1" >&2
         fail=1
     fi
-done
-if [ -d .githooks/pre-commit.d ]; then
-    for step in .githooks/pre-commit.d/*; do
-        [ -f "$step" ] || continue
-        if [ ! -x "$step" ]; then
-            echo "work-setup: ERROR pre-commit step is not executable: $step" >&2
-            fail=1
-        fi
-    done
+}
+
+if [ ! -d .githooks ]; then
+    echo "work-setup: ERROR required hook directory missing: .githooks" >&2
+    fail=1
 fi
-for command in $COMMANDS; do
-    if [ ! -f "bin/$command" ] || [ ! -x "bin/$command" ]; then
-        echo "work-setup: ERROR harness command missing or not executable: bin/$command" >&2
-        fail=1
-    fi
+for hook in $REQUIRED_HOOKS; do
+    check_adapter ".githooks/$hook" "hook"
 done
-if [ -d sifty/scripts/leakcheck ]; then
+if [ ! -d .githooks/pre-commit.d ]; then
+    echo "work-setup: ERROR required pre-commit directory missing: .githooks/pre-commit.d" >&2
+    fail=1
+fi
+for step in $REQUIRED_STEPS; do
+    check_adapter ".githooks/pre-commit.d/$step" "pre-commit step"
+done
+for command in $COMMANDS; do
+    check_adapter "bin/$command" "harness command"
+done
+if [ ! -d "$SCANNER_DIR" ]; then
+    echo "work-setup: ERROR required leak scanner directory missing: $SCANNER_DIR" >&2
+    fail=1
+else
     for scanner in $SCANNERS; do
-        if [ ! -f "sifty/scripts/leakcheck/$scanner" ] \
-                || [ ! -x "sifty/scripts/leakcheck/$scanner" ]; then
-            echo "work-setup: ERROR leak scanner missing or not executable: sifty/scripts/leakcheck/$scanner" >&2
-            fail=1
-        fi
+        check_adapter "$SCANNER_DIR/$scanner" "leak scanner"
     done
 fi
 if [ "$fail" -ne 0 ]; then

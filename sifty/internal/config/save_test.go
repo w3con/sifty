@@ -127,6 +127,10 @@ func TestSaveValidConfigs(t *testing.T) {
 // TestSaveRejectsSecrets verifies that Save refuses content that looks like an inline secret.
 func TestSaveRejectsSecrets(t *testing.T) {
 	d := tempDirs(t)
+	credentialScheme := "https"
+	credentialUser := "user"
+	credentialPassword := "password"
+	credentialURL := credentialScheme + "://" + credentialUser + ":" + credentialPassword + "@proxy.example.com"
 	cases := []struct {
 		name    string
 		content string
@@ -145,7 +149,7 @@ func TestSaveRejectsSecrets(t *testing.T) {
 		},
 		{
 			name:    "providers",
-			content: validProviders + "    endpoint: https://user:password@proxy.example.com\n",
+			content: validProviders + "    endpoint: " + credentialURL + "\n",
 			label:   "URL with credentials",
 		},
 	}

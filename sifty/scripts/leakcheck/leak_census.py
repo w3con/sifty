@@ -132,9 +132,9 @@ _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_
 # an arbitrary code expression or a whole minified JavaScript object.
 _SECRET_ASSIGN_RE = re.compile(
     r"""(?ix)
-    \b(?:api[_-]?key|secret(?:[_-]?key)?|access[_-]?key|auth[_-]?token|
+    \b(?P<key>api[_-]?key|secret(?:[_-]?key)?|access[_-]?key|auth[_-]?token|
        client[_-]?secret|private[_-]?key|password|passwd|passphrase)\b
-    \s*[:=]\s*
+    \s*(?P<sep>[:=])\s*
     (?P<q>["']?)(?P<val>[A-Za-z0-9_+/=.-]{12,})(?P=q)
     """)
 _PLACEHOLDER_RE = re.compile(
@@ -156,13 +156,31 @@ def _looks_like_placeholder(value):
     return bool(_PLACEHOLDER_RE.search(value))
 
 
+_PROPERTY_CHAIN_RE = re.compile(r"[A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)+")
+_CODE_CONTEXT_RE = re.compile(
+    r"(?:=>|[{}()]|\b(?:const|let|var|function|return|await)\b)")
+
+
 def _looks_like_code_expression(line, match):
-    """Reject a match that is a function call or a dotted property access, not a value.
-    This keeps source such as `password: decodeURIComponent(proxy.password)` from reading as an
-    assigned credential while a real literal value is still refused."""
-    if line[match.end("val"):match.end("val") + 1] == "(":
+    """Reject a match that is a function call or a property expression inside code, not a value.
+
+    A dotted value after `=` or `:` is still a credential in a .env, YAML or plain config
+    assignment, so the dot alone is not an exemption. The narrow code allowance is a function
+    call, or a lowercase code-style key with a property chain in an obvious code context. This
+    keeps `password: decodeURIComponent(proxy.password)` from reading as an assigned credential
+    while still refusing a dotted unquoted value in a plain env/config assignment."""
+    after = line[match.end("val"):]
+    if after[:1] == "(":
         return True
-    return not match.group("q") and "." in match.group("val")
+    if match.group("sep") != ":":
+        return False
+    key = match.group("key")
+    if key != key.lower() or not _PROPERTY_CHAIN_RE.fullmatch(match.group("val")):
+        return False
+    stripped = after.lstrip()
+    if stripped[:1] in (",", "}", ")", ";", "]"):
+        return True
+    return bool(_CODE_CONTEXT_RE.search(line))
 
 
 def scan_line_irreversible(line):

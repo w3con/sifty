@@ -65,7 +65,10 @@ def main():
 
     rows = []
     for card in w.iter_cards():
-        state = w.card_state(card["path"])
+        nav = w.navigation_state(card["id"])
+        state = nav["effective"]
+        if state is None:
+            continue
         if state["errors"]:
             w.refuse(["cannot read %s: %s"
                       % (card["id"], "; ".join(state["errors"]))])
@@ -75,7 +78,7 @@ def main():
             continue
         if args.epic is not None and card["epic"] != args.epic:
             continue
-        rows.append((card, state, w.worktree_info(card["id"])))
+        rows.append((card, state, nav))
 
     rows.sort(key=lambda row: (STATE_ORDER.get(row[1]["state"], 99),
                                w.card_sort_key(row[0])))
@@ -83,7 +86,7 @@ def main():
     print("Tasks — derived from canonical cards under work/tasks/")
     if not rows:
         print("(no matching cards)")
-    for card, state, wt_info in rows:
+    for card, state, nav in rows:
         rel = os.path.relpath(card["path"], w.repo_root())
         label = state["state"]
         if state["terminal"] and not state["successful"]:
@@ -92,10 +95,18 @@ def main():
               % (card["id"], label, state["kind"], card["epic"], rel))
         if state["blockers"]:
             print("          blocker: %s" % "; ".join(state["blockers"]))
+        if state["attention"]:
+            print("          attention: %s" % "; ".join(state["attention"]))
         if state["next_step"]:
             print("          next: %s" % state["next_step"])
         elif not state["terminal"] and not state["steps_closed"]:
             print("          next: none (not prepared)")
+        wt_info = nav["wt_info"]
+        base_state = nav["base_state"]
+        if wt_info and base_state and (
+                nav["source"] == "worktree" or base_state["blockers"]
+                or base_state["attention"] or base_state["terminal"]):
+            print("          base: %s" % base_state["state"])
         if wt_info and (wt_info["differs"] or wt_info["state_differs"]):
             print("          %s" % w.worktree_note(wt_info))
     print()

@@ -45,12 +45,13 @@ def clean_env(extra=None):
     return env
 
 
-def run_cmd(cmd, cwd, env=None, timeout=120):
+def run_cmd(cmd, cwd, env=None, timeout=120, input_text=None):
     return subprocess.run(
         [str(part) for part in cmd],
         cwd=str(cwd),
         env=clean_env(env),
         text=True,
+        input=input_text,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         timeout=timeout,
@@ -259,10 +260,10 @@ class CardRepoTest(unittest.TestCase):
         self.git("add", "-A")
         self.git("commit", "-qm", message)
 
-    def work(self, command, *args, env=None, cwd=None):
+    def work(self, command, *args, env=None, cwd=None, input_text=None):
         return run_cmd(
             [sys.executable, str(BIN / command), *args],
-            cwd=cwd or self.root, env=env)
+            cwd=cwd or self.root, env=env, input_text=input_text)
 
     def head(self, cwd=None):
         return self.git("rev-parse", "HEAD", cwd=cwd)

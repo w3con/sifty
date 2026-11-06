@@ -46,12 +46,16 @@ The smallest explicit metadata lives in `description.md`:
 **Blocker:** waiting on the owner   # optional, nonterminal cards only
 ```
 
+Metadata is read only from the leading header block — before the first level-2 `##` section and outside fenced code blocks. A captured owner report is data: Markdown-looking `**Status:**`, `**Blocker:**`, checklist lines or `## Acceptance criteria` inside its fence never change card state or become plan steps.
+
 Inference and precedence, used by `work-status`, `work-list`, `work-capture`, `work-handover`, `work-resume`, `work-accept` and `work-finish`:
 
 1. An outcome file wins: `done.md` → `done`; `rejected.md` → `rejected`; `cancelled.md` → `cancelled`. This is why an old completed card with stale `**Status:** founded` or an unchecked template line remains completed and is not reopened.
 2. `question.md`, a `**Blocker:**` line and open `attention.md` items block a nonterminal card without changing its state.
 3. Otherwise the leading value of `**Status:**` decides. Legacy `founded`, `approved`, `new` and similar prose map to `backlog`; `descoped` maps to an archived cancellation even before a `cancelled.md` exists. An unknown value is reported, never guessed.
 4. A card with no metadata is `backlog`.
+
+Read-only navigation uses the active worktree's nonterminal state and exact next step, while showing the base state separately. Base cancellation, blockers, open attention and contradictions override the worktree because they are safety decisions; resume refuses them. Commands that change metadata write only the current checkout's card.
 
 Contradictions are refused: several outcome files, a `**Status:**` naming an outcome without its evidence file, a terminal outcome that still carries a blocker or open attention, several conflicting metadata lines, or duplicate IDs.
 
@@ -61,7 +65,7 @@ Contradictions are refused: several outcome files, a `**Status:**` naming an out
 
 A short card carries only `description.md` plus `comments.md`. Its steps (as `- [ ]` lines) and its acceptance criteria live inside `description.md`. Create one with `work-new --short`.
 
-`work-capture` creates a minimal backlog card for an incoming bug or idea: `description.md` plus `comments.md`, the owner's exact words, `**Kind:**`, and no plan, log or attention file. It does not dispatch an executor, cut a worktree, start work or touch staging. Preparing the plan later adds the steps and acceptance criteria. `work-capture --update <id>` appends evidence to an explicitly matched existing card and refuses exact duplicate evidence.
+`work-capture` creates a minimal backlog card for an incoming bug or idea: `description.md` plus `comments.md`, the owner's exact words, `**Kind:**`, and no plan, log or attention file. The wording is stored exactly as supplied, including outer whitespace, newlines and original CR/LF; only emptiness is validated. It does not dispatch an executor, cut a worktree, start work or touch staging. Preparing the plan later adds the steps and acceptance criteria. `work-capture --update <id>` appends evidence to an explicitly matched existing card and refuses exact duplicate evidence.
 
 ## Steps, attention and navigation
 

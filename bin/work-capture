@@ -6,11 +6,12 @@ Usage:
     work-capture --kind bug|idea --update <id> --words "OWNER WORDS"
     printf '%s' "$words" | work-capture --kind bug [--title T]
 
-The wording is preserved verbatim. With no --update the command creates a
-minimal canonical backlog card under work/tasks/<epic>/ (default epic: inbox).
-With --update it appends the wording to the explicitly matched card's
-comments.md. Exact duplicate wording is refused unless --force-new is given
-for a new card.
+The wording is stored exactly as supplied, including outer whitespace,
+newlines and the original CR/LF; emptiness is checked without trimming the
+stored text. With no --update the command creates a minimal canonical backlog
+card under work/tasks/<epic>/ (default epic: inbox). With --update it appends
+the wording to the explicitly matched card's comments.md. Exact duplicate
+wording is refused unless --force-new is given for a new card.
 
 Capture only writes the card and commits those files. It never dispatches an
 executor, cuts a worktree, starts work or touches staging.
@@ -35,23 +36,28 @@ def slugify(text, kind):
     return slug
 
 
+def read_stdin_text():
+    return sys.stdin.buffer.read().decode("utf-8")
+
+
 def read_words(args):
     if args.words is not None and args.words_file is not None:
         w.die("pass --words or --words-file, not both")
     if args.words_file is not None:
         if args.words_file == "-":
-            words = sys.stdin.read()
+            words = read_stdin_text()
         else:
-            with open(args.words_file, "r", encoding="utf-8") as fh:
-                words = fh.read()
+            with open(args.words_file, "rb") as fh:
+                words = fh.read().decode("utf-8")
     elif args.words is not None:
         words = args.words
     else:
         if sys.stdin.isatty():
             w.die("provide --words, --words-file or pipe the owner's wording "
                   "on stdin")
-        words = sys.stdin.read()
-    words = words.replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+        words = read_stdin_text()
+    # Emptiness is the only validation. The stored text is not trimmed and its
+    # line endings are not normalised.
     if not words.strip():
         w.die("owner wording is empty")
     return words
@@ -110,11 +116,19 @@ def main():
         comments = os.path.join(card_dir, "comments.md")
         existing = ""
         if os.path.exists(comments):
-            with open(comments, "r", encoding="utf-8") as fh:
-                existing = fh.read().rstrip("\n") + "\n\n"
+            with open(comments, "r", encoding="utf-8", newline="") as fh:
+                existing = fh.read()
+            if existing.endswith("\r\n"):
+                existing = existing.rstrip("\r\n") + "\r\n\r\n"
+            elif existing.endswith("\n"):
+                existing = existing.rstrip("\n") + "\n\n"
+            elif existing.endswith("\r"):
+                existing = existing.rstrip("\r") + "\r\r"
+            else:
+                existing += "\n\n"
         else:
             existing = "# %s — comments\n\nRunning discussion.\n\n" % args.update
-        with open(comments, "w", encoding="utf-8") as fh:
+        with open(comments, "w", encoding="utf-8", newline="") as fh:
             fh.write(existing + capture_block(args.kind, words) + "\n")
         w.commit_paths([comments], "chore(work): update %s evidence" % args.update)
         sys.stdout.write("%s\n" % args.update)
@@ -156,10 +170,10 @@ def main():
                      "%s. No plan or work has started.\n"
                      % (card_id, w.today()))
     with open(os.path.join(card_dir, "description.md"), "w",
-              encoding="utf-8") as fh:
+              encoding="utf-8", newline="") as fh:
         fh.write(description)
     with open(os.path.join(card_dir, "comments.md"), "w",
-              encoding="utf-8") as fh:
+              encoding="utf-8", newline="") as fh:
         fh.write(comments_text)
 
     w.commit_paths(

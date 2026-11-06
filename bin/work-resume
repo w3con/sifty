@@ -49,6 +49,27 @@ def main():
         w.refuse(["cannot resume %s: unresolved attention (%d open item(s))"
                   % (args.id, len(attention))])
 
+    base_root = w.base_checkout_root()
+    base_card = w.find_card_dir(args.id, root=base_root)
+    base_state = w.card_state(base_card) if base_card else None
+    if base_card and base_card != card_dir:
+        if base_state["errors"]:
+            w.refuse(["cannot resume %s: base card is contradictory: %s"
+                      % (args.id, "; ".join(base_state["errors"]))])
+        if base_state["terminal"]:
+            w.refuse(["cannot resume %s: base card has terminal outcome %s; "
+                      "work branch and worktree preserved"
+                      % (args.id, base_state["state"])])
+        if base_state["blockers"]:
+            w.refuse(["cannot resume %s: base card has unresolved blocker: %s; "
+                      "work branch and worktree preserved"
+                      % (args.id, "; ".join(base_state["blockers"]))])
+        base_attention = w.open_attention(base_card)
+        if base_attention:
+            w.refuse(["cannot resume %s: base card has unresolved attention "
+                      "(%d open item(s)); work branch and worktree preserved"
+                      % (args.id, len(base_attention))])
+
     rel_card = os.path.relpath(card_dir, worktree)
     rel_steps = os.path.relpath(w.steps_file(card_dir), worktree)
     steps = w.open_steps(card_dir)
@@ -56,9 +77,6 @@ def main():
     next_step = state["next_step"] or (
         "none — all steps closed" if state["steps_closed"] else
         "none — no steps prepared")
-    base_root = w.base_checkout_root()
-    base_card = w.find_card_dir(args.id, root=base_root)
-    base_state = w.card_state(base_card) if base_card else None
     context = ""
     if base_state and base_state["state"] != state["state"]:
         context = ("- Base checkout still records: %s\n"

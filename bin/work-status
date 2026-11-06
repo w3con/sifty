@@ -40,10 +40,24 @@ STATE_ARG_ALIASES = {
 }
 
 
-def render(card_id, card_dir, state, wt_info):
-    rel = os.path.relpath(card_dir, w.repo_root())
+def render(card_id, nav):
+    state = nav["effective"]
+    card_dir = state["card_dir"]
+    base_state = nav["base_state"]
+    wt_info = nav["wt_info"]
+    root = w.repo_root()
+    base_root = w.base_checkout_root()
+
+    def display_path(path):
+        rel = os.path.relpath(path, root)
+        if rel.startswith(".."):
+            rel = os.path.relpath(path, base_root)
+        return rel
+
     print("%s — %s" % (card_id, w.card_title(card_dir)))
-    print("Card: %s" % rel)
+    print("Card: %s" % display_path(card_dir))
+    if base_state and base_state["card_dir"] != card_dir:
+        print("Base card: %s" % display_path(base_state["card_dir"]))
     label = state["state"]
     if state["terminal"]:
         label += " (successful outcome)" if state["successful"] else \
@@ -61,11 +75,16 @@ def render(card_id, card_dir, state, wt_info):
         print("Next open step: none (all steps closed)")
     else:
         print("Next open step: none (no steps prepared)")
+    if base_state and (nav["source"] == "worktree"
+                       or base_state["state"] != state["state"]
+                       or base_state["blockers"] or base_state["attention"]):
+        print("Base state: %s" % base_state["state"])
+        if base_state["blockers"]:
+            print("Base blocker: %s" % "; ".join(base_state["blockers"]))
+        if base_state["attention"]:
+            print("Base attention: %s" % "; ".join(base_state["attention"]))
     if wt_info:
         print("Worktree: %s" % w.worktree_note(wt_info))
-        current = os.path.realpath(w.repo_root())
-        if wt_info["state_differs"] and current == os.path.realpath(wt_info["path"]):
-            print("Base state: %s" % wt_info["base_state"]["state"])
     else:
         print("Worktree: none")
 
@@ -93,7 +112,13 @@ def main():
                   "rejected or cancelled" % args.state)
 
     if requested is None and args.block is None and not args.unblock:
-        render(args.id, card_dir, state, w.worktree_info(args.id))
+        nav = w.navigation_state(args.id)
+        if nav["effective"] is None:
+            w.refuse(["cannot read %s: no card state" % args.id])
+        if nav["effective"]["errors"]:
+            w.refuse(["cannot read %s: %s"
+                      % (args.id, "; ".join(nav["effective"]["errors"]))])
+        render(args.id, nav)
         return
 
     if args.block is not None and args.unblock:
@@ -131,11 +156,16 @@ def main():
         else:
             message = "chore(work): unblock %s" % args.id
         w.commit_paths([os.path.join(card_dir, "description.md")], message)
+        w.info("updated metadata in the current checkout: %s"
+               % os.path.relpath(card_dir, w.repo_root()))
 
     if args.unblock and os.path.exists(os.path.join(card_dir, "question.md")):
         w.info("note: question.md remains and still blocks the card")
-    state = w.card_state(card_dir)
-    render(args.id, card_dir, state, w.worktree_info(args.id))
+    nav = w.navigation_state(args.id)
+    if nav["effective"] and nav["effective"]["errors"]:
+        w.refuse(["metadata is now contradictory: %s"
+                  % "; ".join(nav["effective"]["errors"])])
+    render(args.id, nav)
 
 
 if __name__ == "__main__":

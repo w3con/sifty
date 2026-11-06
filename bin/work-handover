@@ -32,8 +32,8 @@ def card_has_uncommitted_changes(card_rel):
 def build_brief(card_id, card_dir, worktree, state, state_context=""):
     steps = w.open_steps(card_dir)
     open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none)"
-    rel_card = os.path.relpath(card_dir, w.repo_root())
-    rel_steps = os.path.relpath(w.steps_file(card_dir), w.repo_root())
+    rel_card = os.path.relpath(card_dir, worktree)
+    rel_steps = os.path.relpath(w.steps_file(card_dir), worktree)
     next_step = state["next_step"] or (
         "none — all steps closed" if state["steps_closed"] else
         "none — no steps prepared")

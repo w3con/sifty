@@ -214,6 +214,11 @@ class StateTransitionTest(CardRepoTest):
                            env={"WORK_SESSION": "1"})
         self.assertEqual(result.returncode, 97, result.stdout)
         self.assertIn("State: in progress", result.stdout)
+        self.assertIn("- Card folder: `work/tasks/test/TEST-1_demo`",
+                      result.stdout)
+        self.assertIn("(work/tasks/test/TEST-1_demo/plan.md)",
+                      result.stdout)
+        self.assertNotIn(".worktrees/TEST-1/work/tasks", result.stdout)
         worktree_card = (self.root / ".worktrees" / "TEST-1" / "work" /
                          "tasks" / "test" / "TEST-1_demo" / "description.md")
         self.assertIn("**Status:** in progress",

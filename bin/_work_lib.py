@@ -557,15 +557,86 @@ def read_lines(path):
         return fh.read().splitlines()
 
 
+def read_lines_keepends(path):
+    if not os.path.exists(path):
+        return []
+    with open(path, "r", encoding="utf-8", newline="") as fh:
+        return fh.read().splitlines(keepends=True)
+
+
+def split_ending(line):
+    """Return (content, original line ending) without normalising it."""
+    if line.endswith("\r\n"):
+        return line[:-2], "\r\n"
+    if line.endswith("\n"):
+        return line[:-1], "\n"
+    if line.endswith("\r"):
+        return line[:-1], "\r"
+    return line, ""
+
+
+FENCE_RE = re.compile(r"^\s*(`{3,}|~{3,})")
+
+
+def unfenced_lines(path):
+    """Lines outside fenced code blocks.
+
+    Owner wording is stored in a fence and may contain Markdown that looks like
+    card metadata, steps or acceptance criteria. Those quoted examples are data,
+    never card structure."""
+    out = []
+    fence = None
+    for line in read_lines(path):
+        match = FENCE_RE.match(line)
+        if fence is not None:
+            if (match and match.group(1)[0] == fence[0]
+                    and len(match.group(1)) >= len(fence)):
+                fence = None
+            continue
+        if match:
+            fence = match.group(1)
+            continue
+        out.append(line)
+    return out
+
+
+def header_line_indices(lines):
+    """Indices of the leading header block, excluding fences and body.
+
+    The header ends at the first level-2 Markdown heading. Metadata is read and
+    rewritten only there, so a fenced owner report cannot alter card state."""
+    out = []
+    fence = None
+    for idx, line in enumerate(lines):
+        if line.startswith("## "):
+            break
+        match = FENCE_RE.match(line)
+        if fence is not None:
+            if (match and match.group(1)[0] == fence[0]
+                    and len(match.group(1)) >= len(fence)):
+                fence = None
+            continue
+        if match:
+            fence = match.group(1)
+            continue
+        out.append(idx)
+    return out
+
+
+def header_lines(card_dir):
+    lines = read_lines(os.path.join(card_dir, "description.md"))
+    return [lines[idx] for idx in header_line_indices(lines)]
+
+
 def open_steps(card_dir):
-    return [m.group(1) for line in read_lines(steps_file(card_dir))
+    return [m.group(1) for line in unfenced_lines(steps_file(card_dir))
             for m in [OPEN_STEP_RE.match(line)] if m]
 
 
 def all_steps(card_dir):
     sf = steps_file(card_dir)
     out = []
-    for line in read_lines(sf):
+    for line in unfenced_lines(sf):
         mo = OPEN_STEP_RE.match(line)
         mc = CLOSED_STEP_RE.match(line)
         if mo:
@@ -578,7 +649,7 @@ def all_steps(card_dir):
 def malformed_step_lines(card_dir):
     """Checkbox-looking lines that are not a valid open or closed step."""
     out = []
-    for line in read_lines(steps_file(card_dir)):
+    for line in unfenced_lines(steps_file(card_dir)):
         if not STEP_MARK_RE.match(line):
             continue
         mo = OPEN_STEP_RE.match(line)
@@ -593,7 +664,7 @@ def malformed_step_lines(card_dir):
 
 def open_attention(card_dir):
     path = os.path.join(card_dir, "attention.md")
-    return [m.group(1) for line in read_lines(path)
+    return [m.group(1) for line in unfenced_lines(path)
             for m in [OPEN_STEP_RE.match(line)] if m]
 
 
@@ -657,7 +728,7 @@ def question_reason(card_dir):
 
 def read_state_metadata(card_dir):
     statuses, blockers, kinds = [], [], []
-    for line in read_lines(os.path.join(card_dir, "description.md")):
+    for line in header_lines(card_dir):
         m = STATUS_LINE_RE.match(line)
         if m:
             statuses.append(m.group(1).strip())
@@ -812,58 +883,88 @@ def state_transition(card_dir, requested):
 def rewrite_status_metadata(card_dir, state=None, block=None, unblock=False):
     """Update explicit status/blocker metadata in description.md.
 
-    Only the metadata lines change; all other prose is preserved. Returns True
-    when the file changed."""
+    Only metadata lines in the leading header block change; every other byte,
+    including fenced owner wording and its line endings, is preserved. Returns
+    True when the file changed."""
     path = os.path.join(card_dir, "description.md")
-    lines = read_lines(path)
-    status_idxs = [i for i, line in enumerate(lines) if STATUS_LINE_RE.match(line)]
-    blocker_idxs = [i for i, line in enumerate(lines) if BLOCKER_LINE_RE.match(line)]
+    pairs = read_lines_keepends(path)
+    bare = [split_ending(line)[0] for line in pairs]
+    endings = [split_ending(line)[1] for line in pairs]
+    header = header_line_indices(bare)
+    status_idxs = [i for i in header if STATUS_LINE_RE.match(bare[i])]
+    blocker_idxs = [i for i in header if BLOCKER_LINE_RE.match(bare[i])]
     if len(status_idxs) > 1 or len(blocker_idxs) > 1:
         refuse(["cannot rewrite contradictory metadata in %s"
                 % os.path.relpath(path, repo_root())])
     changed = False
 
+    def replace(idx, text):
+        pairs[idx] = text + endings[idx]
+
+    def insert_after(idx, text):
+        pairs.insert(idx + 1, text + (endings[idx] or "\n"))
+
     if state is not None:
         new_line = "**Status:** %s" % state
         if status_idxs:
             idx = status_idxs[0]
-            if lines[idx] != new_line:
-                lines[idx] = new_line
+            if bare[idx] != new_line:
+                replace(idx, new_line)
+                bare[idx] = new_line
                 changed = True
         else:
-            header = [i for i, line in enumerate(lines[:20])
-                      if HEADER_LINE_RE.match(line)]
-            idx = header[-1] if header else 0
-            lines.insert(idx + 1, new_line)
+            if not pairs:
+                pairs.append(new_line + "\n")
+                bare.append(new_line)
+                endings.append("\n")
+            else:
+                fields = [i for i in header if HEADER_LINE_RE.match(bare[i])]
+                idx = fields[-1] if fields else 0
+                insert_after(idx, new_line)
+                bare.insert(idx + 1, new_line)
+                endings.insert(idx + 1, endings[idx] or "\n")
             changed = True
 
     if block is not None:
         new_line = "**Blocker:** %s" % block
         if blocker_idxs:
             idx = blocker_idxs[0]
-            if lines[idx] != new_line:
-                lines[idx] = new_line
+            if bare[idx] != new_line:
+                replace(idx, new_line)
+                bare[idx] = new_line
                 changed = True
         else:
-            status_idxs = [i for i, line in enumerate(lines)
-                           if STATUS_LINE_RE.match(line)]
-            if status_idxs:
-                idx = status_idxs[0]
+            if not pairs:
+                pairs.append(new_line + "\n")
+                bare.append(new_line)
+                endings.append("\n")
             else:
-                header = [i for i, line in enumerate(lines[:20])
-                          if HEADER_LINE_RE.match(line)]
-                idx = header[-1] if header else 0
-            lines.insert(idx + 1, new_line)
+                status_idxs = [i for i in header_line_indices(bare)
+                               if STATUS_LINE_RE.match(bare[i])]
+                if status_idxs:
+                    idx = status_idxs[0]
+                else:
+                    fields = [i for i in header_line_indices(bare)
+                              if HEADER_LINE_RE.match(bare[i])]
+                    idx = fields[-1] if fields else 0
+                insert_after(idx, new_line)
+                bare.insert(idx + 1, new_line)
+                endings.insert(idx + 1, endings[idx] or "\n")
             changed = True
 
     if unblock and blocker_idxs:
         for idx in sorted(blocker_idxs, reverse=True):
-            del lines[idx]
+            del pairs[idx]
+            del bare[idx]
+            del endings[idx]
         changed = True
 
     if changed:
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write("\n".join(lines).rstrip("\n") + "\n")
+        text = "".join(pairs)
+        if text and not text.endswith(("\n", "\r")):
+            text += "\n"
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write(text)
     return changed
 
 
@@ -899,7 +1000,7 @@ def words_in_card(card_dir, words):
     for name in ("description.md", "comments.md"):
         path = os.path.join(card_dir, name)
         if os.path.exists(path):
-            with open(path, "r", encoding="utf-8") as fh:
+            with open(path, "r", encoding="utf-8", newline="") as fh:
                 if words in fh.read():
                     return True
     return False
@@ -984,6 +1085,46 @@ def worktree_note(info):
     return "; ".join(parts)
 
 
+def navigation_state(card_id, root=None):
+    """Effective read-only state, preferring active worktree work.
+
+    Base cancellation, blockers, open attention and contradictions override the
+    worktree: they are safety decisions, not stale metadata. Otherwise an active
+    worktree's nonterminal state and next step lead, while the base state stays
+    visible separately. Mutating commands still operate on their own checkout.
+    """
+    root = root or repo_root()
+    base_root = base_checkout_root()
+    base_card = find_card_dir(card_id, root=base_root)
+    base_state = card_state(base_card) if base_card else None
+    wt_info = worktree_info(card_id, root=root)
+    wt_state = wt_info["wt_state"] if wt_info else None
+    current_card = find_card_dir(card_id, root=root)
+    current_state = card_state(current_card) if current_card else None
+
+    base_overrides = bool(base_state and (
+        base_state["errors"] or base_state["terminal"]
+        or base_state["blockers"] or base_state["attention"]))
+    if base_overrides:
+        effective, source = base_state, "base"
+    elif wt_state and not wt_state["errors"]:
+        effective, source = wt_state, "worktree"
+    elif current_state and not current_state["errors"]:
+        effective, source = current_state, "current"
+    else:
+        effective = base_state or current_state
+        source = "base" if effective is base_state else "current"
+    return {
+        "effective": effective,
+        "source": source,
+        "base_state": base_state,
+        "base_card": base_card,
+        "wt_info": wt_info,
+        "wt_state": wt_state,
+        "current_state": current_state,
+    }
+
+
 # ── Plan fitness (shared by work-plan and work-handover) ─────────────────────
 def plan_fitness_problems(card_dir):
     """Return a list of reasons the plan is not fit to hand over. Empty = fit."""
@@ -993,7 +1134,7 @@ def plan_fitness_problems(card_dir):
         problems.append("missing steps file (plan.md for a full card, "
                         "description.md for a short card)")
         return problems
-    text = "\n".join(read_lines(sf))
+    text = "\n".join(unfenced_lines(sf))
     low = text.lower()
     if not text.strip():
         problems.append("plan is empty")

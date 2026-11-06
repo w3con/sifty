@@ -2157,3 +2157,32 @@ ok   no nested CI workflow
 
 PASS: all harness checks
 ```
+
+## 2026-11-06 — phase 4 coordinator review corrections
+
+Fixed handover brief paths relative to the worktree; bounded metadata and step parsing to the header/unfenced content; resume now refuses base outcomes, blockers and attention; navigation uses the active worktree's effective state while showing base safety; capture preserves exact wording including outer whitespace and CRLF.
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py' && python3 -m unittest discover -s bin/tests -p 'test_capture.py' && python3 -m unittest discover -s bin/tests -p 'test_navigation.py'`
+Exit: 0
+
+```
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 5.912s
+
+OK
+........
+----------------------------------------------------------------------
+Ran 8 tests in 3.026s
+
+OK
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 5.741s
+
+OK
+```
+
+## 2026-11-06 — phase 4 corrections — final harness result
+
+Ran python3 bin/work-test once after all corrections: exit 0, PASS: all harness checks (compile, templates, command help, 85 isolated lifecycle/task tests, leak scanner self-test/tests/tree-check, root CI workflow).

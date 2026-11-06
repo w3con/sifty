@@ -533,3 +533,22 @@ Exit: 0
 Correction during stage review — rejection terminal outcome.
 
 Readiness previously inspected terminal files only in the source worktree. Rejection writes `rejected.md` on the base card, so a rejected card could still be finished later. `readiness_problems` now also checks the base card's terminal file and the rejection test asserts a retry is refused with `terminal file present: rejected.md`. No plan step was reopened; this strengthens 1.4. Checks re-run: 30 lifecycle tests OK, `bin/work-test` PASS, `git diff --check` exit 0.
+
+## 2026-11-06 — acceptance base-branch propagation
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.737s
+
+OK
+```
+
+## 2026-11-06 — note
+
+Correction — pass the configured base branch to the acceptance command.
+
+`run_accept` now exports `WORK_BASE_BRANCH` from `base_branch()`, so `bin/sift-accept` uses the same target as `work-accept`/`work-finish` even when the setting comes from `bin/work.config` rather than the environment. 30 lifecycle tests OK; `bin/work-test` PASS; `git diff --check` exit 0.

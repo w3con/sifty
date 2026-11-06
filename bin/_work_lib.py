@@ -177,6 +177,7 @@ def run_accept(card_id, expected_source_sha=None, expected_target_sha=None,
                 "WORK_ACCEPT_SOURCE_BRANCH": branch,
                 "WORK_ACCEPT_SOURCE_WORKTREE": wt,
                 "WORK_ACCEPT_TARGET_ROOT": target_root,
+                "WORK_BASE_BRANCH": base_branch(),
             })
             proc = subprocess.run(
                 cmd, shell=True, text=True, cwd=scratch,

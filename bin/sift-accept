@@ -3,7 +3,7 @@
 #
 # Run by work-accept / work-finish as the WORK_ACCEPT_CMD. The harness self-test
 # always runs. Application checks also run when the card changed application
-# source (sifty/** or app/**) or build/deploy/configuration inputs:
+# source (backend/**, frontend/** or legacy/app/**) or build/deploy/configuration inputs:
 #
 #   bin/sift-*  bin/work.config  Makefile  config/**  .github/**
 #
@@ -46,7 +46,7 @@ if [[ -z "$MERGE_BASE" ]]; then
     BUILD_TOUCHING=1
 else
     CHANGED="$(git -C "$APP_HOME" diff --name-only "$MERGE_BASE" HEAD 2>/dev/null || true)"
-    if echo "$CHANGED" | grep -qE '^(sifty|app)/'; then
+    if echo "$CHANGED" | grep -qE '^(backend|frontend|legacy/app)/'; then
         APP_TOUCHING=1
     fi
     if echo "$CHANGED" | grep -qE '^(bin/sift-[^/]+|bin/work\.config|Makefile|config/|\.github/)'; then
@@ -67,18 +67,18 @@ log "Harness self-test: PASS"
 # 2. Application checks when source, build, deploy or configuration inputs changed.
 if [[ "$APP_TOUCHING" -eq 1 || "$BUILD_TOUCHING" -eq 1 ]]; then
     log "--- Go tests (go test -race ./...) ---"
-    (cd "$APP_HOME/sifty" && go test -race ./...) || die "Go tests failed"
+    (cd "$APP_HOME/backend" && go test -race ./...) || die "Go tests failed"
     log "Go tests: PASS"
 
     log "--- Frontend dependencies (npm ci) ---"
-    (cd "$APP_HOME/sifty/web" && npm ci --silent) \
+    (cd "$APP_HOME/frontend" && npm ci --silent) \
         || die "frontend dependency install failed (npm ci); not falling back to npm install"
     log "Frontend dependencies: PASS"
 
     BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sifty-accept-build.XXXXXX")"
     trap 'rm -rf "$BUILD_DIR"' EXIT
     log "--- TypeScript check + Vite build (BUILD_OUTDIR=$BUILD_DIR) ---"
-    (cd "$APP_HOME/sifty/web" && BUILD_OUTDIR="$BUILD_DIR" npm run build) \
+    (cd "$APP_HOME/frontend" && BUILD_OUTDIR="$BUILD_DIR" npm run build) \
         || die "tsc --noEmit or vite build failed"
     log "tsc + vite build: PASS"
 fi

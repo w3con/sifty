@@ -68,13 +68,13 @@ This section describes the existing commands. The target loop in the foundation 
 This repository runs a two-environment deploy loop for the sifty application. Each environment owns its own compiled binary and its own frontend bundle; a staging deploy never touches the production binary or bundle.
 
 **Environments:**
-- Production — port 8080, data dir `<repo>/data`, binary `bin/sifty`, dist `sifty/dist`. Updated only by `bin/sift-promote` on the owner's explicit word.
-- Staging — port 8081, data dir `<repo>/data-staging`, binary `bin/sifty-staging`, dist `sifty/dist-staging`. Previews an in-progress branch; not currently updated automatically. Workers are currently shared under `sifty/workers`.
+- Production — port 8080, data dir `<repo>/data`, binary `bin/sifty`, dist `frontend/dist`. Updated only by `bin/sift-promote` on the owner's explicit word.
+- Staging — port 8081, data dir `<repo>/data-staging`, binary `bin/sifty-staging`, dist `frontend/dist-staging`. Previews an in-progress branch; not currently updated automatically. Workers are currently shared under `backend/workers`.
 
 **Commands:**
 - `bin/sift-deploy --env staging|prod [--build-only]` — build the Go binary and React frontend for the named environment, back up the target env's data, stop the env's server, start the new binary detached, run a health and smoke check, and roll back the binary and data on any failure. Per-env config (port, data dir, binary, dist, log) lives in `bin/work.config`. Every run appends a log line to `<data_dir>/deploy.log`. When run from a linked worktree, staging artifacts are written to the main repo so they persist after the worktree is removed.
 - `bin/sift-promote [--force]` — the only command that updates production. Verifies the current branch is `main`, then runs `bin/sift-deploy --env prod`. Run this on the owner's explicit confirmation after reviewing staging.
-- `bin/sift-accept` — the acceptance command (`WORK_ACCEPT_CMD`). Always runs the harness self-test (`bin/work-test`). Application checks (`go test -race ./...`, `npm ci`, `npm run build` = `tsc --noEmit` + `vite build`) also run when the card changed `sifty/` or `app/` source, or build/deploy/config inputs (`bin/sift-*`, `bin/work.config`, `Makefile`, `config/`, `.github/`). A failed `npm ci` fails acceptance; there is no silent `npm install` fallback. The frontend build writes to a temporary directory so the scratch copy stays removable without force.
+- `bin/sift-accept` — the acceptance command (`WORK_ACCEPT_CMD`). Always runs the harness self-test (`bin/work-test`). Application checks (`go test -race ./...`, `npm ci`, `npm run build` = `tsc --noEmit` + `vite build`) also run when the card changed `backend/`, `frontend/` or `legacy/app/` source, or build/deploy/config inputs (`bin/sift-*`, `bin/work.config`, `Makefile`, `config/`, `.github/`). A failed `npm ci` fails acceptance; there is no silent `npm install` fallback. The frontend build writes to a temporary directory so the scratch copy stays removable without force.
 
 **Preview workflow:**
 1. Create a worktree for the in-progress branch: `git worktree add .worktrees/<id> work/<id>`.

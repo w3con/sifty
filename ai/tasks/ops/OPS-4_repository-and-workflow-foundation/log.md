@@ -1,5 +1,9 @@
 # OPS-4 — execution log
 
+## Executor checkpoint — 2026-11-06 — step 3.1
+
+Step 3.1 is implemented on `work/OPS-4` and awaits coordinator review; 3.2 has not started. `sifty/web` is now `frontend/`, the Go module is `backend/` with its import path unchanged, and `app` is `legacy/app`; tracked `sifty/dist-staging` is deliberately retained at the old path for 3.3. Build, serve, worker, scanner and legacy-relative paths were repointed together, and the scanner keeps a path-exact `FCTO_STATE_DIR` compatibility allowance for `frontend/model/core.ts`. Final stage checks are recorded in the appended log. No merge, push, deploy, production/data change, real acceptance/finish or subagent was run.
+
 ## Current coordinator checkpoint — 2026-11-06
 
 Publication/setup stage reviewed through `6473907`: independent harness/scanner checks passed before corrections; review corrections narrowed dotted-secret expression allowances, made missing setup adapters fail explicitly, and rewrote only synthetic credential fixture constructions without changing their runtime values. The stage's recorded final checks passed (50 harness tests, 35 scanner tests, scanner self-test, targeted Go configuration tests and three legacy tests). Actual session metadata names OpenCode Go / DeepSeek V4.1 Flash; no fallback. Remaining whole-tree findings are two formatting-only legacy environment-name references, not credentials. Steps 2.1–2.3 are technically accepted: seven of 23 complete, 16 open. The legacy test imports still reference old `app/web`; step 3.1 must repair these permanently instead of relying on the temporary symlink used to verify the fixture change. Next stage is 3.1 only: relocate application source/build paths and verify at their new locations; stop before moving planning/shared tooling in 3.2. CPU report captured as a separate backlog card without investigation or task switch.
@@ -822,3 +826,524 @@ Coordinator review corrections — 2.1–2.3.
 3. Assembled the synthetic fixtures at runtime in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, preserving the identical runtime values and behavior. Narrow checks: `go test ./internal/config -run TestSaveRejectsSecrets` PASS, `go test ./internal/config` PASS; the three changed legacy tests pass under `tsx` (the legacy test's `app/web` import is stale after the frontend move, so the check used a temporary local `app/web -> ../sifty/web` symlink, removed afterwards). Whole-tree `tree-check` now reports only the two `FCTO_STATE_DIR` formatting findings in `sifty/web/model/core.ts`; they are recorded as a formatting-only relocation issue and the compatibility references were not removed.
 
 Checks: `python3 bin/work-test` PASS (50 harness tests, 35 scanner tests, self-test, scanner sources clean); `python3 bin/work-plan OPS-4` fit; `git diff --check` exit 0. `e41098d` (OPS-5 CPU report) was preserved untouched. Exact next action: coordinator reviews these corrections, then assigns 3.1 in a fresh executor context. Stop before 3.1. No real setup run, global configuration change, deploy, merge, push or subagent.
+
+## 2026-11-06 — 3.1 relocation — backend Go race suite
+
+Check: `cd backend && go test -race ./...`
+Exit: 0
+
+```
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	(cached)
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+```
+
+## 2026-11-06 — 3.1 relocation — frontend clean install, tsc and Vite build
+
+Check: `cd frontend && npm ci --silent && npm run build`
+Exit: 0
+
+```
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 433ms
+```
+
+## 2026-11-06 — 3.1 relocation — Makefile build path
+
+Check: `make build`
+Exit: 0
+
+```
+mkdir -p bin
+cd backend && go build -o ../bin/sifty ./cmd/sifty
+npm --prefix frontend run build
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 431ms
+```
+
+## 2026-11-06 — 3.1 relocation — backend script aggregate (scanner, vet, build, race tests)
+
+Check: `bash backend/scripts/test`
+Exit: 0
+
+```
+== leak-scanner self-test ==
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  allow documented compatibility literal only at its named path
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+== go vet ==
+== go build ==
+== go test ==
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	(cached)
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+test: OK
+```
+
+## 2026-11-06 — 3.1 relocation — legacy app install and build from new path
+
+Check: `cd legacy/app && npm ci --silent && npm run build`
+Exit: 0
+
+```
+
+> fcto-job-catalogue@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 437ms
+```
+
+## 2026-11-06 — 3.1 relocation — legacy tests that exercise the moved frontend references
+
+Check: `cd legacy/app && npx tsx --test test/usability-filters.test.ts test/workflow.test.ts test/refinements.test.ts test/lever-labels.test.ts test/integration.test.ts`
+Exit: 0
+
+```
+TAP version 13
+# (node:8153) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: config validation preserves existing 16 sources and OR aliases, unknown sources explicit
+ok 1 - config validation preserves existing 16 sources and OR aliases, unknown sources explicit
+  ---
+  duration_ms: 18.055375
+  type: 'test'
+  ...
+# Subtest: SQLite persistence, canonical apply dedup, identity dedup, late merge and status history
+ok 2 - SQLite persistence, canonical apply dedup, identity dedup, late merge and status history
+  ---
+  duration_ms: 13.737417
+  type: 'test'
+  ...
+# Subtest: HTML/RSS descriptions, explicit links, bounded pagination and honest failures
+ok 3 - HTML/RSS descriptions, explicit links, bounded pagination and honest failures
+  ---
+  duration_ms: 106.753042
+  type: 'test'
+  ...
+# Subtest: candidate context selection retains provenance/missing notices and rejects overflow
+ok 4 - candidate context selection retains provenance/missing notices and rejects overflow
+  ---
+  duration_ms: 1.346
+  type: 'test'
+  ...
+# Subtest: optional model extraction routes separately and rejects invented page facts
+ok 5 - optional model extraction routes separately and rejects invented page facts
+  ---
+  duration_ms: 2.404333
+  type: 'test'
+  ...
+# Subtest: assessment evidence is validated, versioned, stale-detected; failures preserve pending jobs
+ok 6 - assessment evidence is validated, versioned, stale-detected; failures preserve pending jobs
+  ---
+  duration_ms: 20.090833
+  type: 'test'
+  ...
+# Subtest: both local HTTP adapters use structured output; malformed JSON, HTTP and timeout errors surface
+ok 7 - both local HTTP adapters use structured output; malformed JSON, HTTP and timeout errors surface
+  ---
+  duration_ms: 169.217167
+  type: 'test'
+  ...
+# Subtest: CLI adapters parse real subprocess protocol with controlled fixture; timeout kills process group
+ok 8 - CLI adapters parse real subprocess protocol with controlled fixture; timeout kills process group
+  ---
+  duration_ms: 467.296167
+  type: 'test'
+  ...
+# Subtest: scheduler excludes overlaps, recovers dead owner and honours same-day catch-up
+ok 9 - scheduler excludes overlaps, recovers dead owner and honours same-day catch-up
+  ---
+  duration_ms: 9.550458
+  type: 'test'
+  ...
+# Subtest: remote import blocks private destinations before requests
+ok 10 - remote import blocks private destinations before requests
+  ---
+  duration_ms: 3.089458
+  type: 'test'
+  ...
+# Subtest: per-source proxy environment reference routes a real HTTP request through a controlled CONNECT proxy
+ok 11 - per-source proxy environment reference routes a real HTTP request through a controlled CONNECT proxy
+  ---
+  duration_ms: 10.587125
+  type: 'test'
+  ...
+# Subtest: dedicated Chromium source sessions persist separately without using owner accounts
+ok 12 - dedicated Chromium source sessions persist separately without using owner accounts
+  ---
+  duration_ms: 424.895
+  type: 'test'
+  ...
+# Subtest: actual MCP stdio shares persisted state, import/search errors and tool-free assessment
+ok 13 - actual MCP stdio shares persisted state, import/search errors and tool-free assessment
+  ---
+  duration_ms: 1022.939083
+  type: 'test'
+  ...
+# (node:8154) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: observed Lever wrappers yield seven distinct actual questions, clean file/location labels and the real opportunity-location question; reinspection preserves IDs and six answers
+ok 14 - observed Lever wrappers yield seven distinct actual questions, clean file/location labels and the real opportunity-location question; reinspection preserves IDs and six answers
+  ---
+  duration_ms: 208.89175
+  type: 'test'
+  ...
+# Subtest: standards beat container/placeholder; local multi-control labels, helpers and group options stay separate; hidden/unknown text never becomes a question
+ok 15 - standards beat container/placeholder; local multi-control labels, helpers and group options stay separate; hidden/unknown text never becomes a question
+  ---
+  duration_ms: 174.865917
+  type: 'test'
+  ...
+# (node:8155) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: pre-refinement SQLite shape migrates without changing job IDs, statuses or assessment/history bytes
+ok 16 - pre-refinement SQLite shape migrates without changing job IDs, statuses or assessment/history bytes
+  ---
+  duration_ms: 16.874708
+  type: 'test'
+  ...
+# Subtest: queue persists, deduplicates, skips completed current work and invalidates actual changed inputs
+ok 17 - queue persists, deduplicates, skips completed current work and invalidates actual changed inputs
+  ---
+  duration_ms: 49.305833
+  type: 'test'
+  ...
+# Subtest: interrupted inference recovers; provider pause and persistent retry do not loop or spend
+ok 18 - interrupted inference recovers; provider pause and persistent retry do not loop or spend
+  ---
+  duration_ms: 12.439542
+  type: 'test'
+  ...
+# Subtest: single inference, selected-role priority and eventual completion beyond ten jobs without collection lock
+ok 19 - single inference, selected-role priority and eventual completion beyond ten jobs without collection lock
+  ---
+  duration_ms: 49.011083
+  type: 'test'
+  ...
+# Subtest: missing descriptions are not inference pending; legacy gaps never become confirmed mismatches
+ok 20 - missing descriptions are not inference pending; legacy gaps never become confirmed mismatches
+  ---
+  duration_ms: 2.657708
+  type: 'test'
+  ...
+# Subtest: fresh assessment fingerprints skip inference and unsupported CV absence becomes a question, not a confirmed mismatch
+ok 21 - fresh assessment fingerprints skip inference and unsupported CV absence becomes a question, not a confirmed mismatch
+  ---
+  duration_ms: 10.31725
+  type: 'test'
+  ...
+# Subtest: domain requests serialize across aliases with 3–6s pacing, Retry-After, restart cooldown and independent hosts
+ok 22 - domain requests serialize across aliases with 3–6s pacing, Retry-After, restart cooldown and independent hosts
+  ---
+  duration_ms: 0.5305
+  type: 'test'
+  ...
+# Subtest: three-hour fingerprint cache reuses unchanged queries, only fetches added keys and independently revalidates details at 24h
+ok 23 - three-hour fingerprint cache reuses unchanged queries, only fetches added keys and independently revalidates details at 24h
+  ---
+  duration_ms: 0.170375
+  type: 'test'
+  ...
+# Subtest: cached finite inventory resumes description-only matches even with a non-technical title, and reports deferred/failed honestly
+ok 24 - cached finite inventory resumes description-only matches even with a non-technical title, and reports deferred/failed honestly
+  ---
+  duration_ms: 252.204542
+  type: 'test'
+  ...
+# Subtest: feedback is durable verbatim without a model, grounded, scoped, conflict-preserving and additive on revision
+ok 25 - feedback is durable verbatim without a model, grounded, scoped, conflict-preserving and additive on revision
+  ---
+  duration_ms: 7.136667
+  type: 'test'
+  ...
+# Subtest: local filters use aliases, OR within AND across groups, tags and truthful assessed states
+ok 26 - local filters use aliases, OR within AND across groups, tags and truthful assessed states
+  ---
+  duration_ms: 1.389375
+  type: 'test'
+  ...
+# (node:8156) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: configured role/skill groups distinguish all, none and OR subsets; migration preserves legacy choices
+ok 27 - configured role/skill groups distinguish all, none and OR subsets; migration preserves legacy choices
+  ---
+  duration_ms: 4.233292
+  type: 'test'
+  ...
+# Subtest: management is bounded title matching and sorting uses first collection date with unassessed last
+ok 28 - management is bounded title matching and sorting uses first collection date with unassessed last
+  ---
+  duration_ms: 0.368625
+  type: 'test'
+  ...
+# (node:8157) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: legacy migration preserves records, evidence/history; stages, seen and explicit confirmation survive restart
+ok 29 - legacy migration preserves records, evidence/history; stages, seen and explicit confirmation survive restart
+  ---
+  duration_ms: 25.767041
+  type: 'test'
+  ...
+# Subtest: Web3 uses word-aware real content and external URLs accept only credential-free HTTP(S)
+ok 30 - Web3 uses word-aware real content and external URLs accept only credential-free HTTP(S)
+  ---
+  duration_ms: 0.124583
+  type: 'test'
+  ...
+# Subtest: wrapped auto-advance skips decided roles; session retention does not become durable filter state
+ok 31 - wrapped auto-advance skips decided roles; session retention does not become durable filter state
+  ---
+  duration_ms: 1.347667
+  type: 'test'
+  ...
+# Subtest: late merge preserves confirmed application date, seen, aliases and transition history
+ok 32 - late merge preserves confirmed application date, seen, aliases and transition history
+  ---
+  duration_ms: 1.540916
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2781.000667
+```
+
+## 2026-11-06 — 3.1 relocation — harness self-test and lifecycle tests
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 3.1 relocation — scanner policy, Git and compatibility tests
+
+Check: `python3 -m unittest discover -s backend/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+.......................................
+----------------------------------------------------------------------
+Ran 39 tests in 4.172s
+
+OK
+```
+
+## 2026-11-06 — note
+
+3.1 decisions and findings.
+
+- Relocation: sifty/web -> frontend; sifty/{cmd,internal,scripts,workers,docs,README,LICENSE,go.mod,go.sum,.github,.githooks,.gitignore} -> backend; app -> legacy/app. Tracked sifty/dist-staging was deliberately retained at the old path for 3.3 artifact cleanup. The module import path stayed github.com/w3con/sifty.
+- Build/serve repoints: Makefile, bin/sift-deploy, bin/sift-accept, bin/work.config examples, .githooks scanner adapters, bin/work-setup, bin/work-test, worker lookup/error messages, and Go serve fallbacks now use backend/, frontend/ and frontend/dist. Frontend Vite default output is frontend/dist; sift-deploy keeps prod and staging bundles separate. make run-staging preserves its existing shared-bundle behavior (frontend/dist), while sift-deploy creates frontend/dist-staging.
+- Legacy repairs: legacy tests import ../../../frontend/{filters,workflow}.js instead of the removed app/web; legacy build config points at ../../frontend and outputs frontend/dist; legacy root-relative paths, plist template, launchd/audit tools and server dist now use legacy/app and frontend/dist. Legacy README remains historical until 3.2/5.
+- Scanner: moved to backend/scripts/leakcheck and still applies credential rules everywhere and formatting under backend/ and frontend/. Added a path-exact compatibility allowance for FCTO_STATE_DIR only in frontend/model/core.ts; the same literal elsewhere is still refused and credentials in that file are still checked. Whole-tree tree-check is clean.
+- Failure/correction: the first legacy Vite config used root ../frontend, which resolves to legacy/frontend; corrected to ../../frontend. The migrated usability-filters test initially failed because it still supplied assessment.score while the actual frontend sortCatalogue uses matchScore; the fixture was repaired to exercise the real frontend behavior. No product behavior was changed.
+- Pre-existing failure, not repaired: npx tsx --test test/transfer.test.ts has 22/23 passing; the one failure expects after.stages {assessment:ollama,extraction:ollama} while config/providers.yaml includes preparation: luna. git show main:config/providers.yaml has the same preparation field and git show main:app/test/transfer.test.ts has the same assertion, so this predates relocation. The moved transfer fixture and its legacy/app/ops/transfer copy otherwise pass.
+
+## 2026-11-06 — 3.1 relocation — whole-tree credential and formatting scan
+
+Check: `python3 backend/scripts/leakcheck/tree-check .`
+Exit: 0
+
+```
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+```
+
+## 2026-11-06 — 3.1 relocation — plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 3.1 relocation — staged and working-tree whitespace
+
+Check: `git add -A && git diff --cached --check && git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 3.1 relocation — staged pure-rename and full-blob scan
+
+Check: `python3 backend/scripts/leakcheck/commit-diff-check --staged --repo .`
+Exit: 0
+
+```
+
+```

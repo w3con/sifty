@@ -2,11 +2,11 @@
 # pre-push — re-scans every commit about to leave the machine against both the message and
 # diff rules, catching anything committed with --no-verify or before the hooks were installed.
 # Reads git's pre-push protocol from stdin. Delegates to the leak scanner vendored under
-# sifty/scripts/leakcheck/, resolved from the repository root so this works in every worktree.
+# backend/scripts/leakcheck/, resolved from the repository root so this works in every worktree.
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
-SCANNER="$PROJECT_ROOT/sifty/scripts/leakcheck/range-check"
+SCANNER="$PROJECT_ROOT/backend/scripts/leakcheck/range-check"
 if [ ! -f "$SCANNER" ]; then
-    echo "[pre-push] ERROR: leak scanner missing: sifty/scripts/leakcheck/range-check" >&2
+    echo "[pre-push] ERROR: leak scanner missing: backend/scripts/leakcheck/range-check" >&2
     exit 1
 fi
 exec python3 "$SCANNER" --repo "$PROJECT_ROOT"

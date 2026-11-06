@@ -39,8 +39,8 @@ class HookInstallTest(unittest.TestCase):
     def copy_fixture(self):
         shutil.copytree(REPO_ROOT / ".githooks", self.root / ".githooks")
         shutil.copytree(
-            REPO_ROOT / "sifty" / "scripts" / "leakcheck",
-            self.root / "sifty" / "scripts" / "leakcheck",
+            REPO_ROOT / "backend" / "scripts" / "leakcheck",
+            self.root / "backend" / "scripts" / "leakcheck",
             ignore=shutil.ignore_patterns("__pycache__", "tests"))
         (self.root / "bin").mkdir()
         for path in (REPO_ROOT / "bin").glob("work-*"):
@@ -88,7 +88,7 @@ class HookInstallTest(unittest.TestCase):
         for path in (list((self.root / ".githooks").glob("*"))
                      + list((self.root / ".githooks" / "pre-commit.d").glob("*"))
                      + list((self.root / "bin").glob("work-*"))
-                     + list((self.root / "sifty" / "scripts" / "leakcheck").glob("*"))):
+                     + list((self.root / "backend" / "scripts" / "leakcheck").glob("*"))):
             if path.is_file():
                 path.chmod(0o644)
         self.install()
@@ -96,7 +96,7 @@ class HookInstallTest(unittest.TestCase):
             run_cmd(["git", "config", "--get", "core.hooksPath"],
                     cwd=self.root).stdout.strip(), ".githooks")
         scanner_files = [p for p in (
-            self.root / "sifty" / "scripts" / "leakcheck").glob("*")
+            self.root / "backend" / "scripts" / "leakcheck").glob("*")
             if p.is_file() and p.suffix != ".md"]
         for path in (list((self.root / ".githooks").glob("*"))
                      + list((self.root / ".githooks" / "pre-commit.d").glob("*"))
@@ -107,7 +107,7 @@ class HookInstallTest(unittest.TestCase):
 
     def test_missing_whole_scanner_directory_fails(self):
         self.install()
-        shutil.rmtree(self.root / "sifty" / "scripts" / "leakcheck")
+        shutil.rmtree(self.root / "backend" / "scripts" / "leakcheck")
         result = run_cmd(["bash", str(self.root / "bin" / "work-setup")],
                          cwd=self.root)
         self.assertNotEqual(result.returncode, 0)
@@ -131,7 +131,7 @@ class HookInstallTest(unittest.TestCase):
 
     def test_missing_required_scanner_file_fails(self):
         self.install()
-        (self.root / "sifty" / "scripts" / "leakcheck" /
+        (self.root / "backend" / "scripts" / "leakcheck" /
          "commit-diff-check").unlink()
         result = run_cmd(["bash", str(self.root / "bin" / "work-setup")],
                          cwd=self.root)
@@ -181,7 +181,7 @@ class HookInstallTest(unittest.TestCase):
     # ── required scanner ────────────────────────────────────────────────────
     def test_missing_scanner_fails_explicitly(self):
         self.install()
-        (self.root / "sifty" / "scripts" / "leakcheck" /
+        (self.root / "backend" / "scripts" / "leakcheck" /
          "commit-diff-check").unlink()
         self.write("docs/note.md", "note\n")
         self.git("add", "-A")
@@ -192,7 +192,7 @@ class HookInstallTest(unittest.TestCase):
     # ── actual hook behavior ────────────────────────────────────────────────
     def test_installed_hooks_refuse_secret_and_redact(self):
         self.install()
-        self.write("sifty/app.ts", 'const token = "' + TOKEN + '";\n')
+        self.write("backend/app.ts", 'const token = "' + TOKEN + '";\n')
         self.git("add", "-A")
         result = self.commit("feat(test): add config")
         self.assert_hook_refused(result, "personal access token")
@@ -213,7 +213,7 @@ class HookInstallTest(unittest.TestCase):
         result = self.commit("docs(test): add note", cwd=linked)
         self.assertEqual(result.returncode, 0, "linked worktree commit was refused")
 
-        self.write("sifty/app.ts", 'const token = "' + TOKEN + '";\n',
+        self.write("backend/app.ts", 'const token = "' + TOKEN + '";\n',
                    cwd=linked)
         self.git("add", "-A", cwd=linked)
         result = self.commit("feat(test): add config", cwd=linked)

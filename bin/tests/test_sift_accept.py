@@ -44,13 +44,14 @@ class SiftAcceptTest(unittest.TestCase):
             '    fh.write("work-test\\n")\n'
             'raise SystemExit(int(os.environ.get("FAKE_WORK_TEST_EXIT", "0")))\n',
             encoding="utf-8")
-        (self.root / "sifty" / "web").mkdir(parents=True)
+        (self.root / "backend").mkdir()
+        (self.root / "frontend").mkdir()
         (self.root / "docs").mkdir()
         (self.root / "docs" / "base.md").write_text("base\n", encoding="utf-8")
         (self.root / "Makefile").write_text("all:\n\t@true\n", encoding="utf-8")
         (self.root / "bin" / "sift-deploy").write_text(
             "#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
-        (self.root / "sifty" / "web" / "app.ts").write_text(
+        (self.root / "frontend" / "app.ts").write_text(
             "export const x = 1;\n", encoding="utf-8")
 
         self.git("init", "-q", "-b", "main")
@@ -114,7 +115,7 @@ class SiftAcceptTest(unittest.TestCase):
 
     def test_app_change_runs_application_checks(self):
         self.git("checkout", "-q", "-b", "work/X")
-        self.change("sifty/web/app.ts", "export const x = 2;\n")
+        self.change("frontend/app.ts", "export const x = 2;\n")
         result = self.run_accept()
         self.assertEqual(result.returncode, 0, result.stdout)
         lines = self.recorded()

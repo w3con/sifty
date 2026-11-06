@@ -49,7 +49,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 
 *Gate: frontend/backend/worker checks pass at the new paths; no unfinished task or user data is lost.*
 
-- [ ] 3.1 — Move frontend, backend and legacy implementation; repoint build, serve, worker and legacy-relative paths together.
+- [x] 3.1 — Move frontend, backend and legacy implementation; repoint build, serve, worker and legacy-relative paths together.
 - [ ] 3.2 — Move planning to work, documentation to docs and shared tooling to tools; repair submodule and symlink wiring.
 - [ ] 3.3 — Add the mcp placeholder, update ignore rules and untrack incident/build artifacts while preserving local copies.
 - [ ] 3.4 — Move GitHub workflows to root, correct their paths and cover backend, frontend, workers and harness checks.

@@ -26,7 +26,7 @@ chmod_executable() {
 REQUIRED_HOOKS="pre-commit commit-msg pre-push post-checkout post-merge post-rewrite"
 REQUIRED_STEPS="10-kb-relation-build 20-work-selfcheck 30-leak-check"
 COMMANDS="work-new work-plan work-handover work-note work-commit work-resume work-accept work-finish work-setup work-test"
-SCANNER_DIR="sifty/scripts/leakcheck"
+SCANNER_DIR="backend/scripts/leakcheck"
 SCANNERS="commit-diff-check commit-msg-check range-check tree-check leakcheck-selftest leak_census.py leak_git.py"
 
 # Make the required adapters executable. Extra files are not part of the

@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""commit-diff-check — refuses a changed file (or, with --tree, every tracked file) that carries
+a form the census at scripts/leakcheck/census.md names.
+
+Usage:
+    commit-diff-check [--repo PATH] [--staged | --commit SHA | --tree]
+
+    --repo     the repository being checked (default: `git rev-parse --show-toplevel`)
+    --staged   check the index against HEAD — the default, for use as a pre-commit hook
+    --commit   check the actual blobs of one already-made commit, including a root commit
+    --tree     check every tracked blob in the index, not only changed paths
+
+Staged content is read from the index and historical content from the named commit; unstaged
+working-tree edits are never treated as staged. Renames are read as the new blob, so a pure
+rename of old content is checked even though the diff has no added lines. Paths are read as
+NUL-separated Git output, so spaces, quotes and non-ASCII names are safe. Symlinks and submodules
+are skipped rather than followed or recursed into.
+
+Credential forms are checked in every path, including the scanner's own sources, tests and commit
+messages. Formatting forms apply only under a census-declared formatting-required subtree and
+never to the scanner's own sources. Diagnostics name the form, the safe path and line number;
+they never print a matched value or a whole offending line.
+
+Exit codes: 0 clean; 1 refused, with every finding named; 2 bad invocation or a Git failure.
+"""
+import argparse
+import os
+import sys
+
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, SCRIPT_DIR)
+import leak_census  # noqa: E402
+import leak_git  # noqa: E402
+
+
+def resolve_repo(argument):
+    if argument:
+        return os.path.abspath(argument)
+    result = leak_git.run(".", ["rev-parse", "--show-toplevel"], text=True)
+    return result.stdout.strip()
+
+
+def scan_blob(repo, path, mode, sha, census):
+    if leak_git.is_symlink(mode) or leak_git.is_submodule(mode):
+        return []
+    text = leak_git.read_blob(repo, sha)
+    if text is None:
+        return []
+    apply_formatting = (leak_census.is_formatting_required(path, census)
+                        and not leak_census.formatting_exempt(path))
+    return leak_census.scan_text(
+        text, census, apply_formatting=apply_formatting, file_path=path)
+
+
+def scan_entries(repo, entries, blobs, census):
+    by_path = {}
+    seen = set()
+    for entry in entries:
+        if entry in seen:
+            continue
+        seen.add(entry)
+        path = leak_git.new_path(entry)
+        blob = blobs.get(path)
+        if not blob:
+            continue
+        findings = scan_blob(repo, path, blob[0], blob[1], census)
+        if findings:
+            by_path[path] = findings
+    return by_path
+
+
+def scan_tree(repo, blobs, census):
+    by_path = {}
+    for path, (mode, sha) in blobs.items():
+        findings = scan_blob(repo, path, mode, sha, census)
+        if findings:
+            by_path[path] = findings
+    return by_path
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="commit-diff-check", description=__doc__,
+                                      formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--repo")
+    parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--commit")
+    parser.add_argument("--tree", action="store_true")
+    args = parser.parse_args()
+
+    try:
+        repo_root = resolve_repo(args.repo)
+        census = leak_census.parse_census()
+        if args.tree:
+            by_path = scan_tree(repo_root, leak_git.index_blobs(repo_root), census)
+            source = "the tracked index"
+        elif args.commit:
+            entries = leak_git.changed_paths_commit(repo_root, args.commit)
+            blobs = leak_git.tree_blobs(repo_root, args.commit)
+            by_path = scan_entries(repo_root, entries, blobs, census)
+            source = "commit " + args.commit
+        else:
+            entries = leak_git.changed_paths_staged(repo_root)
+            blobs = leak_git.index_blobs(repo_root)
+            by_path = scan_entries(repo_root, entries, blobs, census)
+            source = "the staged index"
+    except leak_git.GitError as exc:
+        print("commit-diff-check: "
+              + leak_census.redact_sensitive(str(exc)), file=sys.stderr)
+        return 2
+
+    count = sum(len(findings) for findings in by_path.values())
+    if count:
+        forms = "1 form" if count == 1 else f"{count} forms"
+        print("commit-diff-check: refused — %s in %s carries %s this repository's content "
+              "must not:" % (leak_census.redact_sensitive(source),
+                             leak_census.redact_sensitive(repo_root), forms),
+              file=sys.stderr)
+        for path, findings in by_path.items():
+            print(leak_census.format_findings(findings, path), file=sys.stderr)
+        return 1
+
+    if args.tree:
+        print("commit-diff-check: every tracked blob in %s checked, clean"
+              % leak_census.redact_sensitive(repo_root))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

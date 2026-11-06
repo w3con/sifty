@@ -1,6 +1,6 @@
 # Sifty
 
-Local-first job triage application. The Go backend is under `sifty/`, the React frontend under `sifty/web/`, and config templates under `config/`. One build command (`make build`) produces the binary and the frontend bundle. Production runs on port 8080 against `./data`; staging runs on port 8081 against `./data-staging`. Both data directories are git-ignored.
+Local-first job triage application. The Go backend is under `backend/`, the React frontend under `frontend/`, the retired TypeScript implementation under `legacy/app/`, and config templates under `config/`. One build command (`make build`) produces the binary and the frontend bundle. Production runs on port 8080 against `./data`; staging runs on port 8081 against `./data-staging`. Both data directories are git-ignored.
 
 OpenCode is the primary tool. This file is retained for existing installations; use AGENTS.md and its startup reading order for current project rules. Further Claude Code integration is not part of the development plan.
 
@@ -9,7 +9,7 @@ OpenCode is the primary tool. This file is retained for existing installations; 
 ## Build and run
 
 ```
-make build          # build Go binary to bin/sifty + vite build in sifty/web/
+make build          # build Go binary to bin/sifty + vite build in frontend/
 make run            # serve production on :8080 against ./data
 make run-staging    # serve staging on :8081 against ./data-staging
 ```

@@ -14,6 +14,10 @@ data-staging/
 # Frontend build artifacts
 node_modules
 app/dist/
+frontend/dist/
+frontend/dist-staging/
+legacy/app/dist/
+legacy/app/dist-staging/
 bin/sifty
 
 # Python build artifacts

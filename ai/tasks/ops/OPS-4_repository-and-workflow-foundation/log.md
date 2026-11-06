@@ -46,3 +46,98 @@ Preparation checks after approval/cleanup updates: `python3 bin/work-plan OPS-4`
 ## Continuation through OpenCode Go — 2026-11-06
 
 The owner instructed «продолжай. deepseek используется через opencode go». The live visible subagent tool now includes `executor`, matching the project profile's `opencode-go/deepseek-v4.1-flash`. This clears dispatch availability, but inference identity remains unverified until the actual session metadata is inspected. The coordinator will commit only the reviewed workflow/profile/card preparation, obtain the live handover brief and assign steps 1.1–1.2, stopping before 1.3. Existing DESIGN-1 and preview worktrees remain untouched. No plan step is complete yet.
+
+## 2026-11-06 — 1.1 baseline — git status --short
+
+Check: `git status --short`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — 1.1 baseline — git worktree list
+
+Check: `git worktree list`
+Exit: 0
+
+```
+/Volumes/SSD/Dev/tknff/sifty                      c0181a1 [main]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/DESIGN-1  d56435f [work/DESIGN-1]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4     c0181a1 [work/OPS-4]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/preview   94f51d9 [assessment-panel]
+```
+
+
+## 2026-11-06 — 1.1 baseline — python3 bin/work-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+
+PASS: all harness checks
+```
+
+
+## 2026-11-06 — 1.1 baseline — python3 bin/work-plan OPS-4
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+
+## 2026-11-06 — 1.1 inventory and preservation baseline
+
+Check: `git diff --check`
+Exit: 2
+
+```
+ai/tasks/ops/OPS-4_repository-and-workflow-foundation/log.md:120: new blank line at EOF.
+```
+
+## 2026-11-06 — 1.1 diff check after log normalization
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — note
+
+Harness defect found while recording 1.1: bin/work-note ends each appended entry with a blank line at EOF, so the subsequent required 'git diff --check' failed with '__new blank line at EOF__' (exit 2, entry above). Correction: the card log was normalized (trailing blank lines removed; recorded evidence unchanged) and the check then passed. bin/work-note was not edited because harness changes are outside this stage; the coordinator should schedule the fix (likely with the 1.3/2.x workflow work).

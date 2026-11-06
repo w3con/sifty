@@ -1347,3 +1347,51 @@ Exit: 0
 ```
 
 ```
+
+## 2026-11-06 — 3.1 relocation — Playwright worker fixture suite from backend/workers
+
+Check: `cd backend/workers/playwright && npm ci --silent && node --test automation.test.mjs`
+Exit: 0
+
+```
+TAP version 13
+# Subtest: 1.1 realistic fingerprint: UA and navigator.webdriver
+ok 1 - 1.1 realistic fingerprint: UA and navigator.webdriver
+  ---
+  duration_ms: 172.521084
+  type: 'test'
+  ...
+# Subtest: 1.2 host pacing: sequential navigations are spaced by the configured interval
+ok 2 - 1.2 host pacing: sequential navigations are spaced by the configured interval
+  ---
+  duration_ms: 305.956166
+  type: 'test'
+  ...
+# Subtest: 1.3 concurrency: at most the configured number of navigations run at once
+ok 3 - 1.3 concurrency: at most the configured number of navigations run at once
+  ---
+  duration_ms: 312.238875
+  type: 'test'
+  ...
+# Subtest: 2.1 block detection: 429 response ends in backed-off state with no retry
+ok 4 - 2.1 block detection: 429 response ends in backed-off state with no retry
+  ---
+  duration_ms: 147.215209
+  type: 'test'
+  ...
+# Subtest: 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+ok 5 - 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+  ---
+  duration_ms: 386.001208
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1519.7175
+```

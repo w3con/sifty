@@ -171,3 +171,15 @@ records requirements only; the executor did not write to the main checkout.
 
 The worktree hashes recorded in the step 3.3 log entry are the same as the main
 checkout values above, so the copies are verifiable byte for byte.
+
+4. **Initialized private submodule in the main checkout.** The executor did not
+   touch `/Volumes/SSD/Dev/tknff/sifty/ai/shared` or
+   `/Volumes/SSD/Dev/tknff/sifty/.git/modules/ai/shared`. The merge deletes the
+   tracked `ai/shared` gitlink and adds `tools/shared`; main's initialized
+   submodule directory and its gitdir remain on disk and must not be mistaken for
+   a clean deletion. After the merge the coordinator should deliberately either
+   keep that local copy and initialize the new path (`git submodule sync` then
+   `git submodule update --init tools/shared` with upstream access), or move or
+   remove the old local copy after confirming it is the private upstream and is
+   not needed. Do not leave an untracked `ai/shared` silently making the main
+   checkout dirty.

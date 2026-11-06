@@ -1542,3 +1542,83 @@ migration_resume_exit=97
 ## 2026-11-06 — note
 
 Correction after review: `work-resume` read the card's relative path from the base checkout, so before merge (base still at `ai/tasks/`, work branch at `work/tasks/`) it could miss the worktree card and report every step closed. It now resolves the card inside the worktree by ID and prints the new path. Added `bin/tests/test_resume.py` for this migration state; `bin/work-test` passes, and the branch command run from the main checkout prints `work/tasks/ops/OPS-4_repository-and-workflow-foundation` with the remaining open steps. No application code changed.
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 1
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+Traceback (most recent call last):
+  File "/tmp/ops4_links_inventory.py", line 45, in <module>
+    text = p.read_text()
+           ^^^^^^^^^^^^^
+  File "/Users/tknff/anaconda3/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tknff/anaconda3/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: 'tools/shared'
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory (corrected check)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 1
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 12
+STALE legacy/app/test/transfer.test.ts:34
+STALE legacy/app/test/transfer.test.ts:35
+STALE legacy/app/test/transfer.test.ts:36
+STALE legacy/app/test/transfer.test.ts:88
+STALE legacy/app/test/transfer.test.ts:89
+STALE legacy/app/test/transfer.test.ts:92
+STALE legacy/app/test/transfer.test.ts:93
+STALE legacy/app/test/transfer.test.ts:144
+STALE legacy/app/test/transfer.test.ts:165
+STALE work/WORKFLOW.md:49
+STALE work/tasks/go-migration/GO-1_backend-and-public-repo/checks/check-2.2.sh:3
+STALE work/tasks/go-migration/GO-1_backend-and-public-repo/checks/check-2.2.sh:12
+Traceback (most recent call last):
+  File "/tmp/ops4_links_inventory.py", line 56, in <module>
+    assert not hits
+           ^^^^^^^^
+AssertionError
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory (final)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 0
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 0
+card_files_old: 243
+card_files_new: 243
+canonical_card_ids: 49
+LINK_INVENTORY_OK
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and canonical ID inventory (corrected count)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 0
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 0
+card_files_old: 243
+card_files_new: 243
+canonical_card_ids: 46
+single_file_cards: 2
+LINK_INVENTORY_OK
+```

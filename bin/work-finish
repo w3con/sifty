@@ -7,18 +7,20 @@ Usage:
 
 Accept path: require the current checkout to be the base branch (default main),
 the source worktree and target checkout clean including untracked files, every
-step closed, attention resolved and no terminal outcome. Capture the source and
-target revisions, run acceptance checks in a scratch copy detached at the
-captured source SHA, verify both revisions/branches are unchanged, then
-fast-forward merge exactly that tested source SHA. Write done.md and remove the
-worktree and branch without force.
+step closed, the plan fit (present, non-empty, with steps and acceptance
+criteria, no malformed step line), attention resolved and no terminal outcome.
+Capture the source and target revisions, run acceptance checks in a scratch copy
+detached at the captured source SHA, verify both revisions/branches are
+unchanged, then fast-forward merge exactly that tested source SHA. Write done.md
+and remove the worktree and branch without force when the source worktree has no
+ignored local material; ignored material retains both and is reported.
 
 --force skips only the acceptance command. It does not bypass readiness,
 cleanliness, revision or preservation checks.
 
-Reject path: write rejected.md with the reason and commit it on the base branch.
-The work branch, worktree and any uncommitted changes are preserved; nothing is
-removed or merged.
+Reject path: write rejected.md with the reason and commit only that file on the
+base branch. The work branch, worktree, uncommitted changes and pre-existing
+staged/unstaged target changes are preserved; nothing is removed or merged.
 
 No staging deploy is run after the merge. Staging previews in-progress work from
 its own worktree; finishing a card only merges to main. To update production, run
@@ -40,11 +42,18 @@ def write_terminal(card_dir, name, body):
 
 
 def commit_card(card_dir, message, only=None):
-    """Commit one terminal record, not unrelated uncommitted card changes."""
+    """Commit one terminal record without sweeping in pre-existing staged work.
+
+    `git commit --only` commits the named path from the working tree and leaves
+    every other staged or unstaged change in the index/worktree untouched. This
+    is required for rejection, which deliberately runs with dirty target work."""
     rel = os.path.relpath(card_dir, w.repo_root())
     path = os.path.join(rel, only) if only else rel
-    w.run(["git", "add", "--", path], cwd=w.repo_root())
-    cp = w.run(["git", "commit", "-q", "-m", message], cwd=w.repo_root())
+    added = w.run(["git", "add", "--", path], cwd=w.repo_root())
+    if added.returncode != 0:
+        w.die("git add failed: %s" % (added.stderr or added.stdout).strip())
+    cp = w.run(["git", "commit", "-q", "--only", "-m", message, "--", path],
+               cwd=w.repo_root())
     if cp.returncode != 0:
         w.die("git commit failed: %s" % (cp.stderr or cp.stdout).strip())
 

@@ -574,3 +574,84 @@ Exit: 0
 ```
 
 ```
+
+## 2026-11-06 — review corrections — lifecycle tests
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+.....................................
+----------------------------------------------------------------------
+Ran 37 tests in 19.202s
+
+OK
+```
+
+## 2026-11-06 — review corrections — harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — review corrections — plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — review corrections — whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Coordinator review corrections — lifecycle safety.
+
+1. Rejection commit isolation. `work-finish` now commits the terminal record with `git commit --only -m MSG -- <file>` after a checked `git add`, so pre-existing staged changes on the target (including inside the card) and unstaged work are preserved. Regression stages unrelated and card-local changes, dirties the source worktree, rejects, and asserts the rejection commit contains only `rejected.md` with both diffs unchanged.
+2. Plan fitness in readiness. `readiness_problems` now calls `plan_fitness_problems` on the source card, so a missing steps file, empty plan, zero steps or malformed checkbox line cannot be finished. Added tests for missing plan, zero steps and malformed steps, including `--force`.
+3. Ignored material preservation. `cleanup_finished` inspects `git status --ignored=matching` before removal and retains the source worktree and branch when any ignored entry exists; it reports the retained entries and never uses `git clean` or force. Regression keeps an ignored SQLite sentinel byte-for-byte and asserts the branch/worktree remain; the clean successful-finish test still removes both.
+4. Arithmetic correction: 23 total steps minus 4 completed (1.1–1.4) = 19 open (2.1 onward), not 21.
+
+Checks re-run: 37 lifecycle tests OK; `bin/work-test` PASS; `bin/work-plan OPS-4` fit; `git diff --check` exit 0. Steps 1.3–1.4 remain ticked; no plan step was reopened. Exact next action: coordinator reviews this diff and evidence, then assigns step 2.1 in a fresh executor context. Do not run `work-accept` or `work-finish` for OPS-4; 19 steps remain open.

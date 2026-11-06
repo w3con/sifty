@@ -6,8 +6,9 @@ Usage:
 
 Preconditions (shared with work-finish): the current checkout is the base
 branch (default main), the source worktree and target checkout are clean
-including untracked files, every plan step is closed, attention is resolved and
-no terminal outcome exists. The scratch worktree is detached at the exact
+including untracked files, every plan step is closed, the plan is fit
+(present, non-empty, with steps and acceptance criteria, no malformed step
+line), attention is resolved and no terminal outcome exists. The scratch worktree is detached at the exact
 captured source SHA; a pre-existing scratch path is preserved, never
 force-deleted.
 

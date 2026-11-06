@@ -116,11 +116,55 @@ class FinishOutcomeTest(LifecycleTest):
             env={"WORK_ACCEPT_CMD": self.make_accept_script()})
         self.assert_refused(retry, "terminal file present: rejected.md")
 
+    def test_rejection_commit_does_not_sweep_staged_target_changes(self):
+        (self.root / "staged.txt").write_text("staged outside\n",
+                                              encoding="utf-8")
+        self.git("add", "staged.txt")
+        plan = self.card_dir / "plan.md"
+        plan.write_text(plan.read_text(encoding="utf-8") +
+                        "\nstaged card change\n", encoding="utf-8")
+        self.git("add", str(self.card_rel / "plan.md"))
+        (self.root / "README").write_text("unstaged change\n",
+                                          encoding="utf-8")
+        (self.wt / "dirty.txt").write_text("preserve me\n",
+                                           encoding="utf-8")
+        before_cached = self.git("diff", "--cached", "--binary")
+        before_unstaged = self.git("diff", "--binary")
+
+        result = self.work("work-finish", self.card_id,
+                           "--reject", "not wanted")
+        self.assertEqual(result.returncode, 0, result.stdout)
+        committed = self.git("diff-tree", "--no-commit-id", "--name-only",
+                             "-r", "HEAD")
+        self.assertEqual(committed, str(self.card_rel / "rejected.md"))
+        self.assertEqual(self.git("diff", "--cached", "--binary"),
+                         before_cached)
+        self.assertEqual(self.git("diff", "--binary"), before_unstaged)
+        self.assertTrue((self.wt / "dirty.txt").exists())
+        self.assertIn("not wanted",
+                      (self.card_dir / "rejected.md").read_text(
+                          encoding="utf-8"))
+
+    def test_successful_finish_preserves_ignored_material(self):
+        ignored = self.wt / "ignored"
+        ignored.mkdir()
+        payload = b"SQLite format 3\x00personal\n"
+        (ignored / "personal.sqlite").write_bytes(payload)
+        result = self.work(
+            "work-finish", self.card_id,
+            env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertTrue((self.card_dir / "done.md").exists())
+        self.assertTrue(self.wt.exists())
+        self.assertEqual((ignored / "personal.sqlite").read_bytes(), payload)
+        self.assertIn("work/%s" % self.card_id,
+                      self.git("branch", "--list", "work/%s" % self.card_id))
+        self.assertIn("ignored local material", result.stdout)
+        self.assertIn("preserved", result.stdout)
+        self.assertIn(str(self.wt),
+                      self.git("worktree", "list", "--porcelain"))
+
     def test_successful_finish_merges_the_tested_revision(self):
-        # Ignored artifacts must not block the non-force cleanup.
-        (self.wt / "ignored").mkdir()
-        (self.wt / "ignored" / "artifact.txt").write_text(
-            "build output\n", encoding="utf-8")
         record = self.aux_dir / "record.txt"
         result = self.work(
             "work-finish", self.card_id,

@@ -72,6 +72,16 @@ def git_status_lines(cwd=None):
     return [line for line in cp.stdout.splitlines() if line.strip()]
 
 
+def ignored_status_lines(cwd=None):
+    """Ignored local material, one porcelain line each (for preservation)."""
+    cp = run(["git", "status", "--porcelain", "--ignored=matching",
+              "--untracked-files=normal"], cwd=cwd)
+    if cp.returncode != 0:
+        return ["<git status --ignored failed: %s>"
+                % (cp.stderr or cp.stdout).strip()]
+    return [line for line in cp.stdout.splitlines() if line.startswith("!! ")]
+
+
 def find_worktree(branch, cwd=None):
     """Absolute path of the worktree checked out on `branch`, or None."""
     cp = run(["git", "worktree", "list", "--porcelain"], cwd=cwd)
@@ -408,6 +418,8 @@ def allocate_id(prefix):
 # ── Reading steps / attention / estimate ────────────────────────────────────
 OPEN_STEP_RE = re.compile(r"^\s*-\s*\[\s\]\s+(.*)$")
 CLOSED_STEP_RE = re.compile(r"^\s*-\s*\[[xX]\]\s+(.*)$")
+# A checkbox-looking line, used to catch malformed steps such as `- [ ]`.
+STEP_MARK_RE = re.compile(r"^\s*-\s*\[[ xX]?\]")
 
 
 def read_lines(path):
@@ -432,6 +444,22 @@ def all_steps(card_dir):
             out.append(("open", mo.group(1)))
         elif mc:
             out.append(("closed", mc.group(1)))
+    return out
+
+
+def malformed_step_lines(card_dir):
+    """Checkbox-looking lines that are not a valid open or closed step."""
+    out = []
+    for line in read_lines(steps_file(card_dir)):
+        if not STEP_MARK_RE.match(line):
+            continue
+        mo = OPEN_STEP_RE.match(line)
+        mc = CLOSED_STEP_RE.match(line)
+        if mo and mo.group(1).strip():
+            continue
+        if mc and mc.group(1).strip():
+            continue
+        out.append(line.strip())
     return out
 
 
@@ -470,13 +498,20 @@ def plan_fitness_problems(card_dir):
     problems = []
     sf = steps_file(card_dir)
     if not os.path.exists(sf):
-        problems.append("missing %s" % os.path.basename(sf))
+        problems.append("missing steps file (plan.md for a full card, "
+                        "description.md for a short card)")
         return problems
     text = "\n".join(read_lines(sf))
     low = text.lower()
+    if not text.strip():
+        problems.append("plan is empty")
     if not all_steps(card_dir):
         problems.append("no steps found (need at least one `- [ ]` line in %s)"
                         % os.path.basename(sf))
+    malformed = malformed_step_lines(card_dir)
+    if malformed:
+        problems.append("malformed step line(s): %s"
+                        % "; ".join(malformed[:3]))
     if "acceptance criteria" not in low:
         problems.append("no 'Acceptance criteria' section")
     # Unfilled template scaffolding left behind.
@@ -547,6 +582,9 @@ def readiness_problems(card_id, target_root=None):
             problems.append("card folder for %s is missing in the source worktree"
                             % card_id)
         else:
+            # A missing, empty, no-step or malformed plan is unfinished work
+            # even when open_steps() returns nothing.
+            problems.extend(plan_fitness_problems(card_dir))
             open_steps_found = open_steps(card_dir)
             if open_steps_found:
                 problems.append("plan still has %d open step(s): %s"
@@ -592,6 +630,18 @@ def cleanup_finished(card_id, source_sha):
     problems = []
     wt = find_worktree(branch, cwd=root)
     if wt:
+        ignored = ignored_status_lines(wt)
+        if any(not line.startswith("!! ") for line in ignored):
+            problems.append(
+                "could not inspect ignored material in %s; preserved "
+                "worktree and branch" % wt)
+            return problems
+        if ignored:
+            problems.append(
+                "worktree %s contains ignored local material (%d entry/entries: "
+                "%s); preserved worktree and branch"
+                % (wt, len(ignored), ", ".join(ignored[:5])))
+            return problems
         removed = run(["git", "worktree", "remove", wt], cwd=root)
         if removed.returncode != 0:
             problems.append(

@@ -94,6 +94,49 @@ class AcceptancePreconditionsTest(LifecycleTest):
         self.assert_refused(result, "source worktree is dirty")
         self.assert_preserved()
 
+    def test_finish_refuses_missing_plan(self):
+        (self.wt / self.card_rel / "plan.md").unlink()
+        self.commit_in_source("remove plan")
+        result = self.work("work-finish", self.card_id,
+                           env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(result, "missing steps file")
+        self.assert_preserved()
+
+    def test_force_does_not_bypass_missing_plan(self):
+        (self.wt / self.card_rel / "plan.md").unlink()
+        self.commit_in_source("remove plan")
+        result = self.work("work-finish", self.card_id, "--force",
+                           env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(result, "missing steps file")
+        self.assert_preserved()
+
+    def test_finish_refuses_zero_step_plan(self):
+        self.write_source_plan(
+            "# %s — plan\n\n## Steps\n\n## Acceptance criteria\n\n"
+            "- The thing works.\n" % self.card_id)
+        result = self.work("work-finish", self.card_id,
+                           env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(result, "no steps found")
+        self.assert_preserved()
+
+    def test_force_does_not_bypass_zero_step_plan(self):
+        self.write_source_plan(
+            "# %s — plan\n\n## Steps\n\n## Acceptance criteria\n\n"
+            "- The thing works.\n" % self.card_id)
+        result = self.work("work-finish", self.card_id, "--force",
+                           env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(result, "no steps found")
+        self.assert_preserved()
+
+    def test_finish_refuses_malformed_step_plan(self):
+        self.write_source_plan(
+            "# %s — plan\n\n## Steps\n\n- [ ]\n\n"
+            "## Acceptance criteria\n\n- The thing works.\n" % self.card_id)
+        result = self.work("work-finish", self.card_id,
+                           env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(result, "malformed step")
+        self.assert_preserved()
+
     def test_force_skips_only_the_acceptance_command(self):
         result = self.work(
             "work-finish", self.card_id, "--force",
@@ -101,6 +144,11 @@ class AcceptancePreconditionsTest(LifecycleTest):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertTrue((self.card_dir / "done.md").exists())
         self.assertFalse(self.wt.exists())
+
+    def write_source_plan(self, text):
+        plan = self.wt / self.card_rel / "plan.md"
+        plan.write_text(text, encoding="utf-8")
+        self.commit_in_source("replace plan")
 
     def reopen_source_plan(self):
         plan = self.wt / self.card_rel / "plan.md"

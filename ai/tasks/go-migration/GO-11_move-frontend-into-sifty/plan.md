@@ -31,7 +31,7 @@ Move the React frontend from `app/web` to `sifty/web` with its own build, and re
 *Gate: `make build` succeeds and produces the frontend bundle at the new path.*
 
 - [x] 3.1 — Update `Makefile`: the `build` target builds the frontend at `sifty/web`; the `run`/`run-staging` targets pass the new `--dist` path.
-- [ ] 3.2 — Update `bin/sift-deploy` (npm path, `DIST_DIR` defaults, `BUILD_OUTDIR`) and `bin/sift-accept` (npm ci + tsc + vite at `sifty/web`); keep the "app-touching" path check matching `sifty/`.
+- [x] 3.2 — Update `bin/sift-deploy` (npm path, `DIST_DIR` defaults, `BUILD_OUTDIR`) and `bin/sift-accept` (npm ci + tsc + vite at `sifty/web`); keep the "app-touching" path check matching `sifty/`.
 
 ### Phase 4 — Verify
 

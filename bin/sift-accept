@@ -56,13 +56,13 @@ if [[ "$APP_TOUCHING" -eq 1 ]]; then
     fi
 
     log "--- Frontend dependencies (npm ci) ---"
-    if ! npm --prefix "$APP_HOME/app" ci --silent 2>/dev/null; then
-        npm --prefix "$APP_HOME/app" install --silent 2>/dev/null \
+    if ! npm --prefix "$APP_HOME/sifty/web" ci --silent 2>/dev/null; then
+        npm --prefix "$APP_HOME/sifty/web" install --silent 2>/dev/null \
             || die "frontend dependency install failed"
     fi
 
     log "--- TypeScript check (tsc --noEmit) ---"
-    if npm --prefix "$APP_HOME/app" run build 2>&1; then
+    if npm --prefix "$APP_HOME/sifty/web" run build 2>&1; then
         log "tsc + vite build: PASS"
     else
         die "tsc --noEmit or vite build failed"

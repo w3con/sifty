@@ -69,3 +69,29 @@ Exit: 0
 33:	rm -rf sifty/dist
 ```
 
+
+## 2026-11-06 — 3.2
+
+Check: `grep -n 'sifty/web\|sifty/dist\|sifty/dist-staging' bin/sift-deploy bin/sift-accept`
+Exit: 0
+
+```
+bin/sift-deploy:13:#   SIFTY_PROD_DIST          prod React dist dir           (default <repo>/sifty/dist)
+bin/sift-deploy:18:#   SIFTY_STAGING_DIST       staging React dist dir        (default <repo>/sifty/dist-staging)
+bin/sift-deploy:101:  (b) npm --prefix sifty/web ci && npm --prefix sifty/web run build  → sifty/dist/
+bin/sift-deploy:105:  (b) npm --prefix sifty/web ci && BUILD_OUTDIR=<abs> npm --prefix sifty/web run build  → sifty/dist-staging/
+bin/sift-deploy:106:  Staging build never touches bin/sifty or sifty/dist.
+bin/sift-deploy:142:        DIST_DIR="${SIFTY_PROD_DIST:-$APP_HOME/sifty/dist}"
+bin/sift-deploy:149:        DIST_DIR="${SIFTY_STAGING_DIST:-$MAIN_REPO/sifty/dist-staging}"
+bin/sift-deploy:172:if npm --prefix "$APP_HOME/sifty/web" ci --silent 2>/dev/null; then
+bin/sift-deploy:174:elif npm --prefix "$APP_HOME/sifty/web" install --silent 2>/dev/null; then
+bin/sift-deploy:183:# vite.config.ts outDir (../dist relative to sifty/web/ = sifty/dist).
+bin/sift-deploy:184:# A staging build never touches sifty/dist or bin/sifty.
+bin/sift-deploy:187:    BUILD_OUTDIR="$DIST_DIR" npm --prefix "$APP_HOME/sifty/web" run build \
+bin/sift-deploy:190:    log "Building frontend (npm run build → sifty/dist/)..."
+bin/sift-deploy:191:    npm --prefix "$APP_HOME/sifty/web" run build \
+bin/sift-accept:59:    if ! npm --prefix "$APP_HOME/sifty/web" ci --silent 2>/dev/null; then
+bin/sift-accept:60:        npm --prefix "$APP_HOME/sifty/web" install --silent 2>/dev/null \
+bin/sift-accept:65:    if npm --prefix "$APP_HOME/sifty/web" run build 2>&1; then
+```
+

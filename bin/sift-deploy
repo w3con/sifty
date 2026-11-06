@@ -10,12 +10,12 @@
 #   SIFTY_PROD_PORT          prod HTTP port                (default 8080)
 #   SIFTY_PROD_DATA_DIR      prod data directory           (default <repo>/data)
 #   SIFTY_PROD_BINARY        path to prod binary           (default <repo>/bin/sifty)
-#   SIFTY_PROD_DIST          prod React dist dir           (default <repo>/app/dist)
+#   SIFTY_PROD_DIST          prod React dist dir           (default <repo>/sifty/dist)
 #   SIFTY_PROD_LOG           prod server log path          (default <repo>/data/prod-server.log)
 #   SIFTY_STAGING_PORT       staging HTTP port             (default 8081)
 #   SIFTY_STAGING_DATA_DIR   staging data directory        (default <repo>/data-staging)
 #   SIFTY_STAGING_BINARY     path to staging binary        (default <repo>/bin/sifty-staging)
-#   SIFTY_STAGING_DIST       staging React dist dir        (default <repo>/app/dist-staging)
+#   SIFTY_STAGING_DIST       staging React dist dir        (default <repo>/sifty/dist-staging)
 #   SIFTY_STAGING_LOG        staging server log path       (default <repo>/data-staging/staging-server.log)
 #   SIFTY_WORKERS_DIR        workers dir (shared)          (default <repo>/sifty/workers)
 #
@@ -98,12 +98,12 @@ Per-env config keys (bin/work.config or environment variables):
 
 Build (prod):
   (a) cd sifty && go build -o <repo>/bin/sifty.new ./cmd/sifty  → bin/sifty
-  (b) npm --prefix app ci && npm --prefix app run build          → app/dist/
+  (b) npm --prefix sifty/web ci && npm --prefix sifty/web run build  → sifty/dist/
 
 Build (staging):
   (a) cd sifty && go build -o <repo>/bin/sifty-staging.new ./cmd/sifty  → bin/sifty-staging
-  (b) npm --prefix app ci && BUILD_OUTDIR=../dist-staging vite build     → app/dist-staging/
-  Staging build never touches bin/sifty or app/dist.
+  (b) npm --prefix sifty/web ci && BUILD_OUTDIR=<abs> npm --prefix sifty/web run build  → sifty/dist-staging/
+  Staging build never touches bin/sifty or sifty/dist.
 
 Deploy (non-build-only):
   1. For staging: refresh data-staging from a consistent prod snapshot.
@@ -139,14 +139,14 @@ case "$ENV" in
         PORT="${SIFTY_PROD_PORT:-8080}"
         DATA_DIR="${SIFTY_PROD_DATA_DIR:-$APP_HOME/data}"
         BINARY="${SIFTY_PROD_BINARY:-$APP_HOME/bin/sifty}"
-        DIST_DIR="${SIFTY_PROD_DIST:-$APP_HOME/app/dist}"
+        DIST_DIR="${SIFTY_PROD_DIST:-$APP_HOME/sifty/dist}"
         SERVER_LOG="${SIFTY_PROD_LOG:-$DATA_DIR/prod-server.log}"
         ;;
     staging)
         PORT="${SIFTY_STAGING_PORT:-8081}"
         DATA_DIR="${SIFTY_STAGING_DATA_DIR:-$MAIN_REPO/data-staging}"
         BINARY="${SIFTY_STAGING_BINARY:-$MAIN_REPO/bin/sifty-staging}"
-        DIST_DIR="${SIFTY_STAGING_DIST:-$MAIN_REPO/app/dist-staging}"
+        DIST_DIR="${SIFTY_STAGING_DIST:-$MAIN_REPO/sifty/dist-staging}"
         SERVER_LOG="${SIFTY_STAGING_LOG:-$DATA_DIR/staging-server.log}"
         ;;
 esac
@@ -169,9 +169,9 @@ log "Building Go binary (sifty/cmd/sifty → ${NEW_BINARY##*/})..."
     || die "Go build failed"
 
 log "Installing frontend dependencies (npm ci)..."
-if npm --prefix "$APP_HOME/app" ci --silent 2>/dev/null; then
+if npm --prefix "$APP_HOME/sifty/web" ci --silent 2>/dev/null; then
     : # clean install succeeded
-elif npm --prefix "$APP_HOME/app" install --silent 2>/dev/null; then
+elif npm --prefix "$APP_HOME/sifty/web" install --silent 2>/dev/null; then
     warn "package-lock.json missing or out of date; used npm install instead of ci"
 else
     die "npm install failed"
@@ -180,15 +180,15 @@ fi
 # For staging, build into DIST_DIR (an absolute path in the main repo) so the
 # bundle persists after the worktree is removed. BUILD_OUTDIR is read by
 # vite.config.ts; when absolute, vite uses it as-is. Prod uses the default
-# vite.config.ts outDir (../dist relative to app/web/ = app/dist).
-# A staging build never touches app/dist or bin/sifty.
+# vite.config.ts outDir (../dist relative to sifty/web/ = sifty/dist).
+# A staging build never touches sifty/dist or bin/sifty.
 if [[ "$ENV" == "staging" ]]; then
     log "Building frontend (npm run build → $DIST_DIR)..."
-    BUILD_OUTDIR="$DIST_DIR" npm --prefix "$APP_HOME/app" run build \
+    BUILD_OUTDIR="$DIST_DIR" npm --prefix "$APP_HOME/sifty/web" run build \
         || die "Frontend build failed"
 else
-    log "Building frontend (npm run build → app/dist/)..."
-    npm --prefix "$APP_HOME/app" run build \
+    log "Building frontend (npm run build → sifty/dist/)..."
+    npm --prefix "$APP_HOME/sifty/web" run build \
         || die "Frontend build failed"
 fi
 

@@ -16,7 +16,7 @@ Refine the Search, Sources and Archive screens from the owner's first day of use
 
 *Gate: `go test -race ./internal/store/... ./internal/background/... ./internal/server/...` passes.*
 
-- [ ] 1.1 — Change `store.BuildFTSQueryExprs` to combine groups with AND (each OR group = OR of its terms, each AND group = AND of its terms); skip empty groups so they are no constraint. Update the doc comment to the new semantics.
+- [x] 1.1 — Change `store.BuildFTSQueryExprs` to combine groups with AND (each OR group = OR of its terms, each AND group = AND of its terms); skip empty groups so they are no constraint. Update the doc comment to the new semantics.
 - [ ] 1.2 — Update or add combinator tests for AND-across-groups; update any test that assumed OR-across-groups; add a test that an OR group plus an AND group narrows and that ASM-4 scores are still produced.
 
 ### Phase 2 — Search: three columns, immediate save

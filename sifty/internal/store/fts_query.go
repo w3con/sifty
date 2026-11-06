@@ -9,17 +9,22 @@ import (
 // Set Or for a phrase-or query (any phrase must appear in the indexed text).
 // Set And to require every phrase to appear anywhere in the indexed text.
 // When Or is non-empty it takes precedence over And.
-// Groups produced by BuildFTSQueryExprs are ORed at the top level.
+// Groups produced by BuildFTSQueryExprs are ANDed at the top level.
 type SearchGroup struct {
 	Or  []string
 	And []string
 }
 
 // BuildFTSQueryExprs compiles OR/AND expression groups into an FTS5 MATCH query.
-// Each group contributes one sub-expression; groups are ORed at the top level.
-// Within an Or group, phrases are joined with OR; within an And group they are joined with AND.
+// Each group contributes one sub-expression; groups are ANDed at the top level so
+// a role must satisfy every non-empty group to match.
+// Within an Or group, phrases are joined with OR (any phrase matches the group).
+// Within an And group, phrases are joined with AND (all phrases must appear).
+// Empty groups (after sanitisation) are silently skipped — an empty group is no
+// constraint, never "match nothing".
 // Duplicate phrases within a group (after case-folding) are silently dropped.
-// An empty return value ("") means no terms survived sanitisation.
+// An empty return value ("") means no terms survived sanitisation; callers should
+// treat that as "no match constraint".
 func BuildFTSQueryExprs(groups []SearchGroup) string {
 	var parts []string
 	for _, g := range groups {
@@ -28,7 +33,7 @@ func BuildFTSQueryExprs(groups []SearchGroup) string {
 			phrases := buildPhrases(g.Or)
 			switch len(phrases) {
 			case 0:
-				// nothing
+				// nothing — empty group is no constraint
 			case 1:
 				expr = phrases[0]
 			default:
@@ -38,7 +43,7 @@ func BuildFTSQueryExprs(groups []SearchGroup) string {
 			phrases := buildPhrases(g.And)
 			switch len(phrases) {
 			case 0:
-				// nothing
+				// nothing — empty group is no constraint
 			case 1:
 				expr = phrases[0]
 			default:
@@ -49,7 +54,19 @@ func BuildFTSQueryExprs(groups []SearchGroup) string {
 			parts = append(parts, expr)
 		}
 	}
-	return strings.Join(parts, " OR ")
+	if len(parts) == 1 {
+		return parts[0]
+	}
+	// Wrap each part in parens when joining with AND to avoid FTS5 precedence issues.
+	wrapped := make([]string, len(parts))
+	for i, p := range parts {
+		if strings.HasPrefix(p, "(") {
+			wrapped[i] = p
+		} else {
+			wrapped[i] = "(" + p + ")"
+		}
+	}
+	return strings.Join(wrapped, " AND ")
 }
 
 // buildPhrases sanitises and deduplicates a list of search terms, wrapping each in double-quotes.

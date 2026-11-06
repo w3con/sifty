@@ -41,14 +41,40 @@ func TestBuildFTSQueryExprs(t *testing.T) {
 		}
 	})
 
-	t.Run("multiple groups are ORed at top level", func(t *testing.T) {
+	t.Run("multiple groups are ANDed at top level", func(t *testing.T) {
 		q := BuildFTSQueryExprs([]SearchGroup{
 			{Or: []string{"CTO", "Interim CTO"}},
 			{And: []string{"Rust", "Blockchain"}},
 		})
-		want := `("CTO" OR "Interim CTO") OR ("Rust" AND "Blockchain")`
+		want := `("CTO" OR "Interim CTO") AND ("Rust" AND "Blockchain")`
 		if q != want {
 			t.Errorf("got %q, want %q", q, want)
+		}
+	})
+
+	t.Run("OR group plus AND group narrows — AND semantics", func(t *testing.T) {
+		// An OR group and an AND group must both be satisfied.
+		// A term that matches only the OR group and not the AND group must be rejected
+		// and a term that matches both must be accepted. We verify the query string
+		// contains AND between the two group sub-expressions.
+		q := BuildFTSQueryExprs([]SearchGroup{
+			{Or: []string{"CTO"}},
+			{And: []string{"Web3"}},
+		})
+		if !strings.Contains(q, " AND ") {
+			t.Errorf("expected AND between groups, got %q", q)
+		}
+		if strings.Contains(q, " OR ") && !strings.Contains(q, `"CTO" OR`) {
+			// OR may appear inside the OR group, but not at the top level
+			t.Errorf("unexpected top-level OR in %q", q)
+		}
+	})
+
+	t.Run("single OR group with two terms is not wrapped in AND", func(t *testing.T) {
+		// A single group must not introduce an extra AND connector.
+		q := BuildFTSQueryExprs([]SearchGroup{{Or: []string{"CTO", "Interim CTO"}}})
+		if strings.Contains(q, " AND ") {
+			t.Errorf("single group must not use AND, got %q", q)
 		}
 	})
 

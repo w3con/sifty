@@ -29,8 +29,7 @@ Updated: 2026-11-06.
 
 - [Centralize all paths in configuration](tasks/ops/OPS-7_configurable-paths/description.md): the owner requested a separate improvement plan after structural relocation, covering every path rather than deployment settings alone. Planning requested; implementation not approved.
 - [Review and simplify Git history](tasks/ops/OPS-6_git-history-cleanup/description.md): inspect the log and propose cleanup, with the method and any rewrite to be approved separately.
-- [Centralize configured paths](tasks/ops/OPS-7_centralized-path-configuration/description.md): prepare a separate improvement plan for hardcoded paths after the foundation work; implementation is not authorized.
-- [Expired vacancy response in application confirmation](tasks/application-preparation/APP-8_expired-application-outcome/description.md): add the missing manual closed/expired outcome; persistence/visibility details remain to be prepared.
+- [Additional negative responses in application confirmation](tasks/application-preparation/APP-8_expired-application-outcome/description.md): add “No, vacancy closed” and “No, changed my mind”; persistence/visibility details remain to be prepared.
 
 **Goal (owner, 2026-11-04): the owner needs to be finding work, not spending another week-plus building this app.** The sequence is cut to the minimum that makes the tool usable for the owner's own daily search. The core loop already works today — collection flows (COL-1/COL-3), assessment runs, descriptions are readable, the owner decides and applies on the listing site by hand. Productization (retire the old TypeScript backend, packaging, MCP, CLI parity) and the large, currently-broken application-preparation build are deferred until the owner asks, or until shipping the app to others becomes the goal.
 

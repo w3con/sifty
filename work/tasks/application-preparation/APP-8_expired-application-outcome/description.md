@@ -1,4 +1,4 @@
-# APP-8 — Report an expired vacancy from application confirmation
+# APP-8 — Add negative outcomes to application confirmation
 
 **Epic:** application-preparation
 **Created:** 2026-11-06
@@ -8,6 +8,8 @@
 
 Owner context: «при отправке заявки приложение спрашивает:» followed by the dialog below. Owner request: «не хватает ответа: вакансия уже закрыта (expired)» and «запиши в бэклог».
 
+Owner's clarification: «еще, занеси в backlog - при вопросе applied я или нет - добавить еще опций: нет, вакансия закрыта, и нет, передумал подаваться.»
+
 Reported dialog:
 
 > Did you submit your application?
@@ -16,10 +18,10 @@ Reported dialog:
 > Not yet
 > Yes, applied
 
-Add an explicit outcome for discovering that the vacancy is already closed/expired after opening the employer page. The current two answers cannot express that outcome. Preparation must establish how this maps to persisted vacancy state, list/archive visibility and possible later recollection; those details were not decided by this report.
+Add two explicit negative responses: “No, vacancy closed” («Нет, вакансия закрыта») and “No, changed my mind” («Нет, передумал подаваться»). The current two answers cannot distinguish these outcomes from “Not yet”. Preparation must establish how each response maps to persisted vacancy state, list/archive visibility and possible later recollection; those details were not decided by this report.
 
 ## Acceptance criteria
 
-- Application confirmation offers a clear closed/expired response alongside the existing outcomes.
-- The response does not falsely record an application as submitted.
+- Application confirmation offers both a closed/expired response and a separate changed-mind response alongside the existing outcomes.
+- Neither response falsely records an application as submitted, and both remain distinct from “Not yet”.
 - The approved state and visibility behavior persists across reloads and is consistent with collection/reappearance rules.

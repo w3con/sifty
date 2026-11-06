@@ -20,3 +20,9 @@ Prepare a separate, evidence-based plan for putting all filesystem paths under c
 ## Sequence
 
 Finish the structural relocation in the active foundation card first. Prepare this card's plan against those final paths. This report does not switch the active implementation task.
+
+## Acceptance criteria
+
+- The separate plan identifies duplicated path settings and the configuration source each consumer will use.
+- Defaults and overrides support a public clone, linked worktrees and both deployment environments.
+- The owner reviews the complete plan before implementation begins.

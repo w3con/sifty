@@ -28,6 +28,8 @@ The coordinator maintains plans, task records and project instructions directly.
 
 Assign one bounded, independently checkable stage per executor session. Its brief must name the card, worktree, exact step IDs, checks and stopping point. Listing every open step does not assign every step. Review the diff and check evidence before assigning the next stage; send corrections to the same executor while its context remains useful. Start the next independent stage with a fresh executor context in the same worktree, only after the previous executor has stopped.
 
+One live coordinator owns a card's worktree. Record that session in the card's attention file and check ownership before writing or dispatching. A second session must not resume the same executor or edit the same worktree while that coordinator is active. A cancelled tool invocation does not prove the underlying session stopped; verify session completion before starting another writer.
+
 If context becomes too large, save completed work, check results, unresolved findings and the precise next action in the card before handing off to a fresh executor. Distinguish current context size from cumulative token spend. Do not claim a numerical context limit or automatic enforcement unless configured and verified. The owner reviews the completed result on staging, not every technical stage.
 
 ## A card is a folder

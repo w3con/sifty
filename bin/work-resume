@@ -20,19 +20,23 @@ def main():
     ap.add_argument("id")
     args = ap.parse_args()
 
-    card_dir = w.require_card_dir(args.id)
     branch = "work/%s" % args.id
     worktree = w.find_worktree(branch)
     if not worktree or not os.path.isdir(worktree):
         w.refuse(["no worktree for %s — nothing to resume. Run work-handover %s "
                   "to start." % (branch, args.id)])
 
-    rel_card = os.path.relpath(card_dir, w.repo_root())
-    rel_steps = os.path.relpath(w.steps_file(card_dir), w.repo_root())
-    # Ticked boxes live on branch work/<id> inside the worktree, never in the base
-    # checkout's copy of the card, so read the remaining open steps from the worktree.
-    # Reading the base copy would re-list every step as open on each resume.
-    steps = w.open_steps(os.path.join(worktree, rel_card))
+    # Ticked boxes live on branch work/<id> inside the worktree, never in the
+    # base checkout's copy of the card. Resolve the card inside the worktree by
+    # ID so resume also works while an in-progress relocation leaves the base
+    # checkout on the old path and the work branch on the new one.
+    card_dir = w.find_card_dir(args.id, root=worktree)
+    if not card_dir:
+        w.refuse(["card %s is not present in %s; the work branch is incomplete"
+                  % (args.id, worktree)])
+    rel_card = os.path.relpath(card_dir, worktree)
+    rel_steps = os.path.relpath(w.steps_file(card_dir), worktree)
+    steps = w.open_steps(card_dir)
     open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none — all steps closed)"
     brief = w.render_template(
         "executor-brief.md",

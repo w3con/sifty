@@ -1522,3 +1522,23 @@ RELOCATION_33_SCANNER_OK
 - Historical handling: old MIT/private-repository material in MAP, backlog and dev-setup notes is labeled historical; current license stays Elastic License 2.0. Historical logs/inventory were not rewritten. Legacy transfer tooling still describes the old `ai/shared` archive layout and is documented as historical.
 - Failures/corrections: the first clean-export check used the stale index and exercised the old harness; corrected by staging before the check. Adding `docs/` to formatting checks exposed two literal internal-name mentions in the dated architecture reference; they were neutralized as historical prose and the tree scanner is clean. No application code or product behavior changed.
 - Next action: coordinator reviews 3.2–3.3; 3.4 (root GitHub workflows and path coverage) remains open. Stop before 3.4.
+
+## 2026-11-06 — 3.2 correction — resume resolves the worktree card during path migration
+
+Check: `set -e; python3 -m unittest -v bin.tests.test_resume 2>&1 | tail -4; cd /Volumes/SSD/Dev/tknff/sifty; set +e; WORK_SESSION=1 python3 .worktrees/OPS-4/bin/work-resume OPS-4 >/tmp/ops4-main-resume.txt 2>/tmp/ops4-main-resume.err; rc=$?; set -e; test $rc -eq 97; grep -E 'Card folder:|work/tasks/ops/OPS-4_repository-and-workflow-foundation' /tmp/ops4-main-resume.txt; grep -E '^\- \[ \] 3\.4' /tmp/ops4-main-resume.txt; echo migration_resume_exit=$rc`
+Exit: 0
+
+```
+----------------------------------------------------------------------
+Ran 1 test in 0.345s
+
+OK
+- Card folder: `work/tasks/ops/OPS-4_repository-and-workflow-foundation`
+1. Read the next assigned open step (`- [ ]`) in the plan (work/tasks/ops/OPS-4_repository-and-workflow-foundation/plan.md).
+- [ ] 3.4 — Move GitHub workflows to root, correct their paths and cover backend, frontend, workers and harness checks.
+migration_resume_exit=97
+```
+
+## 2026-11-06 — note
+
+Correction after review: `work-resume` read the card's relative path from the base checkout, so before merge (base still at `ai/tasks/`, work branch at `work/tasks/`) it could miss the worktree card and report every step closed. It now resolves the card inside the worktree by ID and prints the new path. Added `bin/tests/test_resume.py` for this migration state; `bin/work-test` passes, and the branch command run from the main checkout prints `work/tasks/ops/OPS-4_repository-and-workflow-foundation` with the remaining open steps. No application code changed.

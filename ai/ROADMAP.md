@@ -2,12 +2,18 @@
 
 Single source for the card sequence and current status. Read this first on resume after a context reset. Each card's own folder under `ai/tasks/<epic>/<ID>_<slug>/` holds its description, plan and checkpoints; this file only holds the order, dependencies and status across cards.
 
-Updated: 2026-11-05.
+Updated: 2026-11-06.
+
+## Current planning work
+
+**Resume point:** read `AGENTS.md` and `ai/WORKFLOW.md`, then this section and the foundation card's `description.md`, `plan.md`, `attention.md` and `log.md`. The owner approved the full plan and cleanup after verified relocation, and reaffirmed continuation through OpenCode Go. The live session now exposes `executor`; the previous dispatch-availability blocker is cleared. Commit the reviewed preparation files, satisfy the existing handover gate and assign only steps 1.1–1.2 first. Verify actual `opencode-go/deepseek-v4.1-flash` inference metadata and review the result before assigning another stage with fresh context. Do not repeat the product-approval request or substitute another model.
+
+**Repository and workflow foundation — approved; first-stage handover ready.** The owner approved the coordinator's complete plan: top-level `frontend/`, `backend/`, `mcp/`, `legacy/app/`, `docs/`, `work/` and `tools/`, safe acceptance, root GitHub workflows, automatic staging, task capture, a requirement/dependency map and a bounded executor trial. Cleanup of obsolete directories is explicit in step 3.5 and the acceptance criteria. The plan is in `ai/tasks/ops/OPS-4_repository-and-workflow-foundation/plan.md`. Existing feature cards remain pending; no new bug report or feature idea automatically interrupts the active work. The previously planned design-token work must use the new frontend location once the foundation is accepted.
 
 ## Locked decisions (the direction behind the cards)
 
 - Go is the single backend; the old TypeScript backend in `app/src` is retired (gated — see GO-5).
-- The whole application (backend, frontend, database schema, workers, docs) is consolidated under `sifty/`.
+- The approved structural target separates `frontend/`, `backend/` (including schema and workers), `mcp/` and `docs/` at the repository root; this supersedes consolidation under `sifty/`. Relocation is planned, not implemented.
 - The project is source-available and self-hostable; license is Elastic License 2.0 (not "open source"; self-host and modify allowed, offering it to others as a managed service is not).
 - Install story: Docker Compose as the one-command path; a documented manual developer setup alongside.
 - Extraction is deterministic by default (standards and ATS adapters); a model is a last-resort fallback and stays off; a learned per-host template cache with validate-on-use/invalidate-on-failure is a later step (COL-2), only its interface is written in COL-1.

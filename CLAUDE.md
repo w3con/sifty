@@ -1,26 +1,26 @@
 # Sifty
 
-Local-first job triage application. The Go backend is under `sifty/`, the React frontend under `app/`, and config templates under `config/`. One build command (`make build`) produces the binary and the frontend bundle. Production runs on port 8080 against `./data`; staging runs on port 8081 against `./data-staging`. Both data directories are git-ignored.
+Local-first job triage application. The Go backend is under `sifty/`, the React frontend under `sifty/web/`, and config templates under `config/`. One build command (`make build`) produces the binary and the frontend bundle. Production runs on port 8080 against `./data`; staging runs on port 8081 against `./data-staging`. Both data directories are git-ignored.
+
+OpenCode is the primary tool. This file is retained for existing installations; use AGENTS.md and its startup reading order for current project rules. Further Claude Code integration is not part of the development plan.
 
 **Path rule:** resolve `PROJECT_ROOT="$(git rev-parse --show-toplevel)"` — never hardcode absolute paths.
 
 ## Build and run
 
 ```
-make build          # build Go binary to bin/sifty + vite build in app/
+make build          # build Go binary to bin/sifty + vite build in sifty/web/
 make run            # serve production on :8080 against ./data
 make run-staging    # serve staging on :8081 against ./data-staging
 ```
+
+The Makefile run targets share build artifacts. Use `bin/sift-deploy --env staging` for the current isolated binary/frontend staging path; see AGENTS.md for its remaining limitations.
 
 ## Work-management harness
 
 Development work is managed by the `bin/work-*` commands and the card-folder convention. The rules are maintained inline in `AGENTS.md`, which is the cross-tool source of truth read by every tool. This section is a thin twin: do not restate the mechanism here, follow `AGENTS.md`.
 
 `ai/shared` is a git submodule holding the shared agent tooling (`github.com:w3con/ai`); `ai/bin`, `ai/harness` and `ai/templates` are relative symlinks into it. On a fresh clone: `git submodule update --init ai/shared`.
-
-### Subagent model
-
-Every subagent spawned for this project — executors and read-only agents alike — runs on Sonnet 4.6 (`claude-sonnet-4-6`). Never Haiku, never Sonnet 5.5. It is pinned by `CLAUDE_CODE_SUBAGENT_MODEL=claude-sonnet-4-6` in `.claude/settings.json` (and in `app/.claude/settings.json`); do not pass a per-spawn model argument that overrides it.
 
 ## Go module
 

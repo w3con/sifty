@@ -1,14 +1,40 @@
 # AGENTS.md — work-management harness
 
-This file is the cross-tool source of truth for how work is managed in this repository. It holds the rules inline, not behind an import, so any tool reads them: Claude Code, opencode, or a plain shell. The rules below are enforced inside the `bin/work-*` commands themselves, so they hold no matter which tool runs them.
+This file is the source of truth for how work is managed in this repository. OpenCode is the primary agent tool. Keep the core workflow tool-neutral; do not add Claude Code compatibility work. The `bin/work-*` commands implement the current lifecycle, but not every behavioral rule below is enforced by code.
 
 Roles: the owner states why a card exists; the coordinator plans it and accepts the result; the executor builds it.
+
+## Start or resume a session
+
+Read [the workflow](ai/WORKFLOW.md), then [the roadmap's current planning work](ai/ROADMAP.md), then the active card's description, plan, attention and log. Inspect `git status`, the relevant diff and `git worktree list` before editing. Preserve existing changes and unrelated working copies.
+
+Use the card's recorded approval, completed checks and next step to resume. An open checkbox or a prepared plan is not authorization to execute. Record decisions and the next action on disk before a restart or context reset; chat history is not the checkpoint.
+
+The roadmap records the current resume point. The foundation plan distinguishes agreed direction from proposed implementation; do not treat target directories or planned automation as already available.
+
+## Incoming requests and preparation
+
+Capture new bugs and ideas in the backlog without starting them or interrupting the active task. Preserve the owner's wording and add evidence to an existing matching card rather than duplicating it. An explicit instruction to change the active task is steering, not merely a backlog report.
+
+Keep one canonical card per task. Backlog and bug lists are views; the roadmap holds sequencing and dependencies; epics describe product outcomes. During preparation, check the affected requirements, implementation, tests and dependent work. Raise contradictions or scope growth before implementation and obtain approval of the complete plan.
+
+## Coordination and implementation
+
+The main session prepares tasks and plans, analyzes dependencies, reviews code and performs technical acceptance. The owner approves product scope and final completion. Delegate coding to the project `executor` subagent, configured in `.opencode/agents/executor.md` with model `opencode-go/deepseek-v4.1-flash`, using the owner's OpenCode Go subscription.
+
+Launch the executor through the live session's visible subagent tool with the approved card and its worktree brief. Do not substitute another model/provider or run a hidden agent through a shell wrapper. Verify the actual executor model from session metadata rather than its self-report. If the configured agent is unavailable or the model cannot run, report the blocker without silently falling back to the coordinator's model or a direct billed API.
+
+The coordinator maintains plans, task records and project instructions directly. This role split does not authorize implementation before the task's plan is approved. Provider/model profiles are replaceable adapters; the core work commands remain tool-neutral.
+
+Assign one bounded, independently checkable stage per executor session. Its brief must name the card, worktree, exact step IDs, checks and stopping point. Listing every open step does not assign every step. Review the diff and check evidence before assigning the next stage; send corrections to the same executor while its context remains useful. Start the next independent stage with a fresh executor context in the same worktree, only after the previous executor has stopped.
+
+If context becomes too large, save completed work, check results, unresolved findings and the precise next action in the card before handing off to a fresh executor. Distinguish current context size from cumulative token spend. Do not claim a numerical context limit or automatic enforcement unless configured and verified. The owner reviews the completed result on staging, not every technical stage.
 
 ## A card is a folder
 
 A unit of work is a card: a folder `ai/tasks/<epic>/<ID>_<slug>/`. The file set and the short-card variant are defined in `bin/templates/convention.md`. Steps are `- [ ]` (open) or `- [x]` (closed) lines in `plan.md`, or in `description.md` for a short card. The card is markdown, so it survives any session or tool dying.
 
-## Lifecycle commands
+## Current lifecycle commands
 
 All commands are `python3`, standard-library only, run from anywhere in the repository.
 
@@ -29,19 +55,21 @@ Configuration keys (environment overrides `bin/work.config`): `WORK_DISPATCH_CMD
 
 ## The executor's standing behaviour
 
-Work only inside your worktree, on branch `work/<id>`. One step at a time: do the step, record its check with `work-note`, tick its box, then `work-commit`. Never merge, never push, never raise sub-agents. On any stop, leave the branch committed so `work-resume` can pick it up. When every step is closed, run `bin/work-test` once and stop; acceptance and merge are the coordinator's act. If a business question blocks you, write `question.md` and stop.
+Work only inside your worktree, on branch `work/<id>`, within the assigned stage. One step at a time: do the step, record its check with `work-note`, tick its box, then `work-commit`. Stop at the stage boundary and record the review/resume point even if other steps remain open. Never merge, never push, never raise sub-agents. On any stop, preserve incomplete work without marking it complete and leave a committed checkpoint so `work-resume` can pick it up. When every step in the card is closed, run `bin/work-test` once and stop; acceptance and merge are the coordinator's act. If a business question blocks you, write `question.md` and stop.
 
 ## Setup and tests
 
 `bin/work-setup` wires a fresh clone: it sets `core.hooksPath` to the relative `.githooks` and makes the hooks and commands executable. `bin/work-test` runs the harness's own checks and is the single test entry used by continuous integration and by `work-accept`.
 
-## Two-environment deploy loop
+## Current two-environment deploy loop
+
+This section describes the existing commands. The target loop in the foundation plan adds automatic staging, isolated workers, explicit data refresh and a single owner-approved completion/release decision. Until those changes are implemented and verified, use the current commands deliberately; do not assume automatic preview or release exists.
 
 This repository runs a two-environment deploy loop for the sifty application. Each environment owns its own compiled binary and its own frontend bundle; a staging deploy never touches the production binary or bundle.
 
 **Environments:**
-- Production — port 8080, data dir `<repo>/data`, binary `bin/sifty`, dist `app/dist`. Updated only by `bin/sift-promote` on the owner's explicit word.
-- Staging — port 8081, data dir `<repo>/data-staging`, binary `bin/sifty-staging`, dist `app/dist-staging`. Previews an in-progress branch; never updated automatically.
+- Production — port 8080, data dir `<repo>/data`, binary `bin/sifty`, dist `sifty/dist`. Updated only by `bin/sift-promote` on the owner's explicit word.
+- Staging — port 8081, data dir `<repo>/data-staging`, binary `bin/sifty-staging`, dist `sifty/dist-staging`. Previews an in-progress branch; not currently updated automatically. Workers are currently shared under `sifty/workers`.
 
 **Commands:**
 - `bin/sift-deploy --env staging|prod [--build-only]` — build the Go binary and React frontend for the named environment, back up the target env's data, stop the env's server, start the new binary detached, run a health and smoke check, and roll back the binary and data on any failure. Per-env config (port, data dir, binary, dist, log) lives in `bin/work.config`. Every run appends a log line to `<data_dir>/deploy.log`. When run from a linked worktree, staging artifacts are written to the main repo so they persist after the worktree is removed.

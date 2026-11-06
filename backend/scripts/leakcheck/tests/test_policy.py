@@ -35,7 +35,7 @@ class FormattingAreaTest(unittest.TestCase):
 
     def test_russian_is_allowed_outside_application_source(self):
         text = "Проверить и записать результат"
-        for path in ("ai/tasks/ops/OPS-4_demo/log.md",
+        for path in ("work/tasks/ops/OPS-4_demo/log.md",
                      "work/OPS-4_demo/log.md",
                      "bin/work-note",
                      ".githooks/pre-commit"):
@@ -86,7 +86,7 @@ class CredentialRuleTest(unittest.TestCase):
         line = "api_key = " + value
         for path in ("backend/app.go", "tests/test_app.py",
                      "backend/scripts/leakcheck/example.py",
-                     "ai/tasks/demo/log.md", "bin/tool.py"):
+                     "work/tasks/demo/log.md", "bin/tool.py"):
             self.assertTrue(irreversible(line), path)
 
     def test_dotted_unquoted_secret_assignment_is_still_refused(self):

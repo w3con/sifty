@@ -19,7 +19,7 @@ class WorkNoteTest(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
-        self.card_rel = Path("ai", "tasks", "test", "%s_demo" % self.card_id)
+        self.card_rel = Path("work", "tasks", "test", "%s_demo" % self.card_id)
         self.card_dir = self.root / self.card_rel
         self.card_dir.mkdir(parents=True)
         (self.card_dir / "plan.md").write_text(

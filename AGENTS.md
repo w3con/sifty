@@ -6,7 +6,7 @@ Roles: the owner states why a card exists; the coordinator plans it and accepts 
 
 ## Start or resume a session
 
-Read [the workflow](ai/WORKFLOW.md), then [the roadmap's current planning work](ai/ROADMAP.md), then the active card's description, plan, attention and log. Inspect `git status`, the relevant diff and `git worktree list` before editing. Preserve existing changes and unrelated working copies.
+Read [the workflow](work/WORKFLOW.md), then [the roadmap's current planning work](work/ROADMAP.md), then the active card's description, plan, attention and log. Inspect `git status`, the relevant diff and `git worktree list` before editing. Preserve existing changes and unrelated working copies.
 
 Use the card's recorded approval, completed checks and next step to resume. An open checkbox or a prepared plan is not authorization to execute. Record decisions and the next action on disk before a restart or context reset; chat history is not the checkpoint.
 
@@ -32,7 +32,7 @@ If context becomes too large, save completed work, check results, unresolved fin
 
 ## A card is a folder
 
-A unit of work is a card: a folder `ai/tasks/<epic>/<ID>_<slug>/`. The file set and the short-card variant are defined in `bin/templates/convention.md`. Steps are `- [ ]` (open) or `- [x]` (closed) lines in `plan.md`, or in `description.md` for a short card. The card is markdown, so it survives any session or tool dying.
+A unit of work is a card: a folder `work/tasks/<epic>/<ID>_<slug>/`. The file set and the short-card variant are defined in `bin/templates/convention.md`. Steps are `- [ ]` (open) or `- [x]` (closed) lines in `plan.md`, or in `description.md` for a short card. The card is markdown, so it survives any session or tool dying.
 
 ## Current lifecycle commands
 

@@ -66,7 +66,7 @@ class LifecycleTest(unittest.TestCase):
         self._aux = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
         self.aux_dir = Path(self._aux.name)
-        self.card_rel = Path("ai", "tasks", "test", "%s_demo" % self.card_id)
+        self.card_rel = Path("work", "tasks", "test", "%s_demo" % self.card_id)
         self.card_dir = self.root / self.card_rel
         self.card_dir.mkdir(parents=True)
 

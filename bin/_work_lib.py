@@ -41,6 +41,15 @@ def repo_root():
 
 
 def tasks_dir():
+    return os.path.join(repo_root(), "work", "tasks")
+
+
+def legacy_tasks_dir():
+    """The pre-relocation card location, still read during the 3.2 migration.
+
+    `work/tasks` is canonical. The fallback lets the same card remain
+    resumable while its folder is being moved and keeps old links readable.
+    """
     return os.path.join(repo_root(), "ai", "tasks")
 
 
@@ -364,24 +373,26 @@ def find_card_dir(card_id, root=None):
     `root` defaults to the current repository. Pass a worktree root to read the
     card state that lives on the work branch rather than the base checkout."""
     root = root or repo_root()
-    tasks = os.path.join(root, "ai", "tasks")
-    if not os.path.isdir(tasks):
-        return None
-    for epic in sorted(os.listdir(tasks)):
-        epic_path = os.path.join(tasks, epic)
-        if not os.path.isdir(epic_path):
+    for tasks in (os.path.join(root, "work", "tasks"),
+                  os.path.join(root, "ai", "tasks")):
+        if not os.path.isdir(tasks):
             continue
-        for entry in sorted(os.listdir(epic_path)):
-            m = CARD_DIR_RE.match(entry)
-            if m and m.group(1) == card_id:
-                return os.path.join(epic_path, entry)
+        for epic in sorted(os.listdir(tasks)):
+            epic_path = os.path.join(tasks, epic)
+            if not os.path.isdir(epic_path):
+                continue
+            for entry in sorted(os.listdir(epic_path)):
+                m = CARD_DIR_RE.match(entry)
+                if m and m.group(1) == card_id:
+                    return os.path.join(epic_path, entry)
     return None
 
 
 def require_card_dir(card_id):
     d = find_card_dir(card_id)
     if not d:
-        die("no card folder found for id %r under ai/tasks/" % card_id)
+        die("no card folder found for id %r under work/tasks/ "
+            "(legacy ai/tasks/ is also checked)" % card_id)
     return d
 
 
@@ -398,12 +409,13 @@ def steps_file(card_dir):
 
 
 def allocate_id(prefix):
-    """One past the highest existing number for this prefix anywhere under
-    ai/tasks/."""
-    root = tasks_dir()
+    """One past the highest existing number for this prefix under work/tasks/,
+    also counting legacy ai/tasks/ so a migrated card never gets a reused ID."""
     highest = 0
     pat = re.compile(r"^%s-(\d+)_" % re.escape(prefix))
-    if os.path.isdir(root):
+    for root in (tasks_dir(), legacy_tasks_dir()):
+        if not os.path.isdir(root):
+            continue
         for epic in os.listdir(root):
             epic_path = os.path.join(root, epic)
             if not os.path.isdir(epic_path):

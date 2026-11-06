@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # .githooks/pre-commit
-# Layer 2 KB freshness: run ai/bin/relation-build on staged kb/ docs, then
+# Layer 2 KB freshness: run tools/bin/relation-build on staged kb/ docs, then
 # re-stage the processed files.
 #
 # kb/_index.md is deliberately NOT re-staged and never was committable since
 # it left version control: it is generated, it is listed in .gitignore, and it
-# is rebuilt by ai/bin/kb-index from the post-merge, post-checkout and
+# is rebuilt by tools/bin/kb-index from the post-merge, post-checkout and
 # post-rewrite hooks and at session start.
 #
 # Optional integration: a public clone with no kb/ directory skips this step
@@ -58,9 +58,9 @@ if [ -z "$CONTENT_KB" ]; then
     exit 0
 fi
 
-RELATION_BUILD="$PROJECT_ROOT/ai/bin/relation-build"
+RELATION_BUILD="$PROJECT_ROOT/tools/bin/relation-build"
 if [ ! -x "$RELATION_BUILD" ]; then
-    echo "[pre-commit] ERROR: kb/ docs are staged but ai/bin/relation-build is missing." >&2
+    echo "[pre-commit] ERROR: kb/ docs are staged but tools/bin/relation-build is missing." >&2
     echo "[pre-commit] Initialise the optional shared submodule or unstage the kb/ docs." >&2
     exit 1
 fi
@@ -79,7 +79,7 @@ RB_EXIT=$?
 
 if [ $RB_EXIT -ne 0 ]; then
     echo "[pre-commit] WARNING: relation-build exited $RB_EXIT — ai: blocks may be stale." >&2
-    echo "[pre-commit] Commit will proceed. Re-run 'ai/bin/relation-build --ids <paths>' manually if needed." >&2
+    echo "[pre-commit] Commit will proceed. Re-run 'tools/bin/relation-build --ids <paths>' manually if needed." >&2
     # Do NOT exit non-zero — never block the commit on a model/network failure.
 fi
 

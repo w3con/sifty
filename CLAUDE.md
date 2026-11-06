@@ -20,7 +20,7 @@ The Makefile run targets share build artifacts. Use `bin/sift-deploy --env stagi
 
 Development work is managed by the `bin/work-*` commands and the card-folder convention. The rules are maintained inline in `AGENTS.md`, which is the cross-tool source of truth read by every tool. This section is a thin twin: do not restate the mechanism here, follow `AGENTS.md`.
 
-`ai/shared` is a git submodule holding the shared agent tooling (`github.com:w3con/ai`); `ai/bin`, `ai/harness` and `ai/templates` are relative symlinks into it. On a fresh clone: `git submodule update --init ai/shared`.
+`tools/shared` is a git submodule holding the shared agent tooling (`github.com:w3con/ai`); `tools/bin`, `tools/harness` and `tools/templates` are relative symlinks into it. On a fresh clone: `git submodule update --init tools/shared`.
 
 ## Go module
 

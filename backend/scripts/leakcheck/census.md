@@ -27,11 +27,12 @@ https://github.com/w3con/sifty
 
 ## Formatting-required subtrees
 
-A subtree declared here is held to English publication formatting in every repository, regardless of that repository's own origin remote. Current application source and public technical documentation live here. The same files are checked for credential forms wherever they live. Work records under `ai/` and future `work/`, management files and tooling are deliberately outside this list, so the owner's Russian wording is allowed there. The scanner's own sources are exempt from formatting forms as described above.
+A subtree declared here is held to English publication formatting in every repository, regardless of that repository's own origin remote. Current application source and public technical documentation live here. The same files are checked for credential forms wherever they live. Work records under `work/`, management files and tooling are deliberately outside this list, so the owner's Russian wording is allowed there. The scanner's own sources are exempt from formatting forms as described above.
 
 ```
 frontend/
 backend/
+docs/
 ```
 
 ## Private repository owners

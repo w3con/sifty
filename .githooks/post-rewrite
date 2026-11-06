@@ -10,9 +10,9 @@ set -u
 unset GIT_DIR GIT_WORK_TREE
 PROJECT_ROOT="$(git rev-parse --show-toplevel)"
 [ -d "$PROJECT_ROOT/kb" ] || exit 0
-TOOL="$PROJECT_ROOT/ai/bin/kb-index"
+TOOL="$PROJECT_ROOT/tools/bin/kb-index"
 if [ ! -x "$TOOL" ]; then
-    echo "[post-rewrite] kb/ exists but ai/bin/kb-index is missing; generated index not refreshed" >&2
+    echo "[post-rewrite] kb/ exists but tools/bin/kb-index is missing; generated index not refreshed" >&2
     exit 1
 fi
 exec "$TOOL"

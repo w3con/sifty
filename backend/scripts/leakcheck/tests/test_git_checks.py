@@ -263,7 +263,7 @@ class GitScannerTest(unittest.TestCase):
 
     def test_russian_work_record_is_allowed(self):
         self.base_commit()
-        self.write("ai/tasks/demo/log.md", "Проверить и записать результат\n")
+        self.write("work/tasks/demo/log.md", "Проверить и записать результат\n")
         self.stage()
         self.assert_clean(self.run_scanner(COMMIT_DIFF, "--staged"))
 

@@ -190,9 +190,9 @@ def main():
 
     # The roadmap holds the card sequence and status as curated prose; it cannot be
     # updated mechanically, so the finish step reminds the coordinator to do it by hand.
-    roadmap = os.path.join(w.repo_root(), "ai", "ROADMAP.md")
+    roadmap = os.path.join(w.repo_root(), "work", "ROADMAP.md")
     if os.path.exists(roadmap):
-        w.info("ROADMAP — now update ai/ROADMAP.md: move %s to done/Status and set the "
+        w.info("ROADMAP — now update work/ROADMAP.md: move %s to done/Status and set the "
                "next card in the queue. Not automatic; the sequence there is curated prose." % args.id)
 
 

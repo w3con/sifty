@@ -10,7 +10,7 @@ import (
 )
 
 // expectedTables is the complete set of tables the documented schema must contain at user_version 13.
-// Derived from the target schema appendix in ai/sifty/backend-architecture.md section 13.
+// Derived from the target schema appendix in docs/architecture/backend-architecture.md section 13.
 var expectedTables = []string{
 	"migrations",
 	"jobs",

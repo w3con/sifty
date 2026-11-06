@@ -73,9 +73,9 @@ def main():
     w.info("founded %s at %s" % (card_id, rel))
 
     # Keep the queue in sync from the moment a card is born, not only when it finishes.
-    roadmap = os.path.join(w.repo_root(), "ai", "ROADMAP.md")
+    roadmap = os.path.join(w.repo_root(), "work", "ROADMAP.md")
     if os.path.exists(roadmap):
-        w.info("ROADMAP — now add %s to ai/ROADMAP.md: place it in the queue with its order "
+        w.info("ROADMAP — now add %s to work/ROADMAP.md: place it in the queue with its order "
                "and dependencies. Not automatic; the sequence there is curated prose." % card_id)
 
 

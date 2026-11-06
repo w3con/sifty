@@ -5,14 +5,14 @@ A unit of work is a card. A card is a folder, not a file, so it survives any ses
 ## Location
 
 ```
-ai/tasks/<epic>/<ID>_<slug>/
+work/tasks/<epic>/<ID>_<slug>/
 ```
 
 - `<epic>` is a lowercase short name grouping related cards (e.g. `sifty`, `harness`).
-- `<ID>` is `<PREFIX>-<n>`: an uppercase prefix (default: the epic upper-cased) and a number allocated as one past the highest existing number for that prefix anywhere under `ai/tasks/`.
+- `<ID>` is `<PREFIX>-<n>`: an uppercase prefix (default: the epic upper-cased) and a number allocated as one past the highest existing number for that prefix anywhere under `work/tasks/`.
 - `<slug>` is a lowercase, dash-separated short title.
 
-Single-file cards that predate this convention stay directly under `ai/tasks/` and are never moved.
+Single-file cards that predate this convention stay directly under `work/tasks/` and are never moved.
 
 ## File set (full card)
 

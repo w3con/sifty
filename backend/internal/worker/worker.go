@@ -1,7 +1,7 @@
 // Package worker is the Go core's client for the thin TypeScript workers that run browser
 // automation (Playwright) and job-board scraping (jobspy). The core invokes a worker as a
 // subprocess and exchanges one JSON request and one JSON response per call, over the contract
-// in docs/worker-protocol.md. There is no browser-automation or scraping code in Go.
+// in docs/architecture/worker-protocol.md. There is no browser-automation or scraping code in Go.
 package worker
 
 import (

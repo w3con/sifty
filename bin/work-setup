@@ -9,7 +9,7 @@
 # effective hooksPath must be the relative value, and every hook, pre-commit
 # step, harness command and leak-scanner adapter must exist and be executable.
 # The optional knowledge-base integration is not required: a public clone with
-# no kb/ directory and no ai/shared submodule still sets up the core harness.
+# no kb/ directory and no tools/shared submodule still sets up the core harness.
 set -eu
 
 ROOT="$(git rev-parse --show-toplevel)"
@@ -102,6 +102,6 @@ echo "set core.hooksPath = .githooks (relative, effective: $(git config --get co
 echo "hooks, pre-commit steps, harness commands and leak scanners are executable"
 echo
 echo "The optional knowledge-base integration is not required for a public clone."
-echo "If this checkout uses ai/shared, run: git submodule update --init ai/shared"
+echo "If this checkout uses the optional shared tooling, run: git submodule update --init tools/shared"
 echo
 echo "harness ready. Run bin/work-test to verify."

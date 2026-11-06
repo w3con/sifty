@@ -1,7 +1,7 @@
 """Hook installation and behavior tests.
 
 Each test builds a throwaway "fresh public clone": the project hooks, harness commands and leak
-scanner are copied into a temporary Git repository with no ai/shared submodule and no kb/
+scanner are copied into a temporary Git repository with no tools/shared submodule and no kb/
 directory. The real checkout, its Git configuration and its worktrees are never touched.
 
 The tests install the hooks through the real bin/work-setup, then make actual commits, so they
@@ -143,7 +143,7 @@ class HookInstallTest(unittest.TestCase):
         self.assertFalse((self.root / "ai").exists())
         self.assertFalse((self.root / "kb").exists())
         self.install()
-        self.write("ai/tasks/demo/log.md",
+        self.write("work/tasks/demo/log.md",
                    "Проверить и записать результат\n")
         self.git("add", "-A")
         result = self.commit("docs(work): record checkpoint")

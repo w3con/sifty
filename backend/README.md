@@ -24,11 +24,11 @@ Point Sifty at a data directory and run:
 SIFTY_DATA_DIR=/path/to/data ./sifty
 ```
 
-The data directory holds your candidate evidence, remembered answers and feedback. On first run Sifty writes the answer and feedback files from templates. See `docs/` for the data-directory layout.
+The data directory holds your candidate evidence, remembered answers and feedback. On first run Sifty writes the answer and feedback files from templates. See `../docs/architecture/data-directory.md` for the data-directory layout.
 
 ## Workers
 
-The TypeScript workers live under `workers/`. They are invoked by the Go core over the line-delimited JSON protocol documented in `docs/worker-protocol.md`; there is no browser-automation code in Go.
+The TypeScript workers live under `workers/`. They are invoked by the Go core over the line-delimited JSON protocol documented in `../docs/architecture/worker-protocol.md`; there is no browser-automation code in Go.
 
 ## License
 

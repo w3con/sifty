@@ -100,6 +100,8 @@ def main(argv):
             continue
         if path.endswith(SKIP_SUFFIXES):
             continue
+        if leak_git.is_symlink(mode) or leak_git.is_submodule(mode):
+            continue
         if ref:
             text = leak_git.read_blob(repo_root, sha)
         else:
@@ -116,12 +118,14 @@ def main(argv):
 
     if not total:
         print("tree-check: %s is clean (%s repository, origin %s)."
-              % (label, "public" if repo_is_public else "private",
-                 origin or "none"))
+              % (leak_census.redact_sensitive(label),
+                 "public" if repo_is_public else "private",
+                 leak_census.redact_sensitive(origin or "none")))
         return 0
 
     print("tree-check: refused — %s carries %d form(s) this %s repository must not:"
-          % (label, total, "public" if repo_is_public else "private"))
+          % (leak_census.redact_sensitive(label), total,
+             "public" if repo_is_public else "private"))
     print("\n".join(blocks))
     return 1
 

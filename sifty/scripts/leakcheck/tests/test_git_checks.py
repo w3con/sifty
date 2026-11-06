@@ -286,6 +286,19 @@ class GitScannerTest(unittest.TestCase):
             "docs(test): Проверить результат\n"), "Russian-language text")
 
     # ── historical tree ─────────────────────────────────────────────────────
+    def test_tree_check_redacts_origin_credentials(self):
+        self.base_commit()
+        origin = "https://user:" + TOKEN + "@example.com/repo.git"
+        self.git("remote", "add", "origin", origin)
+        result = subprocess.run(
+            [sys.executable, str(TREE_CHECK), str(self.root)],
+            cwd=str(self.root), env=self.env, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.assertEqual(result.returncode, 0,
+                         "scanner exit %d" % result.returncode)
+        if TOKEN in result.stdout + result.stderr:
+            self.fail("diagnostic printed a credential from the origin URL")
+
     def test_tree_check_ref_reads_commit_blobs(self):
         self.base_commit()
         self.write("secret.txt", 'token = "' + TOKEN + '"\n')

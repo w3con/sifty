@@ -256,7 +256,7 @@ def scan_line_formatting(line, census):
     if "secret" in lowered or re.search(r"\bkey\b", lowered):
         for name in census["watched_names"]:
             if name and re.search(r"\b" + re.escape(name) + r"\b", line):
-                hits.append((f"person's name ({name}) next to the mention of a secret",
+                hits.append(("person's name next to the mention of a secret",
                               "drop the name; keep the rest of the sentence"))
     return hits
 

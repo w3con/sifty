@@ -760,3 +760,11 @@ Stage handback — steps 2.1–2.3 complete; stop before 3.1.
 - Failures and corrections: the first rule split made the scanner flag its own URL/SSH/PEM pattern definitions; these were corrected by constructing those literals so they do not match themselves (not by exempting the scanner directory). A minified bundle false positive and a `password: decodeURIComponent(...)` false positive were tightened narrowly; real credential assignments still fail. The whole-tree output was rewritten to omit matched values and whole lines.
 - Findings for coordinator review: whole-tree `tree-check` reports 6 pre-existing findings — 4 synthetic URL/IP fixtures in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, and 2 `FCTO_STATE_DIR` literals in `sifty/web/model/core.ts`. They were reported, not rewritten, and no security rule was weakened. Tracked `sifty/dist-staging` remains for phase 3.3. `sifty/scripts/setup` now delegates to `bin/work-setup` in this layout. Legacy test fixtures still carry literal fake user:pass URL values.
 - Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 3.1. Do not run `work-accept` or `work-finish` for OPS-4; 16 steps remain open. No merge, push, deploy, production promotion, global configuration or subagent was run.
+
+## 2026-11-06 — note
+
+Stage handback correction before review — diagnostics and ref scans.
+
+- `tree-check` now skips symlinks and gitlinks in `--ref` scans as well as the working tree, and redacts the repository label and origin URL in both clean and refused output. `commit-diff-check` redacts its source label too, and the watched-name finding no longer echoes the person's name.
+- Added a regression test for an origin URL carrying a synthetic credential: the clean message must not print it. Scanner tests are now 33 and pass; the scanner self-test passes.
+- No plan step was reopened. The final stage checkpoint is the commit containing this correction note.

@@ -112,7 +112,8 @@ def main():
     if count:
         forms = "1 form" if count == 1 else f"{count} forms"
         print("commit-diff-check: refused — %s in %s carries %s this repository's content "
-              "must not:" % (source, leak_census.redact_sensitive(repo_root), forms),
+              "must not:" % (leak_census.redact_sensitive(source),
+                             leak_census.redact_sensitive(repo_root), forms),
               file=sys.stderr)
         for path, findings in by_path.items():
             print(leak_census.format_findings(findings, path), file=sys.stderr)

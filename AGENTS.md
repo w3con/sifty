@@ -6,7 +6,7 @@ Roles: the owner states why a card exists; the coordinator plans it and accepts 
 
 ## Start or resume a session
 
-Read [the workflow](work/WORKFLOW.md), then [the roadmap's current planning work](work/ROADMAP.md), then the active card's description, plan, attention and log. Inspect `git status`, the relevant diff and `git worktree list` before editing. Preserve existing changes and unrelated working copies.
+Read [the workflow](work/WORKFLOW.md), then [the roadmap's current planning work](work/ROADMAP.md), then [the current requirement-to-code map](docs/MAP.md), then the active card's description, plan, attention and log. Inspect `git status`, the relevant diff and `git worktree list` before editing. Preserve existing changes and unrelated working copies.
 
 Use the card's recorded approval, completed checks and next step to resume. An open checkbox or a prepared plan is not authorization to execute. Record decisions and the next action on disk before a restart or context reset; chat history is not the checkpoint.
 
@@ -16,7 +16,7 @@ The roadmap records the current resume point. The foundation plan distinguishes 
 
 Capture new bugs and ideas in the backlog without starting them or interrupting the active task. Use `bin/work-capture` to create a minimal canonical backlog card with the owner's exact wording (outer whitespace, newlines and original CR/LF included), or `--update <id>` to append evidence to an explicitly matched card. Markdown-looking text inside the captured fence is data, not metadata or steps. It never dispatches an executor, cuts a worktree, starts work or touches staging. Add evidence to an existing matching card rather than duplicating it. An explicit instruction to change the active task is steering, not merely a backlog report.
 
-Keep one canonical card per task. Backlog and bug lists are views derived by `bin/work-list` from canonical cards; `work/backlog.md` is historical product material, not the current view. The roadmap holds sequencing and dependencies; epics describe product outcomes. During preparation, check the affected requirements, implementation, tests and dependent work. Raise contradictions or scope growth before implementation and obtain approval of the complete plan.
+Keep one canonical card per task. Backlog and bug lists are views derived by `bin/work-list` from canonical cards; `work/backlog.md` is historical product material, not the current view. The roadmap holds sequencing and dependencies; epics describe product outcomes. During preparation and before completion, check the affected requirement in `docs/MAP.md`, the implementation, tests and dependent cards, and update the map/task index when a card is founded, cancelled, re-scoped or closed. `bin/map-check` validates the active navigation; archived historical prose keeps its old paths. Raise contradictions or scope growth before implementation and obtain approval of the complete plan.
 
 ## Coordination and implementation
 

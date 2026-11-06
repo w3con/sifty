@@ -21,6 +21,7 @@ TEMPLATES = os.path.join(BIN, "templates")
 COMMANDS = ["work-new", "work-plan", "work-handover", "work-note",
             "work-commit", "work-resume", "work-accept", "work-finish",
             "work-status", "work-list", "work-capture", "work-cancel"]
+MAP_TOOL = "map-check"
 TEMPLATE_FILES = ["convention.md", "description.md", "short-description.md",
                   "plan.md", "log.md", "comments.md", "attention.md",
                   "executor-brief.md", "capture.md"]
@@ -37,7 +38,7 @@ def check(name, ok, detail=""):
 
 
 # 1. compile
-for f in ["_work_lib.py"] + COMMANDS:
+for f in ["_work_lib.py", "_map_lib.py"] + COMMANDS + [MAP_TOOL]:
     path = os.path.join(BIN, f)
     if not os.path.exists(path):
         check("compile %s" % f, False, "missing")
@@ -67,8 +68,8 @@ else:
     has_import = any(line.strip().startswith("@") for line in text.splitlines())
     check("AGENTS.md has no @-import of the mechanism", not has_import)
 
-# 4. each command parses --help
-for c in COMMANDS:
+# 4. each work command and the map checker parse --help
+for c in COMMANDS + [MAP_TOOL]:
     path = os.path.join(BIN, c)
     if not os.path.exists(path):
         continue
@@ -77,7 +78,17 @@ for c in COMMANDS:
                        text=True)
     check("--help %s" % c, r.returncode == 0, r.stderr.strip()[:120])
 
-# 5. lifecycle tests, each in its own throwaway Git repository
+# 5. active navigation map: local links, fragments, requirement IDs and card index
+r = subprocess.run([sys.executable, os.path.join(BIN, MAP_TOOL)],
+                   cwd=ROOT, text=True, stdout=subprocess.PIPE,
+                   stderr=subprocess.STDOUT)
+ok = r.returncode == 0
+check("navigation map links", ok,
+      "" if ok else (r.stdout or "").strip()[-2000:])
+if not ok:
+    print(r.stdout)
+
+# 6. lifecycle tests, each in its own throwaway Git repository
 tests_dir = os.path.join(BIN, "tests")
 if not os.path.isdir(tests_dir):
     check("lifecycle tests (bin/tests)", False, "missing bin/tests")
@@ -93,7 +104,7 @@ else:
     if not ok:
         print(r.stdout)
 
-# 6. leak scanner: policy self-test, isolated Git checks and its own source cleanliness
+# 7. leak scanner: policy self-test, isolated Git checks and its own source cleanliness
 scanner_dir = os.path.join(ROOT, "backend", "scripts", "leakcheck")
 selftest = os.path.join(scanner_dir, "leakcheck-selftest")
 scanner_tests = os.path.join(scanner_dir, "tests")
@@ -134,7 +145,7 @@ if os.path.isfile(tree_check):
     if not ok:
         print(r.stdout)
 
-# 7. GitHub discovers the root workflow and no stale nested copy shadows it.
+# 8. GitHub discovers the root workflow and no stale nested copy shadows it.
 root_workflow = os.path.join(ROOT, ".github", "workflows", "ci.yml")
 nested_workflow = os.path.join(ROOT, "backend", ".github", "workflows", "ci.yml")
 check("root CI workflow present", os.path.isfile(root_workflow),

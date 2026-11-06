@@ -34,7 +34,11 @@ Watch current context separately from cumulative token usage. If context becomes
 
 ## Product and dependency navigation
 
-The product and architecture material now lives under `docs/product/` and `docs/architecture/`; the cross-cutting `docs/MAP.md` and its link validation remain steps 5.1–5.2. They connect user scenarios and requirements to frontend, backend, API, workers, storage, tests, decisions and task cards, and distinguish implemented, planned and known-broken behavior. Update affected links when preparing and completing work. Planning records live under `work/`; older MIT/private-repository descriptions are historical, while `LICENSE` defines the current Elastic License 2.0 terms.
+`docs/MAP.md` is the current product and architecture entrypoint. It connects user scenarios and requirements to frontend, backend/API, workers, storage, checks, decisions and task cards, and distinguishes implemented, limited, known-broken, planned and archived behavior. `docs/product/MAP.md` is a historical snapshot, not current guidance.
+
+`bin/map-check` validates local links and fragments in the active navigation documents, requirement identifiers, the canonical task index (every current card ID exactly once) and the legacy single-file cards. `bin/work-test` runs it, so CI enforces the same check without private dependencies. Archived historical prose outside the active list deliberately keeps its old paths and is not rewritten.
+
+Update affected requirement rows and task dependencies when preparing a change, and update the canonical task index when a card is founded, cancelled, re-scoped or closed. Planning records live under `work/`; older MIT/private-repository descriptions are historical, while `LICENSE` defines the current Elastic License 2.0 terms.
 
 The approved structural direction is `frontend/`, `backend/` including workers, `mcp/`, `legacy/app/`, `docs/`, `work/` and `tools/`, with shared root commands and configuration. `mcp/README.md` records the future TypeScript HTTP adapter; its implementation remains GO-9's scope and was not authorized by the structural move. Preserve legacy code until its parity gates permit removal, unfinished cards and unrelated worktrees. Keep shared hooks shared; inspect ownership and applicability before changing integration.
 

@@ -2236,3 +2236,17 @@ Exit: 0
 ```
 OK: 2 navigation documents, all local links and fragments resolve
 ```
+
+## 2026-11-06 — 5.2 — epics, task dependencies and reusable map validator
+
+Check: `python3 bin/map-check && python3 -m unittest discover -s bin/tests -p 'test_map.py' && git diff --check`
+Exit: 0
+
+```
+OK: 4 active document(s), 14 requirement(s), 47 canonical card(s), 2 legacy card(s)
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.015s
+
+OK
+```

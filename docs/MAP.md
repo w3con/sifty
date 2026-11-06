@@ -228,6 +228,86 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Tasks.** `DESIGN-1`; it depends on the frontend move (`GO-11`, done) and now targets the current `frontend/` location.
 
+<a id="epics"></a>
+## Epics and outcomes
+
+| Epic | Product outcome | Requirements |
+|---|---|---|
+| application-preparation | Inspect an application form, draft editable answers, and let the owner apply and confirm manually. | `R-APP` |
+| assessment | Give every role an instant ranking and a grounded model assessment. | `R-ASM` |
+| collection | Fetch configured public sources safely and store deduplicated roles. | `R-COL` |
+| design | Make the visual layer editable from one token set. | `R-DESIGN` |
+| go-migration | Maintain the Go application, package it, expose MCP and retire the legacy backend. | `R-PLATFORM`, `R-PKG`, `R-MCP`, `R-LEGACY` |
+| navigation | Browse Collection, Triage, Preparation and Archive, with search and exclusions. | `R-SEARCH`, `R-TRI` |
+| ops | Keep the repository, work harness, preview/release loop and local data safe. | `R-HARNESS`, `R-REL`, `R-DATA` |
+| settings | Configure sources, models, context and the assessment queue from the UI. | `R-SET` |
+| triage | Dismiss, exclude and archive roles without losing recoverable state. | `R-TRI` |
+
+<a id="task-index"></a>
+## Canonical task index
+
+Every canonical card ID appears exactly once. State links point at the outcome evidence where one exists; dependencies are the explicit gate for starting or finishing the card.
+
+| Card | Requirement | State | Depends on |
+|---|---|---|---|
+| [APP-1](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/done.md) | GO-2 |
+| [APP-2](../work/tasks/application-preparation/APP-2_application-tab-states/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-2_application-tab-states/done.md) | APP-1 |
+| [APP-3](../work/tasks/application-preparation/APP-3_answers-from-kb-and-think-modal/description.md) | R-APP | backlog (blocked: SET-1) | SET-1, APP-1, APP-2 |
+| [APP-4](../work/tasks/application-preparation/APP-4_robust-form-inspection/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-4_robust-form-inspection/done.md) | APP-1 |
+| [APP-5](../work/tasks/application-preparation/APP-5_respectful-browser-automation/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-5_respectful-browser-automation/done.md) | APP-4 |
+| [APP-6](../work/tasks/application-preparation/APP-6_answer-memories-in-prepare/description.md) | R-APP | backlog | APP-1, APP-4 |
+| [APP-7](../work/tasks/application-preparation/APP-7_draft-revision-check/description.md) | R-APP | backlog | APP-1 |
+| [APP-8](../work/tasks/application-preparation/APP-8_expired-application-outcome/description.md) | R-APP | backlog (idea) | APP-2 |
+| [ASM-1](../work/tasks/assessment/ASM-1_rerun-failed-with-model/description.md) | R-ASM | backlog (deferred) | ASM-4 |
+| [ASM-2](../work/tasks/assessment/ASM-2_ollama-num-ctx/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-2_ollama-num-ctx/done.md) | GO-2 |
+| [ASM-3](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/done.md) | COL-6, ASM-4 |
+| [ASM-4](../work/tasks/assessment/ASM-4_fast-weighted-ranking/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-4_fast-weighted-ranking/done.md) | COL-1 |
+| [COL-1](../work/tasks/collection/COL-1_source-abstraction/description.md) | R-COL | [done](../work/tasks/collection/COL-1_source-abstraction/done.md) | GO-2 |
+| [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog (reserved) | COL-1 |
+| [COL-3](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/description.md) | R-COL | [done](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/done.md) | COL-1 |
+| [COL-4](../work/tasks/collection/COL-4_collection-progress-events/description.md) | R-COL | backlog | COL-1, COL-3 |
+| [COL-5](../work/tasks/collection/COL-5_description-structure/description.md) | R-COL | backlog | COL-1 |
+| [COL-6](../work/tasks/collection/COL-6_stop-word-collection-filter/description.md) | R-COL | [done](../work/tasks/collection/COL-6_stop-word-collection-filter/done.md) | COL-1 |
+| [DESIGN-1](../work/tasks/design/DESIGN-1_design-token-layer/description.md) | R-DESIGN | backlog | GO-11 |
+| [GO-1](../work/tasks/go-migration/GO-1_backend-and-public-repo/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-1_backend-and-public-repo/done.md) | — |
+| [GO-2](../work/tasks/go-migration/GO-2_runnable-backend-parity/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-2_runnable-backend-parity/done.md) | GO-1 |
+| [GO-3](../work/tasks/go-migration/GO-3_public-rules-hooks/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-3_public-rules-hooks/done.md) | GO-1 |
+| [GO-4](../work/tasks/go-migration/GO-4_race-free-tests/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-4_race-free-tests/done.md) | GO-2 |
+| [GO-5](../work/tasks/go-migration/GO-5_consolidate-under-sifty/description.md) | R-LEGACY | backlog | COL-1, APP-6, APP-7, GO-7, GO-9, GO-11 |
+| [GO-6](../work/tasks/go-migration/GO-6_self-host-packaging/description.md) | R-PKG | backlog | GO-5, GO-10 |
+| [GO-7](../work/tasks/go-migration/GO-7_serve-background-timers/description.md) | R-TRI | backlog | GO-2 |
+| [GO-8](../work/tasks/go-migration/GO-8_cli-command-parity/description.md) | R-LEGACY | [cancelled](../work/tasks/go-migration/GO-8_cli-command-parity/cancelled.md) | — |
+| [GO-9](../work/tasks/go-migration/GO-9_mcp-server/description.md) | R-MCP | backlog | COL-1, GO-11 |
+| [GO-10](../work/tasks/go-migration/GO-10_license-elastic-2/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-10_license-elastic-2/done.md) | GO-1 |
+| [GO-11](../work/tasks/go-migration/GO-11_move-frontend-into-sifty/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-11_move-frontend-into-sifty/done.md) | GO-2 |
+| [NAVIGATION-1](../work/tasks/navigation/NAVIGATION-1_navigation-shell/description.md) | R-TRI | [done](../work/tasks/navigation/NAVIGATION-1_navigation-shell/done.md) | ASM-4 |
+| [NAVIGATION-2](../work/tasks/navigation/NAVIGATION-2_search-semantics-backend/description.md) | R-SEARCH | [done](../work/tasks/navigation/NAVIGATION-2_search-semantics-backend/done.md) | COL-6, TRI-1 |
+| [NAVIGATION-3](../work/tasks/navigation/NAVIGATION-3_search-editor-frontend/description.md) | R-SEARCH | [done](../work/tasks/navigation/NAVIGATION-3_search-editor-frontend/done.md) | NAVIGATION-2 |
+| [NAVIGATION-4](../work/tasks/navigation/NAVIGATION-4_search-ui-refinements/description.md) | R-SEARCH | [done](../work/tasks/navigation/NAVIGATION-4_search-ui-refinements/done.md) | NAVIGATION-3 |
+| [OPS-1](../work/tasks/ops/OPS-1_deploy-on-acceptance/description.md) | R-REL | [done](../work/tasks/ops/OPS-1_deploy-on-acceptance/done.md) | OPS-2, ASM-4 |
+| [OPS-2](../work/tasks/ops/OPS-2_relocate-sifty-home/description.md) | R-REL | [done](../work/tasks/ops/OPS-2_relocate-sifty-home/done.md) | ASM-4 |
+| [OPS-3](../work/tasks/ops/OPS-3_staging-preview-flow/description.md) | R-REL | [done](../work/tasks/ops/OPS-3_staging-preview-flow/done.md) | OPS-1 |
+| [OPS-4](../work/tasks/ops/OPS-4_repository-and-workflow-foundation/description.md) | R-REL, R-HARNESS | in progress | OPS-1, OPS-3 |
+| [OPS-5](../work/tasks/ops/OPS-5_staging-idle-cpu/description.md) | R-REL | backlog (bug) | OPS-3 |
+| [OPS-6](../work/tasks/ops/OPS-6_git-history-cleanup/description.md) | R-HARNESS | backlog (idea) | — |
+| [OPS-7](../work/tasks/ops/OPS-7_configurable-paths/description.md) | R-DATA | backlog (idea) | OPS-4 |
+| [SET-1](../work/tasks/settings/SET-1_first-time-answer-preparation/description.md) | R-SET | backlog (blocked: owner questions) | GO-2 |
+| [SET-2](../work/tasks/settings/SET-2_config-live-reload/description.md) | R-SET | [done](../work/tasks/settings/SET-2_config-live-reload/done.md) | GO-2 |
+| [SET-3](../work/tasks/settings/SET-3_stage-model-selection/description.md) | R-SET | [done](../work/tasks/settings/SET-3_stage-model-selection/done.md) | SET-2 |
+| [SET-4](../work/tasks/settings/SET-4_status-bar-inline-models/description.md) | R-SET | backlog | SET-3 |
+| [TRI-1](../work/tasks/triage/TRI-1_dismiss-and-block-rules/description.md) | R-TRI | [done](../work/tasks/triage/TRI-1_dismiss-and-block-rules/done.md) | COL-1, COL-3 |
+| [TRI-2](../work/tasks/triage/TRI-2_source-block-in-settings/description.md) | R-TRI | [done](../work/tasks/triage/TRI-2_source-block-in-settings/done.md) | TRI-1 |
+
+<a id="legacy-cards"></a>
+## Legacy single-file cards
+
+These predate the folder convention. They are retained as historical records and are not current instructions.
+
+| Card | Role | Status |
+|---|---|---|
+| [job-search-assistant.md](../work/tasks/job-search-assistant.md) | Historical Stage 1–2 implementation, acceptance and transfer record. | historical |
+| [sifty-dev-setup.md](../work/tasks/sifty-dev-setup.md) | Bootstrap plan and progress log for the work-management harness. | historical |
+
 <a id="validation"></a>
 ## What is validated where
 

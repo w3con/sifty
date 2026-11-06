@@ -68,7 +68,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 *Gate: a change can be traced from a user scenario through affected code/checks to decisions and open tasks.*
 
 - [x] 5.1 — Create the product/architecture map for current capabilities, distinguishing implemented, planned and known-broken behavior.
-- [ ] 5.2 — Link epics/tasks to requirements, frontend/backend/worker/storage areas, checks and dependencies; validate local links.
+- [x] 5.2 — Link epics/tasks to requirements, frontend/backend/worker/storage areas, checks and dependencies; validate local links.
 - [ ] 5.3 — Document runtime data provenance and create a separate data-layout migration task with live-reference and backup requirements.
 
 ### Phase 6 — Implement the staging and release loop

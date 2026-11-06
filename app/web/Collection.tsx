@@ -2,13 +2,11 @@ import React,{useEffect,useState} from 'react';
 import {api,listStopWords,addStopWord as apiAddStopWord,removeStopWord as apiRemoveStopWord,previewStopWord,getSearchExpressions,putSearchExpressions,getSearchSites,addSearchSite,removeSearchSite,toggleSearchSite} from './api';
 import type {StopWord} from '../src/core';
 import type {SearchExpression,SiteConfig} from './api';
-import {Sources} from './Sources';
 
 type Props={onRulesChanged:()=>void;onError:(s:string)=>void};
 
 export function Collection({onRulesChanged,onError}:Props){
   const [section,setSection]=useState<'sources'|'search'>('sources');
-  const [health,setHealth]=useState<any[]>([]);
   const [run,setRun]=useState<any>(null);
   const [busy,setBusy]=useState('');
   const [error,setError]=useState('');
@@ -27,11 +25,11 @@ export function Collection({onRulesChanged,onError}:Props){
 
   // Source sites
   const [sites,setSites]=useState<SiteConfig[]>([]);
-  const [siteName,setSiteName]=useState('');
-  const [siteUrl,setSiteUrl]=useState('');
+  const [addName,setAddName]=useState('');
+  const [addUrl,setAddUrl]=useState('');
 
-  // Poll health/run
-  useEffect(()=>{let alive=true;const poll=async()=>{try{const [h,r]=await Promise.all([api('health'),api('collection')]);if(alive){setHealth(h);setRun(r);}}catch(e:any){if(alive)setError(e.message);}};void poll();const timer=setInterval(poll,2000);return()=>{alive=false;clearInterval(timer);};},[]);
+  // Poll run status (health data no longer displayed)
+  useEffect(()=>{let alive=true;const poll=async()=>{try{const r=await api('collection');if(alive)setRun(r);}catch(e:any){if(alive)setError(e.message);}};void poll();const timer=setInterval(poll,2000);return()=>{alive=false;clearInterval(timer);};},[]);
 
   // Load search section data
   useEffect(()=>{
@@ -110,30 +108,29 @@ export function Collection({onRulesChanged,onError}:Props){
     {section==='sources'&&<div className="collection-section">
       <div className="page">
         <h1>Source sites</h1>
-        <p className="muted">Sites are searched during collection. Disable a site to pause it without removing it from the list.</p>
-        {sites.length===0
-          ?<p className="muted">No sites configured yet.</p>
-          :<ul className="block-rules-list">{sites.map(s=><li key={s.name}>
-            <span className="rule-value">{s.name}</span>
-            {s.url&&<a href={s.url} target="_blank" rel="noreferrer" className="muted" style={{fontSize:'12px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:'200px'}}>{s.url}</a>}
-            <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontWeight:500,fontSize:'13px'}}>
-              <input type="checkbox" checked={s.enabled!==false} onChange={async e=>{setBusy('toggle');setError('');try{await toggleSearchSite(s.name,e.target.checked);setSites(await getSearchSites());}catch(err:any){setError(err.message);}finally{setBusy('');}}}/>
-              Enabled
-            </label>
-            <button disabled={!!busy} onClick={async()=>{setBusy('remove-site');setError('');try{await removeSearchSite(s.name);setSites(await getSearchSites());onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}} style={{marginLeft:'auto'}}>Remove</button>
-          </li>)}</ul>}
-        <form className="stop-word-form" style={{marginTop:16}} onSubmit={async e=>{e.preventDefault();const name=siteName.trim(),url=siteUrl.trim();if(!name)return;setBusy('add-site');setError('');try{await addSearchSite(name,url);setSites(await getSearchSites());setSiteName('');setSiteUrl('');onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}} >
-          <label htmlFor="site-name">Site name</label>
-          <input id="site-name" value={siteName} onChange={e=>setSiteName(e.target.value)} placeholder="e.g. LinkedIn"/>
-          <label htmlFor="site-url">URL (optional)</label>
-          <input id="site-url" value={siteUrl} onChange={e=>setSiteUrl(e.target.value)} placeholder="https://…"/>
-          <button className="primary" disabled={!!busy||!siteName.trim()}>Add site</button>
+        <p className="muted">Sites are searched during collection. Disable a site to pause it without removing it.</p>
+        {run?.status==='running'&&<p className="muted" role="status" style={{fontSize:'13px'}}>Collection in progress…</p>}
+        {sites.length>0&&<table className="sites-table">
+          <thead><tr>
+            <th>Name</th><th>URL</th><th>Enabled</th><th></th>
+          </tr></thead>
+          <tbody>{sites.map(s=><tr key={s.name}>
+            <td>{s.name}</td>
+            <td>{s.url?<a href={s.url} target="_blank" rel="noreferrer" className="site-url">{s.url}</a>:<span className="muted">—</span>}</td>
+            <td><input type="checkbox" checked={s.enabled!==false} onChange={async e=>{setBusy('toggle');setError('');try{await toggleSearchSite(s.name,e.target.checked);setSites(await getSearchSites());}catch(err:any){setError(err.message);}finally{setBusy('');}}}/></td>
+            <td><button disabled={!!busy} onClick={async()=>{setBusy('remove-site');setError('');try{await removeSearchSite(s.name);setSites(await getSearchSites());onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}} style={{fontSize:'13px',padding:'5px 10px'}}>Remove</button></td>
+          </tr>)}</tbody>
+        </table>}
+        {sites.length===0&&<p className="muted">No sites configured yet.</p>}
+        <form className="sites-add-form" onSubmit={async e=>{e.preventDefault();const name=addName.trim(),url=addUrl.trim();if(!name)return;setBusy('add-site');setError('');try{await addSearchSite(name,url);setSites(await getSearchSites());setAddName('');setAddUrl('');onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}} >
+          <label htmlFor="site-name">Site name<input id="site-name" value={addName} onChange={e=>setAddName(e.target.value)} placeholder="e.g. LinkedIn"/></label>
+          <label htmlFor="site-url">URL (optional)<input id="site-url" value={addUrl} onChange={e=>setAddUrl(e.target.value)} placeholder="https://…"/></label>
+          <button className="primary" disabled={!!busy||!addName.trim()}>Add site</button>
         </form>
+        <div style={{marginTop:24}}>
+          <button className="primary" disabled={!!busy||run?.status==='running'} onClick={()=>collect()}>Collect jobs</button>
+        </div>
       </div>
-      <div className="page collection-action" style={{paddingTop:0}}>
-        <button className="primary" disabled={!!busy||run?.status==='running'} onClick={()=>collect()}>Collect jobs</button>
-      </div>
-      <Sources sources={health} run={run} busy={!!busy||run?.status==='running'} collect={collect}/>
     </div>}
 
     {section==='search'&&<div className="page collection-section">

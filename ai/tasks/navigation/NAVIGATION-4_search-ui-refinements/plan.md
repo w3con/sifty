@@ -30,7 +30,7 @@ Refine the Search, Sources and Archive screens from the owner's first day of use
 
 *Gate: `tsc --noEmit` passes; Sources renders as a one-row-per-source table and the coverage panel is gone.*
 
-- [ ] 3.1 — Rebuild the sites list as a table: one row per source with name, URL, an enabled toggle and a remove action, plus an add-row form.
+- [x] 3.1 — Rebuild the sites list as a table: one row per source with name, URL, an enabled toggle and a remove action, plus an add-row form.
 - [ ] 3.2 — Remove the "Source coverage" panel (the `Sources` per-source coverage table) from the screen; keep the Collect button and at most a single line indicating a collection is running.
 
 ### Phase 4 — Archive and verify

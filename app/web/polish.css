@@ -18,3 +18,12 @@
 .term-chip button{background:transparent;padding:0;min-width:0;width:20px;height:20px;border-radius:4px;font-size:14px;line-height:1;color:#a3a3aa;display:flex;align-items:center;justify-content:center;font-weight:400}
 .term-chip button:hover{background:#3a3a3e;color:#ececee}
 @media(max-width:767px){.search-columns{grid-template-columns:1fr}}
+.sites-table{width:100%;border-collapse:collapse;margin:16px 0;font-size:13px}
+.sites-table th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#a3a3aa;font-weight:600;padding:0 12px 10px 0}
+.sites-table td{padding:8px 12px 8px 0;border-top:1px solid #222225;vertical-align:middle}
+.sites-table td:last-child{text-align:right;padding-right:0}
+.sites-table .site-url{color:#a3a3aa;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:220px;display:block}
+.sites-add-form{display:grid;grid-template-columns:1fr 1fr auto;gap:8px;align-items:end;margin-top:16px}
+.sites-add-form label{font-size:12px;font-weight:600;color:#a3a3aa;display:flex;flex-direction:column;gap:4px}
+.sites-add-form input{width:100%}
+@media(max-width:767px){.sites-add-form{grid-template-columns:1fr}}

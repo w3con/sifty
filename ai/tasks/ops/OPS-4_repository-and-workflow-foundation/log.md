@@ -211,3 +211,99 @@ Exit: 0
 ```
 
 ```
+
+## 2026-11-06 — stage handback — git status --short
+
+Check: `git status --short`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — stage handback — git worktree list
+
+Check: `git worktree list`
+Exit: 0
+
+```
+/Volumes/SSD/Dev/tknff/sifty                      c0181a1 [main]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/DESIGN-1  d56435f [work/DESIGN-1]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4     76be1bf [work/OPS-4]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/preview   94f51d9 [assessment-panel]
+```
+
+
+## 2026-11-06 — stage handback — python3 bin/work-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+
+PASS: all harness checks
+```
+
+
+## 2026-11-06 — stage handback — python3 bin/work-plan OPS-4
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — stage handback — git diff --check
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — note
+
+Stage handback — steps 1.1 and 1.2 complete; stop before 1.3.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step commits: `e0c2205` (1.1 inventory) and `76be1bf` (1.2 executor verification); the handback-check checkpoint is the commit containing this entry.
+- Completed: 1.1 — inventory and preservation baseline in `ai/tasks/ops/OPS-4_repository-and-workflow-foundation/inventory.md`, with baseline checks recorded above. 1.2 — profile verified (`mode: subagent`, `opencode-go/deepseek-v4.1-flash`, `task: deny`) and actual runtime metadata inspected.
+- Open: 21 of 23 steps (1.3 onward). They are context only; none is assigned to this session. Step 1.3 was not started.
+- Final checks: `git status --short` clean at check time; `git worktree list` four worktrees; `python3 bin/work-test` PASS; `python3 bin/work-plan OPS-4` fit with 23 steps; `git diff --check` exit 0.
+- Preservation requirements: inventory.md §6 (8 normative requirements) — runtime data, personal artifacts, unfinished worktrees/branches, history, per-environment deployment artifacts, submodule/symlink wiring, ignored local material and staged cleanup.
+- Actual model metadata: session `ses_e4ed72437ffeL8VjH7t0Gi23ru`, agent `executor`, parent `ses_e4ed90c39ffeVGdkVhVpkwmHD2`, model `{"id":"deepseek-v4.1-flash","providerID":"opencode-go"}`; OpenCode's streaming log names the same provider/model per call. Usage at check time: cost 0.0419 USD, input 66,264, output 15,237, reasoning 19,613, cache-read 3,682,560 tokens (continues to grow). No fallback or provider switch; profile not edited. The coordinator must independently re-verify before accepting 1.2.
+- Technical decisions: used OpenCode runtime metadata (log + session row) rather than profile output or self-report as model evidence; treated dangling shared-tool symlinks as a reproduction/setup finding rather than repairing them here; kept all relocation/cleanup out of this stage.
+- Failures and corrections: (a) `bin/work-note` leaves a trailing blank line at EOF, so `git diff --check` fails on the log it just wrote; the card log was normalized after recording and the defect is reported, not fixed. (b) `sqlite3 -column` padding introduced trailing spaces into the log; re-recorded with `-separator`. (c) the first runtime-metadata grep matched its own permission-evaluated log line; re-recorded with `grep -v 'message=evaluated'`.
+- Findings for coordinator review: dangling `ai/bin`/`ai/harness`/`ai/templates` in every linked worktree (submodule not initialized by `work-handover`); `core.hooksPath` unset; stale template open-step lines in completed COL-1/TRI-1; `ai/incidents.md` still tracked; ~1 GB of timestamped staging SQLite backups; `main` 66 commits ahead of `origin/main`.
+- Exact next action: coordinator reviews the diff, check evidence and session metadata, then issues a fresh executor brief for step 1.3 only. Do not proceed to 1.3 in this session.

@@ -659,3 +659,41 @@ Coordinator review corrections — lifecycle safety.
 4. Arithmetic correction: 23 total steps minus 4 completed (1.1–1.4) = 19 open (2.1 onward), not 21.
 
 Checks re-run: 37 lifecycle tests OK; `bin/work-test` PASS; `bin/work-plan OPS-4` fit; `git diff --check` exit 0. Steps 1.3–1.4 remain ticked; no plan step was reopened. Exact next action: coordinator reviews this diff and evidence, then assigns step 2.1 in a fresh executor context. Do not run `work-accept` or `work-finish` for OPS-4; 19 steps remain open.
+
+## 2026-11-06 — 2.1 separate credential and formatting rules
+
+Check: `python3 sifty/scripts/leakcheck/leakcheck-selftest && python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.002s
+
+OK
+```

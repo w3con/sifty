@@ -68,7 +68,7 @@ def first_content_line(text):
 
 def check_conventional_shape(subject):
     type_group = "|".join(CONVENTIONAL_TYPES)
-    pattern = re.compile(r"^(" + type_group + r")(\([a-z0-9_-]+\))?: \S.+")
+    pattern = re.compile(r"^(" + type_group + r")(\([A-Za-z0-9_-]+\))?: \S.+")
     if pattern.match(subject):
         return None
     return leak_census.Finding(
@@ -104,21 +104,22 @@ def main():
         text = strip_comment_lines(fh.read())
 
     census = leak_census.parse_census()
-    prefixes = leak_census.discover_card_prefixes(repo_root)
     origin = repo_origin_url(repo_root)
-    is_public = leak_census.is_public_repo(origin, census)
+    repo_is_public = leak_census.is_public_repo(origin, census)
 
-    # Apply full public rules when any touched path is under a census-declared public subtree.
-    if not is_public:
-        if args.commit:
-            paths = commit_paths(repo_root, args.commit)
-        else:
-            paths = staged_paths(repo_root)
-        is_public = any(leak_census.is_public_subtree(p, census) for p in paths)
+    if args.commit:
+        paths = commit_paths(repo_root, args.commit)
+    else:
+        paths = staged_paths(repo_root)
+    apply_formatting = any(
+        leak_census.is_formatting_required(p, census)
+        and not leak_census.formatting_exempt(p)
+        for p in paths)
 
-    findings = leak_census.scan_text(text, census, prefixes, is_public)
+    findings = leak_census.scan_text(
+        text, census, apply_formatting=apply_formatting)
 
-    if is_public:
+    if repo_is_public or apply_formatting:
         shape_finding = check_conventional_shape(first_content_line(text))
         if shape_finding:
             findings.insert(0, shape_finding)

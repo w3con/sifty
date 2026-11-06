@@ -9,9 +9,10 @@ Usage:
 With no argument it scans the working tree. `--ref` scans a committed tree instead.
 `--subtree <prefix>` limits the scan to files whose path starts with <prefix>.
 
-Files under a census-declared public subtree are always checked with the full public rules,
-regardless of the repository's own origin remote, so a private repository that hosts public
-code can be swept with this tool and get the same result as the public repository would.
+Files under a census-declared formatting-required subtree are held to the English publication
+rules, regardless of the repository's own origin remote. Credential rules apply everywhere;
+formatting rules do not apply to work records, management notes, tooling or the scanner's own
+sources.
 
 Exit code 0 when clean, 1 when any form is found, 2 on a usage or repository error.
 """
@@ -25,26 +26,7 @@ import leak_census  # noqa: E402
 
 SKIP_SUFFIXES = (".lock", ".sha256", ".gpg", ".png", ".jpg", ".jpeg", ".gif", ".ico",
                  ".pdf", ".wasm", ".bin", ".woff", ".woff2")
-ENV_SHAPED_FILES = (".env.example",)
-LEAKCHECK_DIR = "scripts/leakcheck/"
 
-
-def fully_exempt(path):
-    """The scanner's own directory is the trusted definition of the policy and is skipped.
-    Matches both the standalone-repo form (scripts/leakcheck/) and the embedded form used
-    when scanning a subtree of a larger repository (sifty/scripts/leakcheck/)."""
-    return path.startswith(LEAKCHECK_DIR) or ("/" + LEAKCHECK_DIR) in path
-
-
-def env_shaped(path):
-    base = os.path.basename(path)
-    return (base in ENV_SHAPED_FILES
-            or path.endswith(".sh")
-            or path.endswith(".md")
-            or path.startswith("scripts/")
-            or "/scripts/" in path
-            or path.startswith(".githooks/")
-            or "/.githooks/" in path)
 
 
 def git(repo, *args):
@@ -110,7 +92,6 @@ def main(argv):
         return 2
 
     census = leak_census.parse_census()
-    prefixes = leak_census.discover_card_prefixes(repo_root)
     try:
         origin = git(repo_root, "config", "--get", "remote.origin.url").strip()
     except Exception:
@@ -125,17 +106,15 @@ def main(argv):
     for path in tracked_files(repo_root, ref):
         if subtree and not path.startswith(subtree):
             continue
-        if path.endswith(SKIP_SUFFIXES) or fully_exempt(path):
+        if path.endswith(SKIP_SUFFIXES):
             continue
-        # A file under a census-declared public subtree gets full public rules even when
-        # the repository's origin is private.
-        is_public = repo_is_public or leak_census.is_public_subtree(path, census)
+        apply_formatting = (leak_census.is_formatting_required(path, census)
+                            and not leak_census.formatting_exempt(path))
         text = read_file(repo_root, ref, path)
         if text is None:
             continue
-        allow_env = env_shaped(path)
-        findings = leak_census.scan_text(text, census, prefixes, is_public,
-                                         allow_env_shape=allow_env)
+        findings = leak_census.scan_text(
+            text, census, apply_formatting=apply_formatting)
         if findings:
             total += len(findings)
             blocks.append(leak_census.format_findings(findings, path))

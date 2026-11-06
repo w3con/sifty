@@ -1,19 +1,31 @@
 #!/usr/bin/env python3
 """leak_census — reads the census at scripts/leakcheck/census.md and scans a block of text (a
-commit message, or the added lines of a diff, or a whole file) for the forms it names.
+commit message, a changed file, or a whole file) for the forms it names.
 
 Shared by commit-msg-check, commit-diff-check, range-check and tree-check, so the lists the
-census carries by hand — the public-repository list, the literal-string list and the watched-
-name list — are read in exactly one place, and a line added to any of them changes what every
-one of those commands rejects without a line of this module's own code changing.
+census carries by hand — the public-repository list, the formatting-required subtrees, the
+literal-string list and the watched-name list — are read in exactly one place, and a line added
+to any of them changes what every one of those commands rejects without a line of this module's
+own code changing.
 
 The pattern-shaped forms (a cloud key, a personal access token, a JSON Web Token, an absolute
 path, and so on) are NOT read from the census: a regular expression is not a list a census
 entry can grow, so each one is a small, named function below instead.
+
+Two groups of rules are deliberately separate:
+
+* **credential/security** forms are irreversible and are checked in every tracked text area —
+  application source, tests, scanner sources, commit messages and historical commits;
+* **formatting** forms are the repository's publication style. They apply only under the
+  formatting-required subtrees the census names (currently the public application tree), not to
+  work records, management notes or tooling, which may carry the owner's Russian wording.
+
+The scanner's own directory is exempt from formatting rules only. A real credential pasted into
+the scanner is still refused. Pattern definitions in the scanner are written so that they do not
+match themselves, rather than by exempting the whole directory from the security rules.
 """
 import os
 import re
-import subprocess
 from collections import namedtuple
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -21,34 +33,17 @@ DEFAULT_CENSUS_PATH = os.path.join(SCRIPT_DIR, "census.md")
 
 Finding = namedtuple("Finding", ["form", "cls", "line_no", "line_text", "hint"])
 
-_CARD_DIR_RE = re.compile(r"^([A-Z]+)-\d+(?:_.*)?$")
+# Formatting rules are not applied to the scanner's own sources: the census and the engine
+# legitimately spell out the forms they exist to catch. Credential rules still apply there.
+FORMATTING_EXEMPT_PREFIXES = ("scripts/leakcheck/", "sifty/scripts/leakcheck/")
 
 
-def discover_card_prefixes(repo_root=None):
-    """Every card-identifier prefix this repository's own ai/tasks/ tree actually uses, read
-    from the card folder names themselves rather than hard-coded, so a new epic's prefix is
-    caught the day its first card folder exists with no code change here. Returns an empty set
-    when ai/tasks does not exist — as in a standalone public clone that carries no cards."""
-    if repo_root is None:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True)
-        if result.returncode != 0:
-            return set()
-        repo_root = result.stdout.strip()
-    tasks_root = os.path.join(repo_root, "ai", "tasks")
-    if not os.path.isdir(tasks_root):
-        return set()
-    prefixes = set()
-    for epic_name in os.listdir(tasks_root):
-        epic_dir = os.path.join(tasks_root, epic_name)
-        if not os.path.isdir(epic_dir):
-            continue
-        for card_name in os.listdir(epic_dir):
-            m = _CARD_DIR_RE.match(card_name)
-            if m:
-                prefixes.add(m.group(1))
-    return prefixes
+def formatting_exempt(file_path):
+    """True where formatting rules (Russian prose, private addresses, literals, trailers) should
+    not apply. This is a formatting exemption only; a credential in the same file is still
+    refused by the security rules."""
+    return any(file_path.startswith(prefix) or ("/" + prefix) in file_path
+               for prefix in FORMATTING_EXEMPT_PREFIXES)
 
 
 def _read_fenced_block(text, heading):
@@ -68,49 +63,56 @@ def _read_fenced_block(text, heading):
 
 def parse_census(census_path=DEFAULT_CENSUS_PATH):
     """Reads the census document once and returns the lists each check needs: the public
-    repositories (matched against a repository's own `origin`), the public subtrees (paths
-    held to the full public rules even inside a private repository), the literal strings not
-    recognised by any pattern, and the names watched only when "secret" or "key" sits on the
-    same line."""
+    repositories (matched against a repository's own `origin`), the subtrees held to English
+    formatting, the literal strings not recognised by any pattern, and the names watched only
+    when "secret" or "key" sits on the same line."""
     with open(census_path, encoding="utf-8") as fh:
         text = fh.read()
     public_repos = _read_fenced_block(text, "Public repositories") or []
-    public_subtrees = _read_fenced_block(text, "Public subtrees") or []
+    formatting_subtrees = _read_fenced_block(text, "Formatting-required subtrees")
+    if formatting_subtrees is None:
+        # Older census revisions called this list "Public subtrees".
+        formatting_subtrees = _read_fenced_block(text, "Public subtrees") or []
     private_owners = _read_fenced_block(text, "Private repository owners") or []
     literal_strings = _read_fenced_block(text, "Literal strings not recognized by pattern") or []
     watched_names = _read_fenced_block(
         text, "Names watched only when a secret or a key is mentioned nearby") or []
     return {
         "public_repos": public_repos,
-        "public_subtrees": public_subtrees,
+        "formatting_subtrees": formatting_subtrees,
+        "public_subtrees": formatting_subtrees,
         "private_owners": private_owners,
         "literal_strings": literal_strings,
         "watched_names": watched_names,
     }
 
 
-def is_public_subtree(file_path, census):
-    """True when file_path is under a subtree the census marks as public. The subtree list
-    entries may carry a trailing slash or not; both forms match correctly."""
-    for subtree in census.get("public_subtrees", []):
+def is_formatting_required(file_path, census):
+    """True when file_path is under a subtree the census holds to English publication
+    formatting. The subtree list entries may carry a trailing slash or not; both forms match."""
+    for subtree in census.get("formatting_subtrees", []):
         prefix = subtree if subtree.endswith("/") else subtree + "/"
         if file_path.startswith(prefix) or file_path == subtree.rstrip("/"):
             return True
     return False
 
 
+# Backwards-compatible name used by older callers and documentation.
+def is_public_subtree(file_path, census):
+    return is_formatting_required(file_path, census)
+
+
 def is_public_repo(origin_url, census):
     """True when a repository's own `origin` remote is one the census's public-repository list
-    names. A repository absent from that list is treated as private, so only an irreversible
-    form is refused there."""
+    names. A repository absent from that list is treated as private."""
     if not origin_url:
         return False
     return origin_url.strip() in census["public_repos"]
 
 
-# ── Irreversible, pattern-shaped forms ──────────────────────────────────────────────────────
+# ── Credential/security forms ────────────────────────────────────────────────────────────────
 # A secret of any of these shapes cannot be recalled once it reaches a server, so each is
-# refused in every repository, public or private.
+# refused in every repository and every tracked text area, public or private.
 
 _PEM_KEY_RE = re.compile(r"-----BEGIN (?:[A-Z0-9 ]+ )?PRIVATE KEY-----")
 # Cloud and provider keys with a distinctive, self-identifying prefix.
@@ -126,26 +128,28 @@ _ANTHROPIC_KEY_RE = re.compile(r"\bsk-ant-[A-Za-z0-9_-]{20,}\b")
 _JWT_RE = re.compile(r"\beyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b")
 
 # A generic "name a secret and assign it a real value" line. Tightened against false positives:
-# the value must be long and secret-shaped, and must not be an obvious placeholder.
+# the value must be a secret-shaped run (letters, digits and the usual base64 punctuation), not
+# an arbitrary code expression or a whole minified JavaScript object.
 _SECRET_ASSIGN_RE = re.compile(
     r"""(?ix)
     \b(?:api[_-]?key|secret(?:[_-]?key)?|access[_-]?key|auth[_-]?token|
        client[_-]?secret|private[_-]?key|password|passwd|passphrase)\b
     \s*[:=]\s*
-    (?P<q>["']?)(?P<val>[^\s"']{12,})(?P=q)
+    (?P<q>["']?)(?P<val>[A-Za-z0-9_+/=.-]{12,})(?P=q)
     """)
 _PLACEHOLDER_RE = re.compile(
     r"(?i)(example|your[_-]?|xxx+|<[^>]+>|\$\{?[A-Za-z_]|changeme|placeholder|redacted|"
     r"dummy|sample|todo|fixme|\*\*\*|\.\.\.|here)")
 
-# End-anchored on purpose: a `.env` line is the whole line. A quoted value may hold spaces, so
-# both quoting styles are accepted as the whole value.
-_ENV_LINE_RE = re.compile(r"""^[A-Z][A-Z0-9_]{2,}=(?:"[^"]*"|'[^']*'|\S*)$""")
+# A credential embedded in a URL: a scheme, then a user and a secret before the host. The
+# separator is assembled so this definition line does not look like a credential URL to itself.
+_CREDENTIAL_URL_RE = re.compile(
+    r"\b[a-z][a-z0-9+.-]*" + "://" + r"[^\s:/@]+:(?P<pw>[^\s/@]{4,})@")
 
 # A non-public server named by an SSH connection string.
 _SSH_IP_RE = re.compile(r"\b[a-z][a-z0-9_-]{1,31}@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
 _SSH_ALIAS_RE = re.compile(
-    r"(?<![/\w.-])[a-z][a-z0-9_-]{1,31}@(?!v\d)[a-z][a-z0-9-]{1,31}\b(?!\.[a-zA-Z])")
+    r"(?<![/\w.-])[a-z][a-z0-9_-]{1,31}@(?!v\d)[a-z][a-z0-9-]{1,31}(?![A-Za-z0-9_.-])")
 
 
 def _looks_like_placeholder(value):
@@ -153,7 +157,7 @@ def _looks_like_placeholder(value):
 
 
 def scan_line_irreversible(line):
-    """Every irreversible-class finding this line carries. Returns a list of (form, hint)."""
+    """Every credential/security finding this line carries. Returns a list of (form, hint)."""
     hits = []
     if _PEM_KEY_RE.search(line):
         hits.append(("private key (PEM block)",
@@ -176,32 +180,34 @@ def scan_line_irreversible(line):
         hits.append(("secret assigned a real value",
                       "name the variable without its value; read the real one from the "
                       "environment or a local file the .gitignore excludes"))
-    if _ENV_LINE_RE.match(line.strip()):
-        hits.append((".env file content",
-                      "name the variable in .env.example without its real value"))
+    m = _CREDENTIAL_URL_RE.search(line)
+    if m and not _looks_like_placeholder(m.group("pw")):
+        hits.append(("credentials in a URL",
+                      "refer to the service by role and read its credentials from the "
+                      "environment; never commit user:password in a URL"))
     if _SSH_IP_RE.search(line) or _SSH_ALIAS_RE.search(line):
         hits.append(("address or hostname of a non-public server",
                       "refer to the host by its role, not its address"))
     return hits
 
 
-# ── Untidy, pattern-shaped forms ────────────────────────────────────────────────────────────
-# Internal references that are harmless in the private repository but do not belong in the
-# public one. Refused only where the census marks a repository public.
+# ── Formatting forms ─────────────────────────────────────────────────────────────────────────
+# Publication style, not a security rule. Applied only where the census requires English
+# formatting; work records, management notes and tooling may keep the owner's Russian wording.
 
 _RUSSIAN_RE = re.compile(r"[Ѐ-ӿ]")
 # A string or regex literal: a backtick, double-quoted or single-quoted span. Cyrillic inside one
 # is load-bearing matching logic (the code recognising Russian user content), not internal prose,
 # so it is exempt; Cyrillic in a comment or in prose, outside every literal, is still flagged.
 _LITERAL_SPAN_RE = re.compile(r"`[^`]*`|\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*'")
-_WORK_COMMAND_RE = re.compile(r"\bbin/work-[a-z][a-z-]*\b")
 _TRAILER_RE = re.compile(r"^(Co-Authored-By|Claude-Session):", re.MULTILINE)
 _GENERATED_WITH_RE = re.compile(r"Generated with \[Claude|🤖 Generated with")
 _ABS_PATH_RE = re.compile(r"(?:^|[\s(`\"'])(/(?:Users|Volumes)/\S+)")
 # A github reference to a repository under the owner's org; flagged unless the census lists the
 # full clone address as public.
 _ORG_REPO_REF_RE = re.compile(
-    r"(?:git@github\.com:|github\.com/)([\w-]+)/([\w-]+?)(?:\.git)?(?=[\s\)\]\.,;:'\"]|$)")
+    r"(?:git" + "@" + r"github\.com:|github\.com/)([\w-]+)/([\w-]+?)(?:\.git)?"
+    r"(?=[\s\)\]\.,;:'\"]|$)")
 
 
 def _cyrillic_outside_literals(line):
@@ -212,32 +218,11 @@ def _cyrillic_outside_literals(line):
     return bool(_RUSSIAN_RE.search(masked))
 
 
-def _card_identifier_hints(line, prefixes):
-    """Return a hint string when `line` names a card identifier built from one of `prefixes`,
-    or None when it does not. Case-insensitive, so identifiers written in lowercase in a
-    commit message subject line are caught as well as the uppercase form in prose."""
-    if not prefixes:
-        return None
-    card_id_re = re.compile(
-        r"\b(?:" + "|".join(re.escape(p) for p in prefixes) + r")-\d+(?:\.[A-Za-z0-9]+)*\b",
-        re.IGNORECASE)
-    m = card_id_re.search(line)
-    if m:
-        return f"remove the identifier {m.group(0)!r}; keep the sentence it was attached to"
-    return None
-
-
-def scan_line_untidy(line, prefixes, census):
-    """Every untidy-class finding this line carries. Returns a list of (form, hint)."""
+def scan_line_formatting(line, census):
+    """Every formatting finding this line carries. Returns a list of (form, hint)."""
     hits = []
-    card_hint = _card_identifier_hints(line, prefixes)
-    if card_hint:
-        hits.append(("card identifier", card_hint))
     if _cyrillic_outside_literals(line):
         hits.append(("Russian-language text", "write the same sentence in English"))
-    if _WORK_COMMAND_RE.search(line):
-        hits.append(("reference to the private work-management harness",
-                      "drop it; the public repository does not carry the harness"))
     if _TRAILER_RE.search(line) or _GENERATED_WITH_RE.search(line):
         hits.append(("tool-authorship trailer",
                       "remove the trailer; authorship is the committer's own git identity"))
@@ -255,7 +240,7 @@ def scan_line_untidy(line, prefixes, census):
             break
     for literal in census["literal_strings"]:
         if literal and literal in line:
-            hits.append((f"internal literal {literal!r}",
+            hits.append(("internal literal named by the census",
                           "see this form's own entry in the census for what replaces it"))
     lowered = line.lower()
     if "secret" in lowered or re.search(r"\bkey\b", lowered):
@@ -266,29 +251,36 @@ def scan_line_untidy(line, prefixes, census):
     return hits
 
 
-def scan_text(text, census, prefixes, is_public, allow_env_shape=False):
-    """Scans every line of `text` and returns a list of Finding, in line order. Irreversible
-    forms are always checked; untidy forms are checked only when `is_public` is true.
-    `allow_env_shape` skips the .env-content form for a file meant to carry KEY=VALUE shapes
-    without real values (.env.example)."""
+def scan_text(text, census, apply_formatting=False):
+    """Scans every line of `text` and returns a list of Finding, in line order. Credential forms
+    are always checked; formatting forms are checked only when `apply_formatting` is true."""
     findings = []
     for line_no, line in enumerate(text.splitlines(), start=1):
         for form, hint in scan_line_irreversible(line):
-            if form == ".env file content" and allow_env_shape:
-                continue
             findings.append(Finding(form, "irreversible", line_no, line, hint))
-        if is_public:
-            for form, hint in scan_line_untidy(line, prefixes, census):
-                findings.append(Finding(form, "untidy", line_no, line, hint))
+        if apply_formatting:
+            for form, hint in scan_line_formatting(line, census):
+                findings.append(Finding(form, "formatting", line_no, line, hint))
     return findings
 
 
+def redact_sensitive(text):
+    """Remove every credential-shaped match from text before it can reach a diagnostic. Used for
+    paths and source labels as well as matched lines: a secret in a filename is still a secret."""
+    text = _PEM_KEY_RE.sub("[redacted]", text)
+    for rx in (_AWS_KEY_RE, _GITHUB_PAT_RE, _GOOGLE_KEY_RE, _SLACK_TOKEN_RE,
+               _STRIPE_KEY_RE, _OPENAI_KEY_RE, _ANTHROPIC_KEY_RE, _JWT_RE,
+               _SSH_IP_RE, _SSH_ALIAS_RE):
+        text = rx.sub("[redacted]", text)
+    text = _SECRET_ASSIGN_RE.sub(
+        lambda m: m.group(0).replace(m.group("val"), "[redacted]"), text)
+    text = _CREDENTIAL_URL_RE.sub(
+        lambda m: m.group(0).replace(m.group("pw"), "[redacted]"), text)
+    return text
+
+
 def format_findings(findings, source_label):
-    """One block of text naming every finding: the form, the file/message it came from, the
-    line, and what replaces it — never a silent refusal."""
-    lines = []
-    for f in findings:
-        lines.append(f"{source_label}:{f.line_no}: [{f.cls}] {f.form}")
-        lines.append(f"    {f.line_text.strip()}")
-        lines.append(f"    replace with: {f.hint}")
-    return "\n".join(lines)
+    """One line per finding: the form, the safe file/message label and the line number. Matched
+    values and whole offending lines are never printed, and the label is redacted too."""
+    label = redact_sensitive(str(source_label))
+    return "\n".join(f"{label}:{f.line_no}: [{f.cls}] {f.form}" for f in findings)

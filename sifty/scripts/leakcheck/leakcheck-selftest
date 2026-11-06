@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
-"""leakcheck-selftest — proves the scanner flags a seeded secret of each form it claims to catch
-and passes a clean sample and obvious placeholders. Exit 0 all pass, 1 any fail.
+"""leakcheck-selftest — proves the scanner flags a seeded credential of each form it claims to
+catch, passes clean samples, placeholders and ordinary environment settings, keeps task
+identifiers and work commands legal, and applies Russian formatting only where the census
+requires English.
+
+Exit 0 all pass, 1 any fail. The seeded credentials are assembled at runtime so this file itself
+carries no contiguous fake token.
 """
 import os
 import sys
@@ -10,15 +15,17 @@ sys.path.insert(0, SCRIPT_DIR)
 import leak_census  # noqa: E402
 
 CENSUS = leak_census.parse_census()
-PREFIXES = leak_census.discover_card_prefixes()
 
-# Seeded secrets, assembled at runtime so this file itself carries no real-looking credential.
+# Seeded credentials, assembled at runtime so this file itself carries no real-looking value.
 AKIA = "AKIA" + "ABCDEFGHIJKLMNOP"
-GHP = "ghp_" + "a" * 36
+GHP = "ghp_" + "a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8"
 AIZA = "AIza" + "B" * 35
 JWT = "eyJ" + "a" * 20 + ".eyJ" + "b" * 20 + "." + "c" * 20
-PEM = "-----BEGIN " + "RSA PRIVATE KEY" + "-----"
+PEM = ("-----BEGIN " + "RSA PRIVATE KEY" + "-----" + "\n"
+       + "MIIE" + "A" * 40 + "\n"
+       + "-----END " + "RSA PRIVATE KEY" + "-----")
 SECRET_VALUE = "9f8d7a6b5c4e" + "3f2a1b0c9d8e"
+CREDENTIAL_URL = "postgres" + "://app:" + "s3cr3t" + "value" + "@db.internal/app"
 
 MUST_FLAG = [
     ("cloud access key", f"const id = '{AKIA}'"),
@@ -27,7 +34,7 @@ MUST_FLAG = [
     ("JSON Web Token", f"auth = {JWT}"),
     ("private key (PEM block)", PEM),
     ("secret assigned a real value", f"api_key = {SECRET_VALUE}"),
-    (".env file content", "DATABASE_URL=postgres://u:p@db/app"),
+    ("credentials in a URL", CREDENTIAL_URL),
 ]
 
 MUST_PASS = [
@@ -36,37 +43,98 @@ MUST_PASS = [
     "export API_KEY from the environment",
     "token: your-token-here",
     "password = <changeme>",
+    "WORK_SESSION=1",
+    "SIFTY_PROD_PORT=8080",
+    "WORK_PUSH=0",
     "// read the key from a local file the .gitignore excludes",
 ]
 
+FORMATTING_ALLOWED = [
+    "// OPS-4 uses bin/work-test to record this checkpoint",
+    "docs(scope): bin/work-commit records the step",
+]
 
-def forms_in(text):
-    findings = leak_census.scan_text(text, CENSUS, PREFIXES, is_public=True)
-    return {f.form for f in findings}
+WORK_RECORD_RUSSIAN = "Проверить и записать результат"
+SOURCE_RUSSIAN = "Проверить и записать результат"
+
+
+def forms_in(text, apply_formatting=False):
+    findings = leak_census.scan_text(text, CENSUS, apply_formatting=apply_formatting)
+    return {f.form for f in findings}, findings
 
 
 def main():
     failures = []
     for form, text in MUST_FLAG:
-        found = forms_in(text)
+        found, _ = forms_in(text)
         if form not in found:
-            failures.append(f"MISS: {form!r} not flagged in {text!r} (found {sorted(found)})")
+            failures.append(f"MISS: {form!r} not flagged (found {sorted(found)})")
         else:
             print(f"ok  flag  [{form}]")
     for text in MUST_PASS:
-        found = forms_in(text)
-        irreversible = {f.form for f in leak_census.scan_text(text, CENSUS, PREFIXES, True)
+        found, _ = forms_in(text, apply_formatting=True)
+        irreversible = {f.form for f in leak_census.scan_text(text, CENSUS)
                         if f.cls == "irreversible"}
         if irreversible:
-            failures.append(f"FALSE POSITIVE: {sorted(irreversible)} on clean line {text!r}")
+            failures.append(f"FALSE POSITIVE: {sorted(irreversible)} on a clean line")
         else:
             print(f"ok  pass  {text!r}")
+
+    for text in FORMATTING_ALLOWED:
+        _, findings = forms_in(text, apply_formatting=True)
+        if findings:
+            failures.append("task identifier or work command was treated as a form")
+        else:
+            print(f"ok  allow {text!r}")
+
+    _, findings = forms_in(WORK_RECORD_RUSSIAN, apply_formatting=False)
+    if findings:
+        failures.append("Russian work-record text was flagged as formatting")
+    else:
+        print("ok  allow Russian work-record wording")
+
+    _, findings = forms_in(SOURCE_RUSSIAN, apply_formatting=True)
+    if not any(f.form == "Russian-language text" for f in findings):
+        failures.append("Russian application text was not flagged as formatting")
+    else:
+        print("ok  flag  Russian application text")
+
+    if not leak_census.formatting_exempt("sifty/scripts/leakcheck/leak_census.py"):
+        failures.append("scanner sources are not formatting-exempt")
+    else:
+        print("ok  scanner sources formatting-exempt")
+
+    token = GHP
+    finding = leak_census.Finding(
+        "personal access token", "irreversible", 1, f"token: {token}", "")
+    rendered = leak_census.format_findings([finding], f"path/{token}/file")
+    if token in rendered:
+        failures.append("a diagnostic printed the matched value")
+    else:
+        print("ok  diagnostics redact the matched value")
+
+    for name in sorted(os.listdir(SCRIPT_DIR)):
+        path = os.path.join(SCRIPT_DIR, name)
+        if not os.path.isfile(path):
+            continue
+        try:
+            with open(path, encoding="utf-8") as fh:
+                text = fh.read()
+        except (OSError, UnicodeDecodeError):
+            continue
+        findings = [f for f in leak_census.scan_text(text, CENSUS)
+                    if f.cls == "irreversible"]
+        if findings:
+            failures.append(f"scanner source {name} carries a credential form")
+    if not any("scanner source" in item for item in failures):
+        print("ok  scanner own sources carry no credential form")
 
     if failures:
         print("\nFAILURES:")
         print("\n".join(failures))
         return 1
-    print(f"\nPASS: {len(MUST_FLAG)} seeded secrets flagged, {len(MUST_PASS)} clean lines passed")
+    print(f"\nPASS: {len(MUST_FLAG)} seeded credentials flagged, "
+          f"{len(MUST_PASS)} clean lines passed")
     return 0
 
 

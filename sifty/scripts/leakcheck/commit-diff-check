@@ -10,10 +10,9 @@ Usage:
     --commit   check one already-made commit against its own parent (`git show <sha>`)
     --tree     check every line of every tracked file, not only added lines
 
-The scanner's own directory, scripts/leakcheck/, is exempt from untidy forms (its census and
-engine spell out the forms they catch); irreversible forms are still refused there.
-`.env.example`, shell scripts, git hooks and log files are exempt from the .env-content form
-alone, because a KEY=VALUE line is their ordinary shape rather than a leaked file.
+The scanner's own directory, scripts/leakcheck/, is exempt from formatting rules only (its
+census and engine spell out the forms they catch); credential forms are still refused there.
+Task identifiers and `bin/work-*` command names are ordinary project content, not secrets.
 
 Exit codes: 0 clean; 1 refused, with every finding named; 2 bad invocation.
 """
@@ -26,35 +25,6 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, SCRIPT_DIR)
 import leak_census  # noqa: E402
-
-LEAKCHECK_DIR = "scripts/leakcheck/"
-ENV_SHAPE_EXEMPT_PATHS = {".env.example", "deployment/.env.example"}
-
-
-def fully_exempt(file_path):
-    """The scanner's own directory is the trusted definition of the policy: its census and
-    engine legitimately spell out every form — including irreversible shapes (a PEM header, a
-    cloud-key prefix, a github clone address inside a regex) — that they exist to catch. It is
-    skipped entirely; a real credential belongs in no code file and would be caught anywhere
-    else. Matches both the standalone-repo form (scripts/leakcheck/) and the embedded form
-    used when the subtree is nested inside a larger repository (sifty/scripts/leakcheck/)."""
-    return file_path.startswith(LEAKCHECK_DIR) or ("/" + LEAKCHECK_DIR) in file_path
-
-
-def env_shape_exempt(file_path):
-    """True where a KEY=VALUE line is not a leaked .env line: the example file, any shell
-    script (including an extensionless operational script under scripts/), a git hook (which
-    git requires to carry no extension), or a log file quoting a verification transcript."""
-    base = os.path.basename(file_path)
-    return (file_path in ENV_SHAPE_EXEMPT_PATHS
-            or base == ".env.example"
-            or file_path.endswith(".sh")
-            or file_path.endswith(".md")
-            or file_path.startswith("scripts/")
-            or "/scripts/" in file_path
-            or file_path.startswith(".githooks/")
-            or "/.githooks/" in file_path
-            or file_path.startswith("githooks/"))
 
 
 _HUNK_RE = re.compile(r"^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@")
@@ -125,30 +95,18 @@ def tracked_file_lines(repo_root):
     return results
 
 
-def format_findings_by_file(added_lines, census, prefixes, is_public):
-    lines = []
-    count = 0
+def format_findings_by_file(added_lines, census):
+    by_path = {}
     for file_path, line_no, text in added_lines:
-        if fully_exempt(file_path):
-            continue
-        # A file under a census-declared public subtree gets the full public rules even when
-        # the repository's own origin is private.
-        file_is_public = is_public or leak_census.is_public_subtree(file_path, census)
-        allow_env_shape = env_shape_exempt(file_path)
-        hits = []
-        for form, hint in leak_census.scan_line_irreversible(text):
-            if form == ".env file content" and allow_env_shape:
-                continue
-            hits.append(("irreversible", form, hint))
-        if file_is_public:
-            for form, hint in leak_census.scan_line_untidy(text, prefixes, census):
-                hits.append(("untidy", form, hint))
-        for cls, form, hint in hits:
-            count += 1
-            lines.append(f"{file_path}:{line_no}: [{cls}] {form}")
-            lines.append(f"    {text.strip()}")
-            lines.append(f"    replace with: {hint}")
-    return count, "\n".join(lines)
+        apply_formatting = (leak_census.is_formatting_required(file_path, census)
+                            and not leak_census.formatting_exempt(file_path))
+        for finding in leak_census.scan_text(
+                text, census, apply_formatting=apply_formatting):
+            by_path.setdefault(file_path, []).append(
+                finding._replace(line_no=line_no))
+    blocks = [leak_census.format_findings(findings, path)
+              for path, findings in by_path.items()]
+    return sum(len(findings) for findings in by_path.values()), "\n".join(blocks)
 
 
 def main():
@@ -172,9 +130,6 @@ def main():
         repo_root = result.stdout.strip()
 
     census = leak_census.parse_census()
-    prefixes = leak_census.discover_card_prefixes(repo_root)
-    origin = repo_origin_url(repo_root)
-    is_public = leak_census.is_public_repo(origin, census)
 
     if args.tree:
         lines = tracked_file_lines(repo_root)
@@ -184,7 +139,7 @@ def main():
         lines = parse_added_lines(diff_text)
         source = args.commit or "the staged changes"
 
-    count, body = format_findings_by_file(lines, census, prefixes, is_public)
+    count, body = format_findings_by_file(lines, census)
     if count:
         forms = "1 form" if count == 1 else f"{count} forms"
         print(f"commit-diff-check: refused — {source} in {repo_root} carries {forms} "

@@ -1,10 +1,12 @@
 # Forms a commit to this public repository may never carry
 
-This is the census the leak-check scripts read: `commit-msg-check`, `commit-diff-check`, `range-check` and `tree-check` all parse the three fenced lists below. Adding one line to the public-repository list, the literal-string list or the watched-name list changes what every one of those checks rejects without a line of their own code changing. The pattern-shaped forms (cloud keys, personal access tokens, API keys, JSON Web Tokens, absolute paths, and so on) are matched by regular expressions inside `leak_census.py`, because a regular expression is not a list a census entry can grow.
+This is the census the leak-check scripts read: `commit-msg-check`, `commit-diff-check`, `range-check` and `tree-check` all parse the fenced lists below. Adding one line to the public-repository list, the literal-string list or the watched-name list changes what every one of those checks rejects without a line of their own code changing. The pattern-shaped forms (cloud keys, personal access tokens, API keys, JSON Web Tokens, absolute paths, and so on) are matched by regular expressions inside `leak_census.py`, because a regular expression is not a list a census entry can grow.
 
-Every check draws the same line. An **irreversible** form is rejected in any repository, public or private, because once it reaches a server it cannot be recalled: a private key, a cloud or provider credential, a JSON Web Token, the literal contents of a `.env` file, the address of a non-public server. An **untidy** form is rejected only in a repository the public-repository list below names: an internal reference, a private-repository address, a tool-authorship trailer, an absolute local path, Russian-language prose. The same untidy content sitting in the private repository is where it belongs and passes there.
+The rules are split into two groups. A **credential/security** form is irreversible and is refused in every repository and every tracked text area, public or private: application source, tests, scanner sources, commit messages and historical commits. A **formatting** form is publication style and is checked only under a formatting-required subtree below. Work records, management notes and tooling may keep the owner's Russian wording; current application source and public technical documentation are held to English.
 
-The scanner's own directory, `scripts/leakcheck/`, is exempt from the untidy forms, because the census and the engine legitimately spell out the very forms they exist to catch. Irreversible forms are still refused there, so a real secret pasted into the scanner is caught like anywhere else.
+Task identifiers (`OPS-4`, `GO-11`) and `bin/work-*` command names are ordinary project content. They are not secrets, private-harness references or formatting findings, including in commit scopes and messages that mention a step.
+
+The scanner's own directory, `scripts/leakcheck/`, is exempt from formatting forms only, because the census and the engine legitimately spell out the very forms they exist to catch. Credential forms are still refused there, so a real secret pasted into the scanner is caught like anywhere else. Core pattern definitions in the scanner are written so they do not match their own source; that is a narrow construction rule, not a security exemption for the directory.
 
 ## Why three hooks and a manual sweep
 
@@ -21,9 +23,9 @@ https://github.com/w3con/sifty.git
 https://github.com/w3con/sifty
 ```
 
-## Public subtrees
+## Formatting-required subtrees
 
-A subtree declared here is treated as public in every repository, regardless of that repository's own origin remote. Added lines under a public subtree, and the message of any commit that touches a public subtree, are held to the full public rules; a commit that touches only private paths is checked for irreversible forms only. This lets the private repository enforce the public rules on code destined for the public one before it is ever pushed there.
+A subtree declared here is held to English publication formatting in every repository, regardless of that repository's own origin remote. Current application source and public technical documentation live here. The same files are checked for credential forms wherever they live. Work records under `ai/` and future `work/`, management files and tooling are deliberately outside this list, so the owner's Russian wording is allowed there. The scanner's own sources are exempt from formatting forms as described above.
 
 ```
 sifty/
@@ -59,4 +61,6 @@ Alex Tikonoff
 
 ## Irreversible forms, by shape
 
-A private key in a PEM block; a cloud access key (`AKIA`/`ASIA` prefix); a personal access token (`ghp_`, `github_pat_` and the other GitHub prefixes); a cloud API key (Google `AIza` prefix); a Slack token; a payment-provider secret key (`sk_live_`/`sk_test_`); a model-provider API key (`sk-`, `sk-ant-`); a JSON Web Token (three base64url segments beginning `eyJ`); any line that assigns a real value to a variable named for a secret; the literal contents of a `.env` file; the address of a non-public server. A placeholder value (`API_KEY=your-key-here`, `<token>`, `${VAR}`, `changeme`) is not a secret and passes.
+A private key in a PEM block; a cloud access key (`AKIA`/`ASIA` prefix); a personal access token (`ghp_`, `github_pat_` and the other GitHub prefixes); a cloud API key (Google `AIza` prefix); a Slack token; a payment-provider secret key (`sk_live_`/`sk_test_`); a model-provider API key (`sk-`, `sk-ant-`); a JSON Web Token (three base64url segments beginning `eyJ`); a real value assigned to a variable named for a secret; credentials embedded in a URL (a scheme followed by a user, a secret and a host); the address of a non-public server.
+
+An environment assignment is not automatically a secret. Benign settings such as `WORK_SESSION=1`, `SIFTY_PROD_PORT=8080` and `WORK_PUSH=0` pass, and so do placeholders (`API_KEY=your-key-here`, `<token>`, `${VAR}`, `changeme`). A secret-named variable assigned a real value fails in every path, as does a URL that carries a real user:password pair.

@@ -60,7 +60,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 *Gate: every existing task is accounted for; recording a new report never starts an executor or changes staging.*
 
 - [x] 4.1 — Implement four task states, blocker reasons and cancellation outcomes; preserve old identifiers and closed-task evidence.
-- [ ] 4.2 — Add lightweight bug/idea capture and backlog/bug views derived from canonical cards; preserve owner wording and duplicates.
+- [x] 4.2 — Add lightweight bug/idea capture and backlog/bug views derived from canonical cards; preserve owner wording and duplicates.
 - [ ] 4.3 — Add task status/resume navigation; keep roadmap sequencing and epic outcomes explicit without duplicating task descriptions.
 
 ### Phase 5 — Connect requirements, code and planned changes

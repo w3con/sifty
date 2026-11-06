@@ -1941,3 +1941,16 @@ Ran 15 tests in 3.756s
 
 OK
 ```
+
+## 2026-11-06 — 4.2 — lightweight bug and idea capture
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_capture.py'`
+Exit: 0
+
+```
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 1.427s
+
+OK
+```

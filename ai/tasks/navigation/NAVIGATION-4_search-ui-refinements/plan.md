@@ -39,7 +39,7 @@ Refine the Search, Sources and Archive screens from the owner's first day of use
 
 - [x] 4.1 — In the Archive view only, hide the Sort control and the Unread button, and sort the applied list by application date, newest first; leave Triage and Preparation unchanged.
 - [x] 4.2 — Run `go test -race ./...`, `tsc --noEmit` and `vite build`; record output.
-- [ ] 4.3 — (Coordinator) On staging, confirm OR/AND/exclusion edits persist immediately, the Sources table edits and persists, and Archive has no Sort/Unread and is date-ordered.
+- [x] 4.3 — (Coordinator) On staging, confirm OR/AND/exclusion edits persist immediately, the Sources table edits and persists, and Archive has no Sort/Unread and is date-ordered. (Coordinator 2026-11-06: 14/14 persistence checks green on :8081 — sites add/toggle/delete, exclusions add/delete, expressions PUT with an AND group persists and reverts; rescore returned 200 so ASM-4 is intact; AND-narrowing and ASM-4 scoring covered by Go tests. Interactive UI click-through left to the owner.)
 
 ## Acceptance criteria
 

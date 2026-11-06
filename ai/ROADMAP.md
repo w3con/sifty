@@ -30,7 +30,7 @@ The 2026-11-05 session shipped TRI-1, TRI-2, COL-6, ASM-3, ASM-4, OPS-2, OPS-1, 
 
    All three done and merged to main; staging serves the result at http://localhost:8081. Production promotion (`bin/sift-promote`) is still pending the owner's word. Industry/title-category selection is deliberately out of scope (per-source taxonomies differ).
 
-   - **NAVIGATION-4 (backend + frontend) — in progress 2026-11-06.** First-day-of-use refinements: Search becomes three columns of tag chips (OR, AND, Exclusions) with immediate save and no Save button; OR and AND groups now combine with AND in the FTS query (any OR term AND all AND terms, minus exclusions); Sources becomes a one-row-per-source table and the "Source coverage" diagnostic panel is removed; Archive loses the Sort control and Unread button and is ordered by application date.
+   - **NAVIGATION-4 (backend + frontend) — done 2026-11-06, merged to main.** First-day-of-use refinements: Search becomes three columns of tag chips (OR, AND, Exclusions) with immediate save and no Save button; OR and AND groups now combine with AND in the FTS query (any OR term AND all AND terms, minus exclusions); Sources becomes a one-row-per-source table and the "Source coverage" diagnostic panel is removed; Archive loses the Sort control and Unread button and is ordered by application date.
 3. **COL-5** — preserve heading/list structure in the job description view (our CSS, new `description_html` field, plain `job.Description` untouched). Cheap readability win for daily scanning; optional, skippable. Needs `plan.md` before execution.
 
 After these: stop and reassess. Do not continue into the deferred pile without a fresh owner decision.

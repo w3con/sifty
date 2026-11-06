@@ -21,6 +21,7 @@ TEMPLATES = os.path.join(BIN, "templates")
 COMMANDS = ["work-new", "work-plan", "work-handover", "work-note",
             "work-commit", "work-resume", "work-accept", "work-finish",
             "work-status", "work-list", "work-capture", "work-cancel"]
+TOOLS = ["sift-preview"]
 MAP_TOOL = "map-check"
 TEMPLATE_FILES = ["convention.md", "description.md", "short-description.md",
                   "plan.md", "log.md", "comments.md", "attention.md",
@@ -38,7 +39,7 @@ def check(name, ok, detail=""):
 
 
 # 1. compile
-for f in ["_work_lib.py", "_map_lib.py"] + COMMANDS + [MAP_TOOL]:
+for f in ["_work_lib.py", "_map_lib.py", "_deploy_lib.py", "_preview_lib.py"] + COMMANDS + TOOLS + [MAP_TOOL]:
     path = os.path.join(BIN, f)
     if not os.path.exists(path):
         check("compile %s" % f, False, "missing")
@@ -69,7 +70,7 @@ else:
     check("AGENTS.md has no @-import of the mechanism", not has_import)
 
 # 4. each work command and the map checker parse --help
-for c in COMMANDS + [MAP_TOOL]:
+for c in COMMANDS + TOOLS + [MAP_TOOL]:
     path = os.path.join(BIN, c)
     if not os.path.exists(path):
         continue
@@ -150,6 +151,9 @@ root_workflow = os.path.join(ROOT, ".github", "workflows", "ci.yml")
 nested_workflow = os.path.join(ROOT, "backend", ".github", "workflows", "ci.yml")
 check("root CI workflow present", os.path.isfile(root_workflow),
       "missing .github/workflows/ci.yml")
+check("preview banner asset present",
+      os.path.isfile(os.path.join(BIN, "preview-client.js")),
+      "missing bin/preview-client.js")
 check("no nested CI workflow", not os.path.exists(nested_workflow),
       "backend/.github/workflows/ci.yml should not exist")
 

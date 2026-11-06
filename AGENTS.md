@@ -86,11 +86,13 @@ This repository runs a two-environment deploy loop for the sifty application. Ea
 
 **Preview workflow:**
 1. Create a worktree for the in-progress branch: `git worktree add .worktrees/<id> work/<id>`.
-2. From that worktree, run `bin/sift-deploy --env staging`. This builds the branch's binary and bundle into the main repo's staging paths and restarts 8081.
+2. Start continuous preview: `bin/sift-preview start --worktree .worktrees/<id> --label <id>`. It follows the worktree's frontend, backend and worker sources, including uncommitted and untracked changes, and serves `http://localhost:8081` with a status banner. `bin/sift-preview status` reports the requested worktree/fingerprint, the generation actually served, health and build errors; `bin/sift-preview stop` stops only the recorded owner. A failed build keeps the previous healthy generation and server running. Stop an older manually deployed 8081 server first so the preview owns its port. Alternatively, `bin/sift-deploy --env staging` remains the manual one-shot deploy.
 3. The owner reviews the change at `http://localhost:8081`. Production on 8080 is unaffected.
 4. `bin/work-accept <id>` runs `bin/sift-accept` in a throwaway scratch copy after the acceptance preconditions pass. It always runs the harness self-test and, for app/build-touching cards, the application suite.
 5. `bin/work-finish <id>` fast-forward-merges the tested work revision into main and removes the worktree and branch without force. No deploy is run; staging and production are both untouched by finishing.
 6. When satisfied with staging, the owner runs `bin/sift-promote` to advance production.
+
+No `work-*` command starts a preview automatically, and capturing a bug or idea never starts one. Phase 6.3 will connect an approved handover to `sift-preview start --worktree <path> --label <id>` through a configurable adapter (`WORK_PREVIEW_CMD`); the generic lifecycle commands do not embed sifty policy.
 
 **Rollback:** `bin/sift-deploy` keeps the previous binary as `<binary>.prev` and a timestamped `store.sqlite.backup.<timestamp>` in the data dir. On any build, start, or smoke failure it restores both and restarts the old server.
 

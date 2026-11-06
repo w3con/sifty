@@ -75,7 +75,7 @@ After full-plan approval, assign only a bounded, independently checkable stage t
 
 *Gate: uncommitted development changes appear on 8081; 8080 changes only after owner acceptance of that task.*
 
-- [ ] 6.1 — Watch the active task's sources: refresh frontend and rebuild/restart backend/workers automatically with visible failure status.
+- [x] 6.1 — Watch the active task's sources: refresh frontend and rebuild/restart backend/workers automatically with visible failure status.
 - [ ] 6.2 — Isolate production binary, bundle, workers and data; refresh staging data explicitly rather than on every code update.
 - [ ] 6.3 — Wire approved completion to checked merge and production deployment; retain recovery state until deployment succeeds.
 

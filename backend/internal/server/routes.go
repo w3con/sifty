@@ -20,6 +20,7 @@ import (
 	"github.com/w3con/sifty/internal/model"
 	"github.com/w3con/sifty/internal/records"
 	"github.com/w3con/sifty/internal/store"
+	"github.com/w3con/sifty/internal/version"
 )
 
 // Deps holds the dependencies shared across all route handlers.
@@ -69,6 +70,14 @@ func RegisterRoutes(mux Router, d *Deps) {
 	// ------------------------------------------------------------------
 	// Phase 4.1 — Roles
 	// ------------------------------------------------------------------
+
+	// Build identity. Deploy and preview use this to verify that the process
+	// answering on a port is the generation they just built, rather than a
+	// stale process or a different environment.
+	mux.HandleFunc("GET /api/version", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		writeJSON(w, http.StatusOK, map[string]string{"version": version.Version})
+		return nil
+	}))
 
 	mux.HandleFunc("GET /api/jobs", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
 		status := r.URL.Query().Get("status")

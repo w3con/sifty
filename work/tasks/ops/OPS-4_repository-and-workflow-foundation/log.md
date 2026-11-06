@@ -2323,3 +2323,18 @@ ok   no nested CI workflow
 
 PASS: all harness checks
 ```
+
+## 2026-11-06 — 6.1 — continuous preview of one active worktree with visible failure and one owner
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_preview.py' && (cd backend && go test ./internal/server && go build ./...) && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+....
+----------------------------------------------------------------------
+Ran 4 tests in 58.970s
+
+OK
+ok  	github.com/w3con/sifty/internal/server	(cached)
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```

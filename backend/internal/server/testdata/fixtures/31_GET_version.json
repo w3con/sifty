@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/version — build identity used by deploy/preview smoke checks",
+  "method": "GET",
+  "path": "/api/version",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["version"],
+  "source": "synthetic"
+}

@@ -28,7 +28,16 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	dataDir := fs.String("data-dir", "", "local data directory (overrides $SIFTY_DATA_DIR)")
 	distDir := fs.String("dist", "", "path to the built React frontend dist/ directory")
 	workersDir := fs.String("workers-dir", "workers", "path to the workers/ directory (default: workers/ in the current directory)")
+	// Preview and the deploy loop bind the process to an internal loopback port
+	// while browsers use a stable public port (or the reverse). Both default to
+	// the configured runtime port, so normal `sifty serve` behaviour is unchanged.
+	bindPort := fs.Int("port", 0, "HTTP port override (0 = runtime.yaml port)")
+	publicPort := fs.Int("public-port", 0, "port browsers use for Host/Origin checks (0 = bind port)")
 	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if *bindPort < 0 || *bindPort > 65535 || *publicPort < 0 || *publicPort > 65535 {
+		fmt.Fprintln(stderr, "sifty serve: ports must be between 1 and 65535")
 		return 2
 	}
 
@@ -49,6 +58,22 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	cfgHolder := config.NewHolder(rawCfg)
 
+	// Resolve the listener and the port browsers use. A preview proxy forwards
+	// browser traffic from the public port to an internal bind port; the security
+	// middleware checks Host/Origin against the public port in that case.
+	listenPort := rawCfg.Runtime.Port
+	if *bindPort > 0 {
+		listenPort = *bindPort
+	}
+	if listenPort < 1 || listenPort > 65535 {
+		fmt.Fprintf(stderr, "sifty serve: invalid listen port %d\n", listenPort)
+		return 1
+	}
+	servePort := listenPort
+	if *publicPort > 0 {
+		servePort = *publicPort
+	}
+
 	s, err := store.Open(d.Store())
 	if err != nil {
 		fmt.Fprintf(stderr, "sifty serve: open store: %v\n", err)
@@ -63,7 +88,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 			Force:  force,
 		})
 	}
-	mux := server.New(rawCfg.Runtime.Port, func(m *http.ServeMux) {
+	mux := server.New(servePort, func(m *http.ServeMux) {
 		server.RegisterRoutes(m, deps)
 	})
 
@@ -80,7 +105,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	mux.Handle("/", staticH)
 
-	handler := server.Handler(rawCfg.Runtime.Port, mux)
+	handler := server.Handler(servePort, mux)
 
 	// Build the Playwright inspect function. The worker runs as a Node subprocess.
 	// resolvedWorkersDir is the workers/ directory; the playwright script is one level below it.
@@ -104,7 +129,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		sched.Stop()
 	}()
 
-	addr := fmt.Sprintf("127.0.0.1:%d", rawCfg.Runtime.Port)
+	addr := fmt.Sprintf("127.0.0.1:%d", listenPort)
 	ln, err := net.Listen("tcp", addr)
 	if err != nil {
 		fmt.Fprintf(stderr, "sifty serve: listen %s: %v\n", addr, err)
@@ -112,7 +137,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 
 	srv := &http.Server{Handler: handler}
-	fmt.Fprintf(stdout, "Catalogue: http://127.0.0.1:%d\n", rawCfg.Runtime.Port)
+	fmt.Fprintf(stdout, "Catalogue: http://127.0.0.1:%d\n", servePort)
 	log.SetOutput(stderr)
 
 	// Shutdown on SIGINT or SIGTERM.

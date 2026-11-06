@@ -152,11 +152,11 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **User outcome.** Work is checked in an isolated worktree, previewed on staging, and reaches production only on the owner's explicit word.
 
-**Current implementation.** [sift-deploy](../bin/sift-deploy) builds and deploys staging or production with per-environment binary, bundle, data and rollback; [sift-promote](../bin/sift-promote) is the only production command; [sift-accept](../bin/sift-accept) runs acceptance checks; [work-finish](../bin/work-finish) merges without deploying. The current loop is documented in [AGENTS.md](../AGENTS.md).
+**Current implementation.** [sift-preview](../bin/sift-preview) continuously follows one active card worktree (including uncommitted and untracked sources) on the staging port, keeps the last healthy generation on build failure, exposes requested/served revision status and a browser banner, and enforces one owner per main repository. [sift-deploy](../bin/sift-deploy) builds and deploys staging or production with per-environment binary, bundle, data and rollback; [sift-promote](../bin/sift-promote) is the only production command; [sift-accept](../bin/sift-accept) runs acceptance checks; [work-finish](../bin/work-finish) merges without deploying. The commands and boundaries are described in [the preview and environment runtime](architecture/preview-and-environments.md) and [AGENTS.md](../AGENTS.md).
 
-**Known limitation.** Continuous staging preview, source watching and the owner-approved release automation remain `OPS-4` phase 6. Staging still requires an explicit `bin/sift-deploy --env staging`; workers are shared.
+**Known limitation.** Isolated production/staging worker trees, candidate-only builds, explicit staging data refresh and the owner-approved release automation remain `OPS-4` phase 6.2–6.3. The current deploy command and `make run-staging` still await that isolation; no `work-*` command starts a preview automatically.
 
-**Checks.** [deploy/accept lifecycle tests](../bin/tests/test_lifecycle.py), [accept tests](../bin/tests/test_sift_accept.py), [CI](../.github/workflows/ci.yml).
+**Checks.** [preview tests](../bin/tests/test_preview.py), [deploy/accept lifecycle tests](../bin/tests/test_lifecycle.py), [accept tests](../bin/tests/test_sift_accept.py), [CI](../.github/workflows/ci.yml).
 
 **Tasks.** `OPS-1` and `OPS-3` are done; `OPS-4` phases 6–7 are open. `OPS-5` (staging idle CPU) and `OPS-6` (Git history review) are separate backlog items.
 

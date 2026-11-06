@@ -105,6 +105,23 @@ func seedJob(t *testing.T, s *store.Store) int64 {
 	return id
 }
 
+// --- Deployment identity ---
+
+func TestVersionEndpoint(t *testing.T) {
+	h, _ := newRouteHandler(t)
+	resp := apiDo(t, h, "GET", "/api/version", "")
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/version: got %d, want 200", resp.StatusCode)
+	}
+	var body map[string]string
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body["version"] == "" {
+		t.Fatal("GET /api/version: empty version")
+	}
+}
+
 // --- Phase 4.1 ---
 
 func TestListJobs(t *testing.T) {

@@ -179,6 +179,22 @@ class StateTransitionTest(CardRepoTest):
                                   "-r", "HEAD"),
                          "work/tasks/test/TEST-1_demo/description.md")
 
+    def test_handover_marks_worktree_in_progress_without_touching_base(self):
+        self.make_card(status="backlog")
+        self.commit_all()
+        result = self.work("work-handover", "TEST-1",
+                           env={"WORK_SESSION": "1"})
+        self.assertEqual(result.returncode, 97, result.stdout)
+        self.assertIn("State: in progress", result.stdout)
+        worktree_card = (self.root / ".worktrees" / "TEST-1" / "work" /
+                         "tasks" / "test" / "TEST-1_demo" / "description.md")
+        self.assertIn("**Status:** in progress",
+                      worktree_card.read_text(encoding="utf-8"))
+        base_card = (self.root / "work" / "tasks" / "test" /
+                     "TEST-1_demo" / "description.md")
+        self.assertIn("**Status:** backlog",
+                      base_card.read_text(encoding="utf-8"))
+
     def test_cancel_writes_archived_outcome_and_preserves_work(self):
         self.make_card(status="backlog")
         self.commit_all()

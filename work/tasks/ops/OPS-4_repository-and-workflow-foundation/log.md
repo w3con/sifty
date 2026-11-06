@@ -2012,3 +2012,16 @@ ok   no nested CI workflow
 
 PASS: all harness checks
 ```
+
+## 2026-11-06 — 4.1 correction — handover marks the worktree card in progress
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+................
+----------------------------------------------------------------------
+Ran 16 tests in 4.256s
+
+OK
+```

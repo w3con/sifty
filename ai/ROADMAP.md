@@ -21,6 +21,10 @@ Updated: 2026-11-06.
 
 ## Card sequence (recommended order)
 
+### Incoming bug reports (not scheduled)
+
+- [High staging server CPU while idle](tasks/ops/OPS-5_staging-idle-cpu/description.md): owner reports approximately 45% CPU with no user activity; Activity Monitor identifies `sifty-staging`, not a browser renderer. Cause unverified; captured without starting investigation or interrupting the foundation task.
+
 **Goal (owner, 2026-11-04): the owner needs to be finding work, not spending another week-plus building this app.** The sequence is cut to the minimum that makes the tool usable for the owner's own daily search. The core loop already works today — collection flows (COL-1/COL-3), assessment runs, descriptions are readable, the owner decides and applies on the listing site by hand. Productization (retire the old TypeScript backend, packaging, MCP, CLI parity) and the large, currently-broken application-preparation build are deferred until the owner asks, or until shipping the app to others becomes the goal.
 
 The 2026-11-05 session shipped TRI-1, TRI-2, COL-6, ASM-3, ASM-4, OPS-2, OPS-1, and OPS-3. The application runs on port 8080 against `./data`; staging is on port 8081 against `./data-staging`. To build: `make build`. To preview an in-progress branch on staging: create a worktree for it and run `bin/sift-deploy --env staging` from that worktree. To promote to production on the owner's word: `bin/sift-promote`. Finishing a card merges to main only; no staging deploy runs automatically. See `AGENTS.md` for the full two-environment deploy loop. After the deploy loop correction comes the navigation restructure.

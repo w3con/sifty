@@ -24,3 +24,15 @@ Exit: 0
 ok  	github.com/w3con/sifty/internal/store	(cached)
 ```
 
+
+## 2026-11-06 — 1.2
+
+Check: `cd sifty && go test -race ./internal/store/... ./internal/background/... ./internal/server/...`
+Exit: 0
+
+```
+ok  	github.com/w3con/sifty/internal/store	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+```
+

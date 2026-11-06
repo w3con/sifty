@@ -133,6 +133,14 @@ if os.path.isfile(tree_check):
     if not ok:
         print(r.stdout)
 
+# 7. GitHub discovers the root workflow and no stale nested copy shadows it.
+root_workflow = os.path.join(ROOT, ".github", "workflows", "ci.yml")
+nested_workflow = os.path.join(ROOT, "backend", ".github", "workflows", "ci.yml")
+check("root CI workflow present", os.path.isfile(root_workflow),
+      "missing .github/workflows/ci.yml")
+check("no nested CI workflow", not os.path.exists(nested_workflow),
+      "backend/.github/workflows/ci.yml should not exist")
+
 print()
 if failures:
     print("FAILED: %d check(s)" % len(failures))

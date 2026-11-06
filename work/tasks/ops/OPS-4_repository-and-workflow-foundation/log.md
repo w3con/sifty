@@ -1652,3 +1652,183 @@ incident_worktree = ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213
 ## 2026-11-06 — note
 
 Correction to §9 preservation instructions: the earlier `ef6f…` bundle digest was a path-inclusive digest over the sorted `shasum -a 256` lines of the source tree rooted at `sifty/dist-staging/`. It matches main and the worktree only because both were scanned with the same relative prefix; it cannot match a retained copy rooted elsewhere. The inventory now specifies a path-independent algorithm: sort files by relative path, hash each file's bytes with SHA-256, feed `<hash>  <relative-path>\n` lines to SHA-256. All three locations (main source, worktree source, temporary destination copy) produce `20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064`. The old log output is left unchanged; this note and the corrected inventory supersede its use for destination verification. No main writes, backups, or file changes were made.
+
+## 2026-11-06 — 3.4 root workflow and covered suites
+
+Check: `bash /tmp/ops4_34_check.sh`
+Exit: 0
+
+```
+== static workflow check ==
+workflow_jobs: backend,frontend,harness,leak-scan,workers
+static_workflow_check: OK
+== leak scanner self-test ==
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  allow documented compatibility literal only at its named path
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+== whole-tree leak sweep ==
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+== harness suite ==
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+== backend vet/build/race ==
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	2.360s
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+== frontend npm ci ==
+
+added 28 packages in 745ms
+== frontend build ==
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 430ms
+== worker npm ci ==
+
+added 2 packages in 174ms
+== worker browser ==
+== worker tests ==
+
+> test
+> node --test automation.test.mjs
+
+TAP version 13
+# Subtest: 1.1 realistic fingerprint: UA and navigator.webdriver
+ok 1 - 1.1 realistic fingerprint: UA and navigator.webdriver
+  ---
+  duration_ms: 165.284666
+  type: 'test'
+  ...
+# Subtest: 1.2 host pacing: sequential navigations are spaced by the configured interval
+ok 2 - 1.2 host pacing: sequential navigations are spaced by the configured interval
+  ---
+  duration_ms: 306.303333
+  type: 'test'
+  ...
+# Subtest: 1.3 concurrency: at most the configured number of navigations run at once
+ok 3 - 1.3 concurrency: at most the configured number of navigations run at once
+  ---
+  duration_ms: 312.6665
+  type: 'test'
+  ...
+# Subtest: 2.1 block detection: 429 response ends in backed-off state with no retry
+ok 4 - 2.1 block detection: 429 response ends in backed-off state with no retry
+  ---
+  duration_ms: 146.72475
+  type: 'test'
+  ...
+# Subtest: 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+ok 5 - 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+  ---
+  duration_ms: 383.139791
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1503.153167
+OPS4_34_CHECK_OK
+```

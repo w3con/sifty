@@ -113,19 +113,21 @@ def main():
     else:
         print("ok  diagnostics redact the matched value")
 
-    for name in sorted(os.listdir(SCRIPT_DIR)):
-        path = os.path.join(SCRIPT_DIR, name)
-        if not os.path.isfile(path):
-            continue
-        try:
-            with open(path, encoding="utf-8") as fh:
-                text = fh.read()
-        except (OSError, UnicodeDecodeError):
-            continue
-        findings = [f for f in leak_census.scan_text(text, CENSUS)
-                    if f.cls == "irreversible"]
-        if findings:
-            failures.append(f"scanner source {name} carries a credential form")
+    for root, dirs, files in os.walk(SCRIPT_DIR):
+        dirs[:] = [name for name in dirs if name != "__pycache__"]
+        for name in sorted(files):
+            path = os.path.join(root, name)
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    text = fh.read()
+            except (OSError, UnicodeDecodeError):
+                continue
+            findings = [f for f in leak_census.scan_text(text, CENSUS)
+                        if f.cls == "irreversible"]
+            if findings:
+                failures.append(
+                    "scanner source %s carries a credential form"
+                    % os.path.relpath(path, SCRIPT_DIR))
     if not any("scanner source" in item for item in failures):
         print("ok  scanner own sources carry no credential form")
 

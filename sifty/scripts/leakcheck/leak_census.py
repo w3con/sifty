@@ -149,11 +149,20 @@ _CREDENTIAL_URL_RE = re.compile(
 # A non-public server named by an SSH connection string.
 _SSH_IP_RE = re.compile(r"\b[a-z][a-z0-9_-]{1,31}@\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b")
 _SSH_ALIAS_RE = re.compile(
-    r"(?<![/\w.-])[a-z][a-z0-9_-]{1,31}@(?!v\d)[a-z][a-z0-9-]{1,31}(?![A-Za-z0-9_.-])")
+    r"(?<![/\w.-])[a-z][a-z0-9_-]{1,31}@(?!v\d)[a-z][a-z0-9-]{1,31}(?![A-Za-z0-9_.\\-])")
 
 
 def _looks_like_placeholder(value):
     return bool(_PLACEHOLDER_RE.search(value))
+
+
+def _looks_like_code_expression(line, match):
+    """Reject a match that is a function call or a dotted property access, not a value.
+    This keeps source such as `password: decodeURIComponent(proxy.password)` from reading as an
+    assigned credential while a real literal value is still refused."""
+    if line[match.end("val"):match.end("val") + 1] == "(":
+        return True
+    return not match.group("q") and "." in match.group("val")
 
 
 def scan_line_irreversible(line):
@@ -176,7 +185,8 @@ def scan_line_irreversible(line):
                           "store the credential outside the repository and read it from the "
                           "environment or a local file the .gitignore excludes"))
     m = _SECRET_ASSIGN_RE.search(line)
-    if m and not _looks_like_placeholder(m.group("val")):
+    if (m and not _looks_like_placeholder(m.group("val"))
+            and not _looks_like_code_expression(line, m)):
         hits.append(("secret assigned a real value",
                       "name the variable without its value; read the real one from the "
                       "environment or a local file the .gitignore excludes"))

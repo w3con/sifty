@@ -697,3 +697,41 @@ Ran 10 tests in 0.002s
 
 OK
 ```
+
+## 2026-11-06 — 2.2 scanner reads real blobs everywhere and redacts findings
+
+Check: `python3 sifty/scripts/leakcheck/leakcheck-selftest && python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+................................
+----------------------------------------------------------------------
+Ran 32 tests in 3.607s
+
+OK
+```

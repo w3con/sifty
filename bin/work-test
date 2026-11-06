@@ -92,6 +92,47 @@ else:
     if not ok:
         print(r.stdout)
 
+# 6. leak scanner: policy self-test, isolated Git checks and its own source cleanliness
+scanner_dir = os.path.join(ROOT, "sifty", "scripts", "leakcheck")
+selftest = os.path.join(scanner_dir, "leakcheck-selftest")
+scanner_tests = os.path.join(scanner_dir, "tests")
+tree_check = os.path.join(scanner_dir, "tree-check")
+if not os.path.isfile(selftest):
+    check("leak scanner present", False, "missing " + selftest)
+else:
+    r = subprocess.run([sys.executable, selftest], cwd=ROOT, text=True,
+                       stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    ok = r.returncode == 0
+    check("leak scanner self-test", ok,
+          "" if ok else (r.stdout or "").strip()[-2000:])
+    if not ok:
+        print(r.stdout)
+
+if not os.path.isdir(scanner_tests):
+    check("leak scanner tests (sifty/scripts/leakcheck/tests)", False,
+          "missing tests directory")
+else:
+    r = subprocess.run(
+        [sys.executable, "-m", "unittest", "discover",
+         "-s", scanner_tests, "-p", "test_*.py"],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT)
+    ok = r.returncode == 0
+    check("leak scanner tests (sifty/scripts/leakcheck/tests)", ok,
+          "" if ok else (r.stdout or "").strip()[-2000:])
+    if not ok:
+        print(r.stdout)
+
+if os.path.isfile(tree_check):
+    r = subprocess.run(
+        [sys.executable, tree_check, ROOT, "--subtree", "sifty/scripts/leakcheck/"],
+        cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    ok = r.returncode == 0
+    check("leak scanner own sources clean", ok,
+          "" if ok else (r.stdout or "").strip()[-2000:])
+    if not ok:
+        print(r.stdout)
+
 print()
 if failures:
     print("FAILED: %d check(s)" % len(failures))

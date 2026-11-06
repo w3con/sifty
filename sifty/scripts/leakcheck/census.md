@@ -6,7 +6,9 @@ The rules are split into two groups. A **credential/security** form is irreversi
 
 Task identifiers (`OPS-4`, `GO-11`) and `bin/work-*` command names are ordinary project content. They are not secrets, private-harness references or formatting findings, including in commit scopes and messages that mention a step.
 
-The scanner's own directory, `scripts/leakcheck/`, is exempt from formatting forms only, because the census and the engine legitimately spell out the very forms they exist to catch. Credential forms are still refused there, so a real secret pasted into the scanner is caught like anywhere else. Core pattern definitions in the scanner are written so they do not match their own source; that is a narrow construction rule, not a security exemption for the directory.
+The scanner's own directory, `scripts/leakcheck/`, is exempt from formatting forms only, because the census and the engine legitimately spell out the very forms they exist to catch. Credential forms are still refused there, so a real secret pasted into the scanner is caught like anywhere else. Core pattern definitions in the scanner are written so they do not match their own source; that is a narrow construction rule, not a security exemption for the directory. Tests are not exempt either: a synthetic credential in a test is assembled at runtime rather than written as a contiguous literal.
+
+Staged checks read the index blobs, historical checks read the named commit's blobs, and a renamed file is read as its new blob even when the diff adds no lines. Root commits and ranges are included. Diagnostics name the form, the safe path and the line number; they never print a matched value or a whole offending line.
 
 ## Why three hooks and a manual sweep
 
@@ -14,7 +16,7 @@ The scanner's own directory, `scripts/leakcheck/`, is exempt from formatting for
 
 ## Public repositories
 
-Checked against a repository's own `origin` remote, read from the repository being committed to, never assumed from where the check runs. A repository absent from this list is treated as private, so only irreversible forms are refused there.
+Checked against a repository's own `origin` remote, read from the repository being committed to, never assumed from where the check runs. The list decides whether a repository's commit messages must follow Conventional Commits. Formatting rules themselves are path-based through the subtrees below, so a public repository's work records may still carry Russian wording.
 
 ```
 git@github.com:w3con/sifty.git

@@ -217,3 +217,48 @@ historical log output is preserved unchanged; this note corrects its use.
    remove the old local copy after confirming it is the private upstream and is
    not needed. Do not leave an untracked `ai/shared` silently making the main
    checkout dirty.
+
+## 10. Step 3.5 cleanup audit (worktree, 2026-11-06)
+
+The audit ran only in `/Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4`. It
+checked tracked files, ignored/untracked contents and active references before
+removing anything.
+
+**Removed (after verification).** All three were untracked and contained no
+tracked files:
+
+- `ai/` — only the empty directory `ai/sifty`; zero files or links.
+- `backend/.github/` — the workflow had moved to the root; only empty
+  `workflows/` remained.
+- `sifty/` — only the ignored `sifty/dist-staging/` staging bundle. Its 20
+  files were copied to `.local/retained/sifty-dist-staging-20261106/`, the
+  destination was verified with the portable relative-name manifest
+  `20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064`
+  and `diff -qr`, and only then was the old root removed. No destination
+  existed, so nothing newer was overwritten.
+
+**Retained in the worktree.** These are deliberate local or historical
+material, not leftovers: `.local/` (including the retained bundle and test
+scratch), `work/incidents.md`, `bin/sifty`, `frontend/dist/`,
+`frontend/node_modules/`, `backend/workers/playwright/node_modules/`,
+`legacy/app/` and `legacy/app/node_modules/`, the uninitialized
+`tools/shared` submodule with the `tools/bin`, `tools/harness` and
+`tools/templates` symlinks, runtime data directories, and the unrelated
+`DESIGN-1` and `preview` worktrees. No ignored file was removed merely for
+being ignored and no force-clean ran.
+
+**Active reference repaired.** `frontend/Settings.tsx` pointed the browser-login
+help text at the removed `app/README.md`; it now names `legacy/app/README.md`.
+
+**Historical references retained.** The legacy transfer tooling/tests still
+describe the old `ai/shared` archive layout; the parser/architecture documents
+keep their dated paths with relocation notes; historical roadmap entries and
+`bin/_work_lib.py`'s legacy `ai/tasks/` ID fallback are unchanged. The
+`backend/.gitignore` defensive `/ai/` and `/app/` entries are scoped to
+`backend/` and were left alone.
+
+**Deferred main-checkout work.** The physical `main` checkout was not opened for
+writes and remains at `c0181a1`. Its tracked `ai/incidents.md`, initialized
+`ai/shared` submodule and `sifty/dist-staging` still exist there, so physical
+main relocation is **not** complete. The coordinator must perform the §9
+preservation copies before any merge that removes those paths.

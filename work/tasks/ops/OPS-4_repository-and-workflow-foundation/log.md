@@ -1832,3 +1832,93 @@ ok 5 - 2.2 cooldown: second inspect to blocked host is deferred; proceeds after 
 # duration_ms 1503.153167
 OPS4_34_CHECK_OK
 ```
+
+## 2026-11-06 — 3.5 obsolete-path cleanup and retention audit
+
+Check: `bash /tmp/ops4_35_verify.sh`
+Exit: 0
+
+```
+== obsolete roots and tracked paths ==
+absent: ai
+absent: app
+absent: sifty
+absent: backend/.github
+no_tracked_old_paths_or_deletions: OK
+== retained staging bundle ==
+retained_manifest: 20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+bundle_retained_local_and_ignored: OK
+== preserved local/runtime material ==
+preserved_paths: OK
+== live reference repair ==
+settings_reference_updated: OK
+== documentation and tree checks ==
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+== frontend build after Settings.tsx change ==
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BmioAjSk.js                                 288.62 kB │ gzip: 89.06 kB
+✓ built in 429ms
+OPS4_35_VERIFY_OK
+```

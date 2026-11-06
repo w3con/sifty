@@ -55,3 +55,17 @@ Exit: 0
 ✓ built in 403ms
 ```
 
+
+## 2026-11-06 — 3.1
+
+Check: `grep -n 'sifty/web\|sifty/dist' Makefile`
+Exit: 0
+
+```
+4:# Output: bin/sifty (binary) and sifty/dist/ (frontend bundle).
+8:	npm --prefix sifty/web run build
+15:		--dist ./sifty/dist \
+23:		--dist ./sifty/dist \
+33:	rm -rf sifty/dist
+```
+

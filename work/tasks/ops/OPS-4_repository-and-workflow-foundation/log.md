@@ -2203,3 +2203,36 @@ Ran 8 tests in 6.381s
 
 OK
 ```
+
+## 2026-11-06 — 5.1 — current product/architecture map
+
+Check: `python3 - <<'PY'
+import re, pathlib, sys
+root=pathlib.Path(".").resolve()
+docs=[root/"docs/MAP.md",root/"docs/README.md"]
+def anchors(p):
+    text=p.read_text(encoding="utf-8")
+    ids=set(re.findall(r"<a\s+(?:id|name)=\"([^\"]+)\"",text))
+    for h in re.findall(r"^#{1,6}\s+(.+?)\s*$",text,re.M):
+        s=h.lower(); s=re.sub(r"<[^>]+>","",s); s=re.sub(r"[^\w\s-]","",s); s=re.sub(r"\s+","-",s).strip("-")
+        ids.add(s)
+    return ids
+errors=[]
+for doc in docs:
+    text=doc.read_text(encoding="utf-8")
+    for target in re.findall(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)",text):
+        if re.match(r"^(?:https?|mailto):",target): continue
+        path,frag=(target.split("#",1)+[""])[:2]
+        t=doc if not path else (doc.parent/path)
+        t=t.resolve()
+        if not t.exists(): errors.append(f"{doc.relative_to(root)}: missing {target}")
+        elif frag and t.suffix==".md" and frag not in anchors(t): errors.append(f"{doc.relative_to(root)}: missing anchor {target}")
+if errors:
+    print("\n".join(errors)); sys.exit(1)
+print(f"OK: {len(docs)} navigation documents, all local links and fragments resolve")
+PY`
+Exit: 0
+
+```
+OK: 2 navigation documents, all local links and fragments resolve
+```

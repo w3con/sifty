@@ -42,3 +42,16 @@ sifty/web/tsconfig.json
 sifty/web/vite.config.ts
 ```
 
+
+## 2026-11-06 — 2.2
+
+Check: `npm --prefix sifty/web run build 2>&1 | tail -4`
+Exit: 0
+
+```
+../dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+../dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+../dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 403ms
+```
+

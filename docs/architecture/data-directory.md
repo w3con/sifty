@@ -53,7 +53,7 @@ The current store schema target is `user_version` 14 (`backend/internal/store/mi
 
 ## Observed local state (metadata only)
 
-At the time of this inspection the ignored production and staging data directories were present in the main checkout. Read-only path listing showed both contain `config/` with the five YAML files, root-level CV/profile PDFs, a `kb/` directory, empty `answers/`, `feedback/` and `evidence/` directories, `store.sqlite` with WAL sidecars, timestamped SQLite backups and server/deploy logs. Staging also carried `config-backups/` from UI saves. No file contents were read for this map.
+At the time of this inspection the ignored production and staging data directories were present in the main checkout. Read-only path listing showed both contain `config/` with the five YAML files, root-level CV/profile PDFs, empty `answers/`, `feedback/` and `evidence/` directories, `store.sqlite` with WAL sidecars, timestamped SQLite backups and server/deploy logs. The production directory also carried `kb/`; staging also carried `config-backups/` from UI saves. No file contents were read for this map.
 
 These names are evidence of the current deployment shape, not a committed schema. Treat the data directories as personal runtime state: ignored by Git, never copied into tracked files, and never inspected by content for documentation work.
 

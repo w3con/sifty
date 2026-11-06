@@ -15,6 +15,8 @@ Status vocabulary:
 - **planned** — a card exists; implementation has not started.
 - **archived** — cancelled or descoped, kept as evidence.
 
+**Jump to:** [code areas](#code-areas) · [requirements](#requirements) · [epics](#epics) · [canonical task index](#task-index) · [legacy cards](#legacy-cards) · [validation](#validation)
+
 <a id="code-areas"></a>
 ## Where the current implementation lives
 

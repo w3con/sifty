@@ -23,7 +23,7 @@ Move the React frontend from `app/web` to `sifty/web` with its own build, and re
 
 *Gate: `npm --prefix sifty/web ci && npm --prefix sifty/web run build` (`tsc --noEmit && vite build`) passes.*
 
-- [ ] 2.1 — Add `sifty/web/package.json` with only the frontend dependencies (react, react-dom, vite, typescript, the `@types/*`, `@fontsource/*`, `yaml`, `zod`) and a `build` script `tsc --noEmit && vite build`; add `sifty/web/vite.config.ts` and a `tsconfig.json` scoped to the frontend only.
+- [x] 2.1 — Add `sifty/web/package.json` with only the frontend dependencies (react, react-dom, vite, typescript, the `@types/*`, `@fontsource/*`, `yaml`, `zod`) and a `build` script `tsc --noEmit && vite build`; add `sifty/web/vite.config.ts` and a `tsconfig.json` scoped to the frontend only.
 - [ ] 2.2 — Build to a `sifty`-owned dist (prod default and a `BUILD_OUTDIR` staging path); run the build and record output.
 
 ### Phase 3 — Repoint build and deploy wiring

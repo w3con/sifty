@@ -30,3 +30,15 @@ sifty/web/model/types.ts:1:// Frontend-owned types extracted from app/src/applic
 exit: 0
 ```
 
+
+## 2026-11-06 — 2.1
+
+Check: `ls sifty/web/package.json sifty/web/vite.config.ts sifty/web/tsconfig.json`
+Exit: 0
+
+```
+sifty/web/package.json
+sifty/web/tsconfig.json
+sifty/web/vite.config.ts
+```
+

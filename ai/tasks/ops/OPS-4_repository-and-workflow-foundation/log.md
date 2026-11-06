@@ -466,3 +466,70 @@ Stage handback — steps 1.3–1.4 complete; stop before 2.1.
 - Failures and corrections: the first successful-finish test asserted an un-bolded `Tested revision:` string; corrected to the actual markdown. The first `sift-accept` fixtures wrote byte-identical content for build/config changes, so no commit was created; the fixtures now change the content. No product behavior failed.
 - Findings for coordinator review: tracked `sifty/dist-staging` and untracked `sifty/dist` remain (phase 3.3 ignore/untrack work); `sift-accept` runs the Go/frontend suites for `app/` changes but not the legacy `app/` test suite (existing behavior, not changed here); if non-force cleanup fails after a successful merge, `work-finish` reports a warning and exits 0 with `done.md` written and the worktree/branch preserved; `work-note` preserves check output verbatim, so trailing spaces inside a check's own output can still be reported by `git diff --check`.
 - Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 2.1. Do not run `work-accept` or `work-finish` for OPS-4: 21 steps remain open. No merge, push, deploy or finish was run on the real repository.
+
+## 2026-11-06 — 1.4 correction — rejection terminal outcome tests
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.464s
+
+OK
+```
+
+## 2026-11-06 — 1.4 correction — harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.4 correction — whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Correction during stage review — rejection terminal outcome.
+
+Readiness previously inspected terminal files only in the source worktree. Rejection writes `rejected.md` on the base card, so a rejected card could still be finished later. `readiness_problems` now also checks the base card's terminal file and the rejection test asserts a retry is refused with `terminal file present: rejected.md`. No plan step was reopened; this strengthens 1.4. Checks re-run: 30 lifecycle tests OK, `bin/work-test` PASS, `git diff --check` exit 0.

@@ -111,6 +111,11 @@ class FinishOutcomeTest(LifecycleTest):
         self.assertNotEqual(self.head(), self.base_sha)
         self.assertEqual(self.git("status", "--porcelain"), "")
 
+        retry = self.work(
+            "work-finish", self.card_id,
+            env={"WORK_ACCEPT_CMD": self.make_accept_script()})
+        self.assert_refused(retry, "terminal file present: rejected.md")
+
     def test_successful_finish_merges_the_tested_revision(self):
         record = self.aux_dir / "record.txt"
         result = self.work(

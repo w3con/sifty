@@ -556,6 +556,11 @@ def readiness_problems(card_id, target_root=None):
                 problems.append("unresolved attention (%d open item(s))"
                                 % len(attention))
             terminal = terminal_file_present(card_dir)
+            target_card = find_card_dir(card_id, root=target_root)
+            if not terminal and target_card and target_card != card_dir:
+                # Rejection writes rejected.md on the base card, not on the work
+                # branch, so the terminal outcome must be checked in both copies.
+                terminal = terminal_file_present(target_card)
             if terminal:
                 problems.append("terminal file present: %s" % terminal)
         dirty_source = git_status_lines(wt)

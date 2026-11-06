@@ -2186,3 +2186,18 @@ OK
 ## 2026-11-06 — phase 4 corrections — final harness result
 
 Ran python3 bin/work-test once after all corrections: exit 0, PASS: all harness checks (compile, templates, command help, 85 isolated lifecycle/task tests, leak scanner self-test/tests/tree-check, root CI workflow).
+
+## 2026-11-06 — phase 4 correction — surface contradictory active worktree
+
+navigation_state no longer falls back to a healthy base/current state when the active worktree card has contradictory or unknown metadata; work-status and work-list now refuse and leave the base card unchanged. Base terminal/blocker/attention override precedence is retained.
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_navigation.py'`
+Exit: 0
+
+```
+........
+----------------------------------------------------------------------
+Ran 8 tests in 6.381s
+
+OK
+```

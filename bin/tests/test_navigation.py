@@ -173,6 +173,29 @@ class NavigationTest(CardRepoTest):
         self.assertTrue((self.root / ".worktrees" / "TEST-1").exists())
         self.assertTrue((card / "question.md").exists())
 
+    def test_contradictory_active_worktree_is_surfaced_not_hidden(self):
+        base_card = self.make_active_worktree()
+        worktree = self.root / ".worktrees" / "TEST-1"
+        worktree_card = (worktree / "work" / "tasks" / "test" /
+                         "TEST-1_demo" / "description.md")
+        text = worktree_card.read_text(encoding="utf-8")
+        worktree_card.write_text(text.replace("**Status:** in progress",
+                                              "**Status:** done"),
+                                 encoding="utf-8")
+        self.git("add", "-A", cwd=worktree)
+        self.git("commit", "-qm", "chore(test): contradictory worktree",
+                 cwd=worktree)
+        base_before = (base_card / "description.md").read_text(encoding="utf-8")
+        base_head = self.head()
+
+        status = self.work("work-status", "TEST-1")
+        self.assert_refused(status, "requires done.md")
+        listing = self.work("work-list")
+        self.assert_refused(listing, "requires done.md")
+        self.assertEqual((base_card / "description.md").read_text(
+            encoding="utf-8"), base_before)
+        self.assertEqual(self.head(), base_head)
+
     def test_generated_views_agree_after_a_transition(self):
         self.make_card(status="backlog")
         self.commit_all()

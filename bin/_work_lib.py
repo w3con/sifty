@@ -1090,8 +1090,10 @@ def navigation_state(card_id, root=None):
 
     Base cancellation, blockers, open attention and contradictions override the
     worktree: they are safety decisions, not stale metadata. Otherwise an active
-    worktree's nonterminal state and next step lead, while the base state stays
-    visible separately. Mutating commands still operate on their own checkout.
+    worktree is authoritative, including its contradictions and unknown state,
+    so read-only navigation refuses them instead of hiding them behind a healthy
+    base copy. The base state stays visible separately. Mutating commands still
+    operate on their own checkout.
     """
     root = root or repo_root()
     base_root = base_checkout_root()
@@ -1107,9 +1109,9 @@ def navigation_state(card_id, root=None):
         or base_state["blockers"] or base_state["attention"]))
     if base_overrides:
         effective, source = base_state, "base"
-    elif wt_state and not wt_state["errors"]:
+    elif wt_state:
         effective, source = wt_state, "worktree"
-    elif current_state and not current_state["errors"]:
+    elif current_state:
         effective, source = current_state, "current"
     else:
         effective = base_state or current_state

@@ -55,7 +55,7 @@ Inference and precedence, used by `work-status`, `work-list`, `work-capture`, `w
 3. Otherwise the leading value of `**Status:**` decides. Legacy `founded`, `approved`, `new` and similar prose map to `backlog`; `descoped` maps to an archived cancellation even before a `cancelled.md` exists. An unknown value is reported, never guessed.
 4. A card with no metadata is `backlog`.
 
-Read-only navigation uses the active worktree's nonterminal state and exact next step, while showing the base state separately. Base cancellation, blockers, open attention and contradictions override the worktree because they are safety decisions; resume refuses them. Commands that change metadata write only the current checkout's card.
+Read-only navigation uses the active worktree's nonterminal state and exact next step, while showing the base state separately. Base cancellation, blockers, open attention and contradictions override the worktree because they are safety decisions; resume refuses them. Otherwise a contradictory active worktree is surfaced and refused, not hidden behind a healthy base copy. Commands that change metadata write only the current checkout's card.
 
 Contradictions are refused: several outcome files, a `**Status:**` naming an outcome without its evidence file, a terminal outcome that still carries a blocker or open attention, several conflicting metadata lines, or duplicate IDs.
 

@@ -1954,3 +1954,61 @@ Ran 5 tests in 1.427s
 
 OK
 ```
+
+## 2026-11-06 — 4.3 — task/status/resume navigation and documentation
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_navigation.py' && python3 bin/work-test`
+Exit: 0
+
+```
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 2.043s
+
+OK
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   compile work-status
+ok   compile work-list
+ok   compile work-capture
+ok   compile work-cancel
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   template capture.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   --help work-status
+ok   --help work-list
+ok   --help work-capture
+ok   --help work-cancel
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+```

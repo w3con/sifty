@@ -110,6 +110,20 @@ class StateInferenceTest(CardRepoTest):
         listing = self.work("work-list")
         self.assert_refused(listing, "duplicate card ID")
 
+    def test_base_card_blocker_stops_acceptance_of_clean_worktree(self):
+        card = self.make_card(steps=("- [x] 1.1 — done",))
+        self.commit_all()
+        self.git("checkout", "-q", "-b", "work/TEST-1")
+        self.git("checkout", "-q", "main")
+        self.git("worktree", "add", "-q",
+                 str(self.root / ".worktrees" / "TEST-1"), "work/TEST-1")
+        self.add_file(card, "question.md", "# Question\n\nWait for the owner.\n")
+        self.commit_all("chore(test): record base blocker")
+
+        result = self.work("work-accept", "TEST-1")
+        self.assert_refused(result, "unresolved blocker on base card")
+        self.assertTrue((self.root / ".worktrees" / "TEST-1").exists())
+
     def test_unknown_status_is_reported_not_guessed(self):
         self.make_card(status="somewhere")
         self.commit_all()

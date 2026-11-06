@@ -2025,3 +2025,16 @@ Ran 16 tests in 4.256s
 
 OK
 ```
+
+## 2026-11-06 — 4.1 correction — base-card blockers stop acceptance
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 4.497s
+
+OK
+```

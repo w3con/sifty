@@ -16,3 +16,13 @@ Owner's words added verbatim:
 И кстати, где добавление файлов? фотографий? посмотри еще раз на profile.png - карточка готова? давай проапдейтим внешний вид.
 ```
 
+## Capture — 2026-11-09
+
+**Kind:** idea
+
+Owner's words added verbatim:
+
+```text
+а нет, наврал - обновились Skils / Experience&
+```
+

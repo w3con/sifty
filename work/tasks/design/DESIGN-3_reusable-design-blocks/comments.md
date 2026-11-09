@@ -26,3 +26,13 @@ Owner's words added verbatim:
 а нет, наврал - обновились Skils / Experience&
 ```
 
+## Capture — 2026-11-09
+
+**Kind:** bug
+
+Owner's words added verbatim:
+
+```text
+This photo is too large. The configured limit is 2097152 bytes. - это баг. слишком много - это когда больше 10 мб. 
+```
+

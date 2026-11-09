@@ -157,7 +157,7 @@ The selected model took too long to respond. Try again. If it keeps timing out, 
 Technical details
 extraction provider "qwen3.5-9b" failed: Post "http://127.0.0.1:11434/api/chat": context deadline exceeded
 Retry analysis
-View text
+View text 
 
 но много фактов было добавлено из CV например. добавка предложенных фактов  - работает.
 ```

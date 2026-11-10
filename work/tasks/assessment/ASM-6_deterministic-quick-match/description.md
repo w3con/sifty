@@ -5,7 +5,7 @@
 **Status:** review
 **Kind:** task
 
-**Integration status,2026-11-10:** technical implementation accepted; source published to main in commit `58af432` as the final application source. Normal persisted actual-profile adoption is proven on an isolated snapshot (2271 visible jobs with numeric results at profile revision20: 1539 zero, 732 nonzero, 0 stale). The temporary 8083 review server is stopped. Card remains review, not done; production is not updated. Owner acceptance of ranking quality/release is separate.
+**Integration and production status,2026-11-10:** technical implementation accepted; source published to main in commit `58af432` as the final application source. Pinned main `157fe9f` was then released to production at <http://localhost:8080> (build `157fe9f6d0f8-20261110T151309.703877Z`, PID71548). The confirmed staging profile was transferred selectively (`local@20`, 20 revisions, 8 documents, 22 facts, referenced PDFs byte-identical, avatar added); startup recalculation produced 2777 numeric Quick Match results. Production jobs, 1493 historical model assessments, workflow/Apply history, configuration and the disabled queue were preserved by ordered hash. The temporary 8083 review server is stopped. Card remains review, not done; owner review of ranking quality remains separate. Release detail: `production-release.md`.
 **Planning:** owner «запускай» (2026-11-10) approves the full Q.1–Q.5 plan and presented v1 numerical defaults; bounded execution starts11:39Z, whole remaining upper stop13:44Z. Main publication/production release not included.
 
 ## Outcome and actual use

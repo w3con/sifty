@@ -838,5 +838,62 @@ Exit: 0
 
 ```
 
-## Earlier root planning mirror (historical, superseded)
-Q.1 accepted in .worktrees/ASM-6 through8498186 after review and same-executor evidence/race corrections; actual≈31min against25–35min. Current plan/checks are authoritative in that worktree; root preserves planning mirror only. Executor actual model independently verified opencode-go/deepseek-v4.1-flash. Next Q.2 only, upper12:35Z, global13:44Z; no main/production/data/model changes. Detailed corrections/evidence in worktree card log.
+## 2026-11-10 — R.1 pinned release with recovery and preserved old quickscores
+
+Check: `python3 -c "import json;d=json.load(open('.local/deploy/prod/state.json'));r=json.load(open('.local/deploy/prod/release-receipt.json'));n=sum(1 for _ in open('.local/ops/ASM-6-release-20261110/old-match-score-map.csv'));assert d['result']=='OK' and d['sourceSha']=='157fe9f6d0f86e91b9101150087ea2aa19fecaf4' and r['source']==d['sourceSha'];print('release OK',d['sourceSha'][:12],d['buildId'],'recovery',d['recovery'],'oldScores',n)"`
+Exit: 1
+
+```
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+FileNotFoundError: [Errno 2] No such file or directory: '.local/deploy/prod/state.json'
+```
+
+## 2026-11-10 — R.2 selective validated profile import preserving production history/config
+
+Check: `python3 -c "import sqlite3,json,hashlib;c=sqlite3.connect('file:data/store.sqlite?mode=ro',uri=True);q=lambda s:c.execute(s).fetchone()[0];cnt={t:q('select count(*) from '+t) for t in ['user_profiles','profile_revisions','profile_documents','profile_facts','jobs','assessments','assessment_queue']};assert (cnt['user_profiles'],cnt['profile_revisions'],cnt['profile_documents'],cnt['profile_facts'])==(1,20,8,22);assert (cnt['jobs'],cnt['assessments'],cnt['assessment_queue'])==(2777,1493,2497);assert c.execute(\"select data from queue_state where key='assessment_enabled'\").fetchone()[0]=='false';print('profile',cnt['user_profiles'],cnt['profile_revisions'],cnt['profile_documents'],cnt['profile_facts'],'preserved',cnt['jobs'],cnt['assessments'],cnt['assessment_queue'],'queue disabled')"`
+Exit: 1
+
+```
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+sqlite3.OperationalError: unable to open database file
+```
+
+## 2026-11-10 — R.1 pinned release with recovery and preserved old quickscores (corrected absolute paths)
+
+Check: `python3 -c "import json;R='/Volumes/SSD/Dev/tknff/sifty/';d=json.load(open(R+'.local/deploy/prod/state.json'));r=json.load(open(R+'.local/deploy/prod/release-receipt.json'));n=sum(1 for _ in open(R+'.local/ops/ASM-6-release-20261110/old-match-score-map.csv'));assert d['result']=='OK' and d['sourceSha']=='157fe9f6d0f86e91b9101150087ea2aa19fecaf4' and r['source']==d['sourceSha'];print('release OK',d['sourceSha'][:12],d['buildId'],'recovery',d['recovery'],'oldScores',n)"`
+Exit: 1
+
+```
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+KeyError: 'source'
+```
+
+## 2026-11-10 — R.2 selective validated profile import preserving production history/config (corrected absolute paths)
+
+Check: `python3 -c "import sqlite3;c=sqlite3.connect('file:/Volumes/SSD/Dev/tknff/sifty/data/store.sqlite?mode=ro',uri=True);q=lambda s:c.execute(s).fetchone()[0];t=['user_profiles','profile_revisions','profile_documents','profile_facts','jobs','assessments','assessment_queue'];cnt={x:q('select count(*) from '+x) for x in t};assert tuple(cnt[x] for x in t[:4])==(1,20,8,22);assert tuple(cnt[x] for x in t[4:])==(2777,1493,2497);assert c.execute(\"select data from queue_state where key='assessment_enabled'\").fetchone()[0]=='false';print('profile',cnt['profile_revisions'],'revs',cnt['profile_documents'],'docs',cnt['profile_facts'],'facts; preserved',cnt['jobs'],'jobs',cnt['assessments'],'assessments',cnt['assessment_queue'],'queue; disabled')"`
+Exit: 0
+
+```
+profile 20 revs 8 docs 22 facts; preserved 2777 jobs 1493 assessments 2497 queue; disabled
+```
+
+## 2026-11-10 — R.3 production profile/results/health/browser verification
+
+Check: `python3 -c "import json,urllib.request;R='/Volumes/SSD/Dev/tknff/sifty/';b=json.load(open(R+'.local/ops/ASM-6-release-20261110/browser-checks.json'));v=json.load(urllib.request.urlopen('http://localhost:8080/api/version'))['version'];h=urllib.request.urlopen('http://localhost:8080/api/health').status;c=b['checks'];assert c['brand']=='Sifty' and c['quickScore']=='100' and c['quickState']=='Current' and c['hasCoverage'] and c['profileDocNames']==['profile.pdf','cv.pdf','positioning.md','faq.md'] and c['searchInterceptions']==1 and not b['consoleErrors'];print('version',v,'health',h,'brand',c['brand'],'top',c['quickScore'],c['quickState'],c['coverageLine'],'docs',len(c['profileDocNames']),'searchIntercepted',c['searchInterceptions'],'consoleErrors',len(b['consoleErrors']))"`
+Exit: 0
+
+```
+version 157fe9f6d0f8-20261110T151309.703877Z health 200 brand Sifty top 100 Current Evidence coverage 29% docs 4 searchIntercepted 1 consoleErrors 0
+```
+
+## 2026-11-10 — R.1 pinned release with recovery and preserved old quickscores (final receipt field)
+
+Check: `python3 -c "import json;R='/Volumes/SSD/Dev/tknff/sifty/';d=json.load(open(R+'.local/deploy/prod/state.json'));r=json.load(open(R+'.local/deploy/prod/release-receipt.json'));n=sum(1 for _ in open(R+'.local/ops/ASM-6-release-20261110/old-match-score-map.csv'));assert d['result']=='OK' and d['sourceSha']=='157fe9f6d0f86e91b9101150087ea2aa19fecaf4' and r['sourceSha']==d['sourceSha'];print('release OK',d['sourceSha'][:12],d['buildId'],'recovery',d['recovery'],'oldScores',n)"`
+Exit: 0
+
+```
+release OK 157fe9f6d0f8 157fe9f6d0f8-20261110T151309.703877Z recovery /Volumes/SSD/Dev/tknff/sifty/.local/deploy/prod/recovery/prod-20261110T151309.703931Z-157fe9f6 oldScores 2777
+```

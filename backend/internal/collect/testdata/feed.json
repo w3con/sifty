@@ -6,7 +6,8 @@
     "applyUrl": null,
     "description": "Work on distributed systems",
     "descriptionStatus": "feed description; may be excerpt",
-    "publishedAt": "Mon, 01 Oct 2026 00:00:00 GMT",
+    "publishedAt": "2026-10-01T00:00:00Z",
+    "publishedBasis": "pubDate",
     "source": "Test Feed"
   },
   {

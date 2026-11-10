@@ -120,8 +120,8 @@ func checkSchema(t *testing.T, db *sql.DB, label string) {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("[%s] PRAGMA user_version: %v", label, err)
 	}
-	if version != 16 {
-		t.Errorf("[%s] user_version = %d, want 16", label, version)
+	if version != 18 {
+		t.Errorf("[%s] user_version = %d, want 18", label, version)
 	}
 
 	var mode string

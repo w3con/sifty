@@ -15,6 +15,7 @@ type JobInput struct {
 	DescriptionStatus string   `json:"descriptionStatus"`
 	Location          string   `json:"location,omitempty"`
 	PublishedAt       string   `json:"publishedAt,omitempty"`
+	PublishedBasis    string   `json:"publishedBasis,omitempty"`
 	ExpiresAt         string   `json:"expiresAt,omitempty"`
 	Source            string   `json:"source"`
 }
@@ -47,6 +48,7 @@ type Job struct {
 	DescriptionStatus    string      `json:"descriptionStatus"`
 	Location             *string     `json:"location"`
 	PublishedAt          *string     `json:"publishedAt"`
+	PublishedBasis       *string     `json:"publishedBasis,omitempty"`
 	ExpiresAt            *string     `json:"expiresAt"`
 	FirstSeen            string      `json:"firstSeen"`
 	LastSeen             string      `json:"lastSeen"`

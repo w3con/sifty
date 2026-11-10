@@ -71,7 +71,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 
 	row := s.DB.QueryRow(`
 		SELECT id, identity, title, company, original_url, apply_url, description,
-		       description_status, location, published_at, expires_at, status,
+		       description_status, location, published_at, published_basis, expires_at, status,
 		       first_seen, last_seen, assessment, assessment_error,
 		       apply_status, tags, seen_at, applied_at, match_score, match_profile_revision,
 		       outcome_reason
@@ -81,7 +81,8 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		id, identity, title, company, originalURL string
 		applyURL                                  sql.NullString
 		description, descriptionStatus            string
-		location, publishedAt, expiresAt          sql.NullString
+		location, publishedAt, publishedBasis    sql.NullString
+		expiresAt                                 sql.NullString
 		status, firstSeen, lastSeen               string
 		assessment, assessmentError               sql.NullString
 		applyStatus, tagsJSON, seenAt, appliedAt  sql.NullString
@@ -92,7 +93,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 	}
 	err = row.Scan(
 		&r.idInt, &r.identity, &r.title, &r.company, &r.originalURL, &r.applyURL,
-		&r.description, &r.descriptionStatus, &r.location, &r.publishedAt, &r.expiresAt,
+		&r.description, &r.descriptionStatus, &r.location, &r.publishedAt, &r.publishedBasis, &r.expiresAt,
 		&r.status, &r.firstSeen, &r.lastSeen, &r.assessment, &r.assessmentError,
 		&r.applyStatus, &r.tagsJSON, &r.seenAt, &r.appliedAt, &r.matchScore, &r.matchProfileRevision,
 		&r.outcomeReason,
@@ -190,10 +191,14 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		v := r.location.String
 		loc = &v
 	}
-	var pubAt *string
+	var pubAt, pubBasis *string
 	if r.publishedAt.Valid && r.publishedAt.String != "" {
 		v := r.publishedAt.String
 		pubAt = &v
+	}
+	if r.publishedBasis.Valid && r.publishedBasis.String != "" {
+		v := r.publishedBasis.String
+		pubBasis = &v
 	}
 	var expAt *string
 	if r.expiresAt.Valid && r.expiresAt.String != "" {
@@ -249,6 +254,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		DescriptionStatus:    r.descriptionStatus,
 		Location:             loc,
 		PublishedAt:          pubAt,
+		PublishedBasis:       pubBasis,
 		ExpiresAt:            expAt,
 		FirstSeen:            r.firstSeen,
 		LastSeen:             r.lastSeen,
@@ -361,6 +367,11 @@ func scoreOf(j *model.Job) float64 {
 // Returns 0 (not an error) when the posting matches a permanently deleted listing.
 // When restore is true, tombstones for the listing's keys are cleared first.
 func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
+	// Only a genuine, parseable, non-future source publication date is stored.
+	j.PublishedAt = model.NormalizePublishedAt(j.PublishedAt)
+	if j.PublishedAt == "" {
+		j.PublishedBasis = ""
+	}
 	originalCanon, err := canonicalURL(j.OriginalURL)
 	if err != nil {
 		return 0, fmt.Errorf("canonical original URL: %w", err)
@@ -471,12 +482,12 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 		}
 		_, err = tx.Exec(`
 			INSERT INTO jobs(id, identity, title, company, original_url, apply_url,
-			                 description, description_status, location, published_at, expires_at,
+			                 description, description_status, location, published_at, published_basis, expires_at,
 			                 first_seen, last_seen, apply_status, tags)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			nextID, identity, j.Title, j.Company, originalCanon, nullStr(applyCanon),
 			j.Description, j.DescriptionStatus, nullStr(j.Location),
-			nullStr(j.PublishedAt), nullStr(j.ExpiresAt),
+			nullStr(j.PublishedAt), nullStr(j.PublishedBasis), nullStr(j.ExpiresAt),
 			t, t, applyStatus, string(tagsJSON),
 		)
 		if err != nil {
@@ -571,22 +582,32 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 		freshDescription := len(j.Description) >= 100 &&
 			!strings.ContainsAny(strings.ToLower(j.DescriptionStatus), "metadata|pending|missing|unavailable")
 
-		var prevDesc, prevDescStatus string
-		_ = tx.QueryRow("SELECT description, description_status FROM jobs WHERE id=?", id).
-			Scan(&prevDesc, &prevDescStatus)
+		var prevDesc, prevDescStatus, prevPublished, prevPublishedBasis string
+		_ = tx.QueryRow("SELECT description, description_status, COALESCE(published_at,''), COALESCE(published_basis,'') FROM jobs WHERE id=?", id).
+			Scan(&prevDesc, &prevDescStatus, &prevPublished, &prevPublishedBasis)
 		previousReady := len(prevDesc) >= 100 &&
 			!strings.ContainsAny(strings.ToLower(prevDescStatus), "metadata|pending|missing|unavailable")
 
 		replace := freshDescription || (!previousReady && len(j.Description) >= len(prevDesc))
 
+		// Keep an established source date and its basis. Fill only a genuinely
+		// missing date; do not attach a new origin to an old/different date.
+		keepPublished, keepBasis := prevPublished, prevPublishedBasis
+		if keepPublished == "" && j.PublishedAt != "" {
+			keepPublished, keepBasis = j.PublishedAt, j.PublishedBasis
+		} else if keepPublished == j.PublishedAt && keepBasis == "" && j.PublishedBasis != "" {
+			keepBasis = j.PublishedBasis
+		}
+
 		if _, err := tx.Exec(`
 			UPDATE jobs SET last_seen=?, apply_url=COALESCE(?,apply_url),
 			  description=CASE WHEN ? THEN ? ELSE description END,
 			  description_status=CASE WHEN ? THEN ? ELSE description_status END,
-			  expires_at=CASE WHEN ?!='' THEN ? ELSE expires_at END WHERE id=?`,
+			  expires_at=CASE WHEN ?!='' THEN ? ELSE expires_at END,
+			  published_at=?, published_basis=? WHERE id=?`,
 			t, nullStr(applyCanon),
 			boolInt(replace), j.Description, boolInt(replace), j.DescriptionStatus,
-			j.ExpiresAt, nullStr(j.ExpiresAt), id,
+			j.ExpiresAt, nullStr(j.ExpiresAt), nullStr(keepPublished), nullStr(keepBasis), id,
 		); err != nil {
 			return 0, fmt.Errorf("update job: %w", err)
 		}

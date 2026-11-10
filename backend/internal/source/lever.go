@@ -99,7 +99,8 @@ func (l *LeverAdapter) Discover(ctx context.Context, listingURL string) ([]Ref, 
 				Description:       collect.CleanHTML(desc),
 				DescriptionStatus: descStatus(desc),
 				Location:          p.Categories.Location,
-				PublishedAt:       leverPublishedAt(p.CreatedAt),
+				PublishedAt:       model.NormalizePublishedAt(leverPublishedAt(p.CreatedAt)),
+				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(leverPublishedAt(p.CreatedAt)), "created_at"),
 			},
 		})
 	}
@@ -121,7 +122,9 @@ func (l *LeverAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInput, er
 		return j, nil
 	}
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
-		return jobs[0], nil
+		if j, ok := matchStructuredJob(jobs, ref); ok {
+			return j, nil
+		}
 	}
 	j := ref.Partial
 	j.Description = collect.CleanHTML(page.Body)

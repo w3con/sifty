@@ -43,12 +43,13 @@ func companySlug(boardURL string) (string, error) {
 }
 
 type ghJob struct {
-	ID          int64  `json:"id"`
-	Title       string `json:"title"`
-	Content     string `json:"content"`
-	AbsoluteURL string `json:"absolute_url"`
-	UpdatedAt   string `json:"updated_at"`
-	Location    struct {
+	ID             int64  `json:"id"`
+	Title          string `json:"title"`
+	Content        string `json:"content"`
+	AbsoluteURL    string `json:"absolute_url"`
+	UpdatedAt      string `json:"updated_at"`      // modification time, not publication
+	FirstPublished string `json:"first_published"` // genuine publication when supplied
+	Location       struct {
 		Name string `json:"name"`
 	} `json:"location"`
 }
@@ -93,7 +94,8 @@ func (g *GreenhouseAdapter) Discover(ctx context.Context, listingURL string) ([]
 				Description:       collect.CleanHTML(j.Content),
 				DescriptionStatus: descStatus(j.Content),
 				Location:          j.Location.Name,
-				PublishedAt:       j.UpdatedAt,
+				PublishedAt:       model.NormalizePublishedAt(j.FirstPublished),
+				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(j.FirstPublished), "first_published"),
 			},
 		})
 	}
@@ -118,7 +120,9 @@ func (g *GreenhouseAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInpu
 	}
 	// Try JSON-LD on the detail page.
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
-		return jobs[0], nil
+		if j, ok := matchStructuredJob(jobs, ref); ok {
+			return j, nil
+		}
 	}
 	j := ref.Partial
 	j.Description = collect.CleanHTML(page.Body)

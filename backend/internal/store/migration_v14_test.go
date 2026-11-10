@@ -89,8 +89,8 @@ func TestMigrationV14(t *testing.T) {
 	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("read user_version: %v", err)
 	}
-	if version != 16 {
-		t.Errorf("user_version = %d, want 16", version)
+	if version != 18 {
+		t.Errorf("user_version = %d, want 18", version)
 	}
 
 	// stop_words must contain exactly "acme" and "megacorp" (no duplicates for acme, no source).

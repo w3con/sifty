@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/fetch"
 	"github.com/w3con/sifty/internal/model"
 	"github.com/w3con/sifty/internal/server"
-	"github.com/w3con/sifty/internal/config"
 )
 
 // fixedTransport returns a fixed status, body and Content-Type for every request.
@@ -91,7 +91,7 @@ func TestEnrichFn(t *testing.T) {
 	seedID, err := s.Upsert(model.JobInput{
 		Title: "Go Engineer", Company: "TechCo",
 		OriginalURL: "https://jobs.techco.example/go-engineer",
-		Source: "test", DescriptionStatus: "pending detail fetch",
+		Source:      "test", DescriptionStatus: "pending detail fetch",
 	}, false)
 	if err != nil {
 		t.Fatalf("Upsert seed: %v", err)
@@ -126,6 +126,15 @@ func TestEnrichFn(t *testing.T) {
 	}
 	if job.DescriptionStatus == "pending detail fetch" {
 		t.Error("DescriptionStatus still 'pending detail fetch' after enrich")
+	}
+	if job.PublishedAt == nil || *job.PublishedAt != "2026-10-01" {
+		t.Errorf("missing publication date not filled from datePosted: %v", job.PublishedAt)
+	}
+	if job.PublishedBasis == nil || *job.PublishedBasis != "datePosted" {
+		t.Errorf("publication basis not attached atomically: %v", job.PublishedBasis)
+	}
+	if job.Stage != "triage" || job.Status != "new" {
+		t.Errorf("enrich changed workflow: stage=%q status=%q", job.Stage, job.Status)
 	}
 }
 

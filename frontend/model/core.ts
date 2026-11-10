@@ -57,7 +57,7 @@ export function canonical(url: string): string {
   for (const k of [...u.searchParams.keys()]) if (/^(utm_|ref$|source$|gh_src$)/i.test(k)) u.searchParams.delete(k);
   u.searchParams.sort(); u.pathname = u.pathname.replace(/\/$/, '') || '/'; return u.toString();
 }
-export type JobInput = { title: string; company: string; boardCompany?:string; tags?:string[]; originalUrl: string; applyUrl?: string | null; applyStatus?: string; description: string; descriptionStatus: string; detailRetryAt?:number; location?: string; publishedAt?: string; expiresAt?: string; source: string };
+export type JobInput = { title: string; company: string; boardCompany?:string; tags?:string[]; originalUrl: string; applyUrl?: string | null; applyStatus?: string; description: string; descriptionStatus: string; detailRetryAt?:number; location?: string; publishedAt?: string; publishedBasis?: string; expiresAt?: string; source: string };
 export type StopWord = { id: number; word: string; createdAt: string };
 export type BlockRule = { id: number; kind: string; value: string; createdAt: string };
 export type Job = JobInput & { id: number; status: string; stage: import('./workflow.js').Stage; seen: boolean; seenAt: string|null; appliedAt: string|null; outcomeReason: string|null; isWeb3: boolean; firstSeen: string; lastSeen: string; expired: boolean; matchScore: number; matchProfileRevision: number; matchStale: boolean; assessment: any; assessmentError: string | null; sources: { name: string; url: string; seen: string }[]; blocked: boolean; blockedBy: string; stopped: boolean; stoppedBy: string };

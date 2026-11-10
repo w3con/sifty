@@ -144,8 +144,8 @@ func TestMigrationV16ToV17PreservesData(t *testing.T) {
 	if err := s2.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("user_version: %v", err)
 	}
-	if version != 17 {
-		t.Fatalf("user_version = %d, want 17", version)
+	if version != 18 {
+		t.Fatalf("user_version = %d, want 18", version)
 	}
 	for table, column := range map[string]string{"jobs": "outcome_reason", "workflow_history": "reason"} {
 		found := false

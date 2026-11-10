@@ -142,11 +142,13 @@ func buildStructured(o map[string]any, pageURL, source string) (model.JobInput, 
 	if descRaw != "" {
 		status = "available structured description"
 	}
+	published := model.NormalizePublishedAt(getString(o, "datePosted"))
 	return model.JobInput{
 		Title: text(title), Company: text(company), OriginalURL: original, ApplyURL: nil,
 		Description: text(descRaw), DescriptionStatus: status,
-		Location: strings.Join(dedupe(locs), " · "), PublishedAt: getString(o, "datePosted"),
-		ExpiresAt: getString(o, "validThrough"), Source: source,
+		Location: strings.Join(dedupe(locs), " · "), PublishedAt: published,
+		PublishedBasis: model.PublicationBasis(published, "datePosted"),
+		ExpiresAt:      getString(o, "validThrough"), Source: source,
 	}, true
 }
 
@@ -198,10 +200,15 @@ func ParseFeed(xmlText, pageURL, source string) []model.JobInput {
 				desc = it.fields[k]
 			}
 		}
+		published, basis := it.pubDate, "pubDate"
+		if published == "" {
+			published, basis = it.published, "published"
+		}
+		published = model.NormalizePublishedAt(published)
 		result = append(result, model.JobInput{
 			Title: role, Company: company, OriginalURL: link, ApplyURL: nil,
 			Description: text(desc), DescriptionStatus: "feed description; may be excerpt",
-			PublishedAt: it.published, Source: source,
+			PublishedAt: published, PublishedBasis: model.PublicationBasis(published, basis), Source: source,
 		})
 	}
 	return result
@@ -327,7 +334,8 @@ func getroJobs(doc *goquery.Document, base, source string) ([]model.JobInput, bo
 			Description:       strings.Join(stringList(m["skills"]), ", "),
 			DescriptionStatus: "skills metadata only; full description pending",
 			Location:          strings.Join(stringList(m["locations"]), " · "),
-			PublishedAt:       epochToISO(m["createdAt"]), Source: source,
+			PublishedAt:       model.NormalizePublishedAt(epochToISO(m["createdAt"])),
+			PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(epochToISO(m["createdAt"])), "created_at"), Source: source,
 		})
 	}
 	return jobs, true

@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const targetVersion = 17
+const targetVersion = 18
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
 // needed to produce the complete Sifty schema through user_version 16. Every statement is idempotent,
@@ -435,6 +435,18 @@ func migrate(db *sql.DB) error {
 		}
 		if _, err := db.Exec("PRAGMA user_version=17"); err != nil {
 			return fmt.Errorf("set user_version=17: %w", err)
+		}
+	}
+
+	// Phase 7 — v18: optional per-row publication basis. Existing rows keep
+	// NULL (unverified legacy source date); only future genuine source
+	// publication fields set a basis. No historical origin is invented.
+	if version < 18 {
+		if err := addColumnIfMissing(db, "jobs", "published_basis", "TEXT"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("PRAGMA user_version=18"); err != nil {
+			return fmt.Errorf("set user_version=18: %w", err)
 		}
 	}
 

@@ -10,7 +10,8 @@ import (
 type feedItem struct {
 	fields    map[string]string // local element name -> text (first occurrence kept)
 	linkHref  string
-	published string // first of pubDate/published/updated in document order
+	pubDate   string // RSS pubDate: a genuine publication timestamp
+	published string // Atom published: a genuine publication timestamp
 }
 
 // parseFeedItems tokenises an RSS or Atom document and returns each item/entry with its direct
@@ -36,10 +37,13 @@ func parseFeedItems(xmlText string) []feedItem {
 		if _, exists := cur.fields[field]; !exists {
 			cur.fields[field] = val
 		}
-		if field == "pubDate" || field == "published" || field == "updated" {
-			if cur.published == "" {
-				cur.published = val
-			}
+		// updated is a modification timestamp, never a publication date; it is
+		// deliberately not captured as one.
+		if field == "pubDate" && cur.pubDate == "" {
+			cur.pubDate = val
+		}
+		if field == "published" && cur.published == "" {
+			cur.published = val
 		}
 		field = ""
 		buf.Reset()

@@ -90,11 +90,12 @@ func (g *GenericSource) Resolve(ctx context.Context, ref Ref) (model.JobInput, e
 
 	// Try JSON-LD on the detail page first.
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
-		j := jobs[0]
-		if j.OriginalURL == "" {
-			j.OriginalURL = ref.URL
+		if j, ok := matchStructuredJob(jobs, ref); ok {
+			if j.OriginalURL == "" {
+				j.OriginalURL = ref.URL
+			}
+			return j, nil
 		}
-		return j, nil
 	}
 
 	// Fall back to cleaned HTML body.

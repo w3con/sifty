@@ -108,7 +108,8 @@ func (a *AshbyAdapter) Discover(ctx context.Context, listingURL string) ([]Ref, 
 				Description:       collect.CleanHTML(p.DescriptionHTML),
 				DescriptionStatus: descStatus(p.DescriptionHTML),
 				Location:          p.LocationName,
-				PublishedAt:       p.PublishedDate,
+				PublishedAt:       model.NormalizePublishedAt(p.PublishedDate),
+				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(p.PublishedDate), "published_date"),
 			},
 		})
 	}
@@ -130,7 +131,9 @@ func (a *AshbyAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInput, er
 		return j, nil
 	}
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
-		return jobs[0], nil
+		if j, ok := matchStructuredJob(jobs, ref); ok {
+			return j, nil
+		}
 	}
 	j := ref.Partial
 	j.Description = collect.CleanHTML(page.Body)

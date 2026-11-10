@@ -8,6 +8,7 @@
     "descriptionStatus": "available structured description",
     "location": "TELECOMMUTE · EU · Paris · IDF · France",
     "publishedAt": "2026-10-01",
+    "publishedBasis": "datePosted",
     "expiresAt": "2026-12-01",
     "source": "Test Board"
   },

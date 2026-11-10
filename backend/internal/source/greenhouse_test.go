@@ -79,6 +79,11 @@ func TestGreenhouse(t *testing.T) {
 	if r0.Partial.DescriptionStatus != "available structured description" {
 		t.Errorf("DescriptionStatus = %q", r0.Partial.DescriptionStatus)
 	}
+	// The fixture supplies only updated_at; a modification time must never
+	// become a claimed publication date.
+	if r0.Partial.PublishedAt != "" {
+		t.Errorf("updated_at leaked into PublishedAt: %q", r0.Partial.PublishedAt)
+	}
 
 	// Second posting.
 	r1 := refs[1]

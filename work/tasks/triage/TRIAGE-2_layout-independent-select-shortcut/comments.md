@@ -58,3 +58,79 @@ PASS Ctrl+KeyY suppressed — patches 2->2
 
 SUMMARY {"passed":5,"failed":0,"results":[{"name":"key=y code=KeyY selects","ok":true,"detail":"patches 0->1; last={\"stage\":\"preselected\",\"confirmed\":false}"},{"name":"key=н code=KeyY selects (layout-independent)","ok":true,"detail":"patches 1->2; last={\"stage\":\"preselected\",\"confirmed\":false}"},{"name":"key=y code=KeyZ does not select (strict physical code)","ok":true,"detail":"patches 2->2"},{"name":"focused editable input suppresses Select","ok":true,"detail":"patches 2->2"},{"name":"Ctrl+KeyY suppressed","ok":true,"detail":"patches 2->2"}]}
 ```
+
+## 2026-11-10 — K.2 accepted fix parity and actual diff
+
+Check: `test "$(git rev-parse main:frontend/main.tsx)" = "$(git rev-parse work/TRIAGE-2:frontend/main.tsx)" && git diff --stat 39a8745..main -- frontend/main.tsx`
+Exit: 0
+
+```
+ frontend/main.tsx | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+```
+
+## 2026-11-10 — K.2 grouped commits and file review
+
+Check: `git log --format="%h %s" 39a8745..main && echo "--- changed_paths ---" && git diff --name-status 39a8745..main | wc -l && git diff --stat 39a8745..main | tail -1 && echo "--- design_assets ---" && git diff --name-only 39a8745..main -- "frontend/Claude outputs" | wc -l && git ls-tree -r -l main -- "frontend/Claude outputs" | awk "{s+=\$4} END {print \"asset_bytes=\" s}"`
+Exit: 0
+
+```
+e98a5e8 docs(design): add owner-approved design review assets
+c2333b4 docs(runtime): reconcile preview and production records
+0b2b06e docs(work): record deferred plans and execution evidence
+b81d2c5 docs(work): clarify execution boundaries and specifications
+e295b21 fix(TRIAGE-2): integrate layout-independent Select shortcut
+--- changed_paths ---
+     119
+ 119 files changed, 1255 insertions(+), 24 deletions(-)
+--- design_assets ---
+      89
+asset_bytes=19162852
+```
+
+## 2026-11-10 — K.2 commit guards and leak scanning
+
+Check: `python3 backend/scripts/leakcheck/range-check 39a8745..main --repo .`
+Exit: 0
+
+```
+range-check: 5 commit(s) checked, clean
+```
+
+## 2026-11-10 — K.2 source, recovery and worktree preservation
+
+Check: `test "$(git rev-parse refs/work-recovery/TRIAGE-2-preintegration)" = f1754ea9b5720fbdb15d8846448a57bbd0e0f33e && test "$(git rev-parse f1754ea9b5720fbdb15d8846448a57bbd0e0f33e)" = f1754ea9b5720fbdb15d8846448a57bbd0e0f33e && test -d .local/recovery/TRIAGE-2-preintegration-20261110T160409Z && test "$(git worktree list --porcelain | grep -c "^worktree ")" = 14 && test "$(git for-each-ref refs/heads | wc -l | tr -d " ")" = 15 && echo "preoperation source, recovery ref/snapshot, 14 worktrees and 15 branches preserved"`
+Exit: 1
+
+```
+
+```
+
+## 2026-11-10 — K.2 source, recovery and worktree preservation (corrected path)
+
+Check: `test "$(git rev-parse refs/work-recovery/TRIAGE-2-preintegration)" = f1754ea9b5720fbdb15d8846448a57bbd0e0f33e && test "$(git rev-parse f1754ea9b5720fbdb15d8846448a57bbd0e0f33e)" = f1754ea9b5720fbdb15d8846448a57bbd0e0f33e && test -d ../../.local/recovery/TRIAGE-2-preintegration-20261110T160409Z && test "$(git worktree list --porcelain | grep -c "^worktree ")" = 14 && test "$(git for-each-ref refs/heads | wc -l | tr -d " ")" = 15 && echo "preoperation source, recovery ref/snapshot, 14 worktrees and 15 branches preserved"`
+Exit: 0
+
+```
+preoperation source, recovery ref/snapshot, 14 worktrees and 15 branches preserved
+```
+
+## 2026-11-10 — K.2 production runtime unchanged
+
+Check: `test "$(lsof -nP -iTCP:8080 -sTCP:LISTEN -t)" = 71548 && curl -sS -m 5 http://127.0.0.1:8080/api/version && echo && curl -sS -m 5 -o /dev/null -w "health=%{http_code}\n" http://127.0.0.1:8080/api/health`
+Exit: 0
+
+```
+{"version":"157fe9f6d0f8-20261110T151309.703877Z"}
+
+health=200
+```
+
+## 2026-11-10 — K.2 main checkout clean and diff check
+
+Check: `test -z "$(git -C ../.. status --porcelain)" && git -C ../.. diff --check && echo "main checkout clean; git diff --check clean"`
+Exit: 0
+
+```
+main checkout clean; git diff --check clean
+```

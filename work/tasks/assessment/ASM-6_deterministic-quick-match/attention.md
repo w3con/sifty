@@ -1,5 +1,9 @@
 # ASM-6 coordination / compact checkpoint
 
+## Final coordinator acceptance — 2026-11-10T14:00Z
+
+J.1–J.3 accepted. Main application is58af432; final integrated records aree1bf714. Coordinator independently verified main source parity against63f7d47, seven card-level application commits, empty staging, review statuses/closed J checkpoints, actual screenshot/check evidence and no8083listener. All three completion executors ran opencode-go/deepseek-v4.1-flash according to session metadata, including resumed correction. No live executor remains. Implementation and main integration are finished; no next implementation stage is assigned. Production and existing8080/8081/8082 remain unchanged, original worktrees/recovery retained. Owner ranking-quality acceptance and any environment switch/release remain separate. See acceptance.md. All earlier next-step/prohibition paragraphs below are historical and superseded by this checkpoint.
+
 ## J.2 accepted; J.3 next — 2026-11-10T13:49Z
 
 Coordinator verified seven main commits through58af432, empty staged diff, actual source parity main↔63f7d47 for backend/frontend/config, retained original worktrees and J.2 recovery evidence. J.2 accepted. Source checkpoint79856ca. Next J.3 only: final card/navigation/spec reconciliation preserving root later owner wording; copy durable technical evidence, commit only assigned final integration records (not unrelated instructions/backlog), stop verified8083PID22058, record actual time and review state notdone. Coordinator's seven-section acceptance.md is now written in root card; preserve and finalize factual status only. No extra app changes/build repetitions, broad suites, production/staging switch, model/collection/data writes or push. Bound10–15min, upper14:05Z (global14:15Z).

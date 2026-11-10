@@ -128,6 +128,9 @@ func (s *Service) Update(expected int, data ProfileData) (*Profile, error) {
 	data.LegacyContextVersion = current.Data.LegacyContextVersion
 
 	data.Normalize()
+	if err := data.SyncPlainText(); err != nil {
+		return nil, err
+	}
 	data.Skills = markManualSkillProvenance(data.Skills, current.Data.Skills)
 	if err := data.Validate(); err != nil {
 		return nil, err
@@ -373,6 +376,9 @@ func decodeProfile(rec *store.ProfileRecord) (*Profile, error) {
 		return nil, fmt.Errorf("parse stored profile: %w", err)
 	}
 	data.Normalize()
+	if err := data.SyncPlainText(); err != nil {
+		return nil, fmt.Errorf("parse stored profile rich text: %w", err)
+	}
 	return &Profile{
 		ID:        rec.ID,
 		Revision:  rec.Revision,

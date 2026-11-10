@@ -10,10 +10,22 @@ export interface Provenance {
 
 export interface Identity {
   displayName: string;
+  legalName?: string;
   headline: string;
 }
 
+// Optional application-form answers. Deliberately separate from the fit/preparation context;
+// never a document-extraction field and never sent automatically.
+export interface Demographics {
+  gender?: string;
+  genderDescription?: string;
+  race: string[];
+  raceDescription?: string;
+  ethnicity?: string;
+}
+
 export interface Skill {
+  id?: string;
   key: string;
   name: string;
   level: string;
@@ -21,13 +33,25 @@ export interface Skill {
   provenance?: Provenance | null;
 }
 
+export interface RichText {
+  text: string;
+  document?: unknown;
+}
+
 export interface Experience {
+  id?: string;
   company: string;
   title: string;
   start?: string;
   end?: string;
+  current?: boolean;
   summary?: string;
+  summaryDocument?: unknown;
   skills: string[];
+  // Client-only draft identity for a row that has not been saved yet. It keeps a stateful rich
+  // editor attached to its own row when an earlier unsaved row is removed. cleanExperience
+  // strips it before the section save, and the server never sees or stores it.
+  clientKey?: string;
 }
 
 export interface DayRates {
@@ -45,6 +69,7 @@ export interface Compensation {
   period: string;
   dayRates: DayRates;
   equityOnTop: boolean | null;
+  crypto?: string;
 }
 
 export interface Engagement {
@@ -54,11 +79,24 @@ export interface Engagement {
 export interface Hours {
   mode: string;
   weekly: number | null;
+  weeklyMin?: number | null;
+  weeklyMax?: number | null;
+  weeklyRangeSet?: boolean;
 }
 
 export interface WorkModes {
   modes: string[];
   limits: string[];
+}
+
+export interface Location {
+  country: string;
+  city?: string;
+}
+
+export interface WorkAuthorization {
+  country: string;
+  status?: string;
 }
 
 export interface Geography {
@@ -69,6 +107,15 @@ export interface Geography {
   willingToRelocate: boolean | null;
   sponsorship: string;
   timezones: string[];
+  currentLocation?: Location | null;
+  preferredLocations?: Location[];
+  workAuthorizations?: WorkAuthorization[];
+  timezoneIds?: string[];
+  desiredOverlapHours?: number | null;
+  currentLocationSet?: boolean;
+  preferredLocationsSet?: boolean;
+  workAuthorizationsSet?: boolean;
+  timezonesSet?: boolean;
 }
 
 export interface Language {
@@ -80,10 +127,18 @@ export interface Availability {
   noticePeriod: string;
   startDate: string;
   timezone: string;
+  noticeValue?: number | null;
+  noticeUnit?: string;
+  noticeSet?: boolean;
+}
+
+export interface OtherRequirements extends RichText {
+  selected?: boolean;
 }
 
 export interface ProfileData {
   identity: Identity;
+  demographics?: Demographics;
   skills: Skill[];
   experience: Experience[];
   targetRoles: string[];
@@ -96,6 +151,7 @@ export interface ProfileData {
   languages: Language[];
   availability: Availability;
   dealbreakers: string[];
+  otherRequirements?: OtherRequirements;
   legacyPreferences?: Record<string, unknown>;
   legacyContextVersion?: string;
 }
@@ -116,12 +172,32 @@ export interface Profile {
   derivedCurrent: boolean;
 }
 
+export interface FieldDescriptor {
+  key: string;
+  kind: string;
+  uses: string[];
+  options?: string;
+  format?: string;
+  legacy?: boolean;
+  note?: string;
+}
+
+export interface OptionSet {
+  name: string;
+  values: string[];
+  default?: string;
+  notes?: Record<string, string>;
+}
+
 export interface Capabilities {
   documentTypes: string[];
   maxDocumentBytes: number;
   maxUploadBodyBytes: number;
   skillLevels: string[];
+  skillLevelOptions?: string[];
   factFieldKeys: string[];
+  fieldDescriptors?: FieldDescriptor[];
+  optionSets?: OptionSet[];
   documentStates: string[];
   factStates: string[];
 }
@@ -188,7 +264,7 @@ export interface ConflictPayload {
 
 // Domain enums that are not (yet) supplied by GET /api/profile/capabilities. Skill levels come
 // from capabilities; everything here remains the contract, not mock candidate data.
-export const ENGAGEMENT_TYPES = ['employee', 'contractor'] as const;
+export const ENGAGEMENT_TYPES = ['employment', 'contract'] as const;
 export const HOURS_MODES = ['full_time', 'part_time'] as const;
 export const WORK_MODES = ['remote', 'hybrid', 'office'] as const;
 export const GROSS_NET = ['gross', 'net'] as const;
@@ -197,6 +273,9 @@ export const SPONSORSHIP = ['required', 'not_required'] as const;
 export const DOCUMENT_ACTIVE_STATES = ['extracting', 'analyzing'] as const;
 
 export const ENGAGEMENT_LABELS: Record<string, string> = {
+  employment: 'Employment',
+  contract: 'Contract',
+  // Legacy stored values remain selectable and are never conflated with the current labels.
   employee: 'Employee',
   contractor: 'Contractor',
 };
@@ -209,10 +288,10 @@ export const WORK_MODE_LABELS: Record<string, string> = {
   hybrid: 'Hybrid',
   office: 'Office',
 };
-export const GROSS_NET_LABELS: Record<string, string> = {gross: 'Gross', net: 'Net'};
+export const GROSS_NET_LABELS: Record<string, string> = {gross: 'Before taxes', net: 'After taxes'};
 export const PERIOD_LABELS: Record<string, string> = {
-  year: 'Per year',
-  month: 'Per month',
+  year: 'Yearly',
+  month: 'Monthly',
   day: 'Per day',
   hour: 'Per hour',
 };
@@ -223,6 +302,7 @@ export const SPONSORSHIP_LABELS: Record<string, string> = {
 
 export type SectionKey =
   | 'identity'
+  | 'demographics'
   | 'skills'
   | 'experience'
   | 'goals'
@@ -231,7 +311,8 @@ export type SectionKey =
   | 'geography'
   | 'languages'
   | 'availability'
-  | 'dealbreakers';
+  | 'dealbreakers'
+  | 'other-requirements';
 
 export interface Goals {
   targetRoles: string[];
@@ -246,6 +327,7 @@ export interface WorkSection {
 
 export interface SectionValues {
   identity: Identity;
+  demographics: Demographics;
   skills: Skill[];
   experience: Experience[];
   goals: Goals;
@@ -255,6 +337,7 @@ export interface SectionValues {
   languages: Language[];
   availability: Availability;
   dealbreakers: string[];
+  'other-requirements': OtherRequirements;
 }
 
 export interface SectionDraft<T> {
@@ -270,9 +353,14 @@ export function draftFor<K extends SectionKey>(drafts: Drafts, key: K): SectionD
   return drafts[key] as SectionDraft<SectionValues[K]> | undefined;
 }
 
+export function emptyDemographics(): Demographics {
+  return {gender: '', race: [], ethnicity: ''};
+}
+
 export function emptyProfileData(): ProfileData {
   return {
-    identity: {displayName: '', headline: ''},
+    identity: {displayName: '', legalName: '', headline: ''},
+    demographics: emptyDemographics(),
     skills: [],
     experience: [],
     targetRoles: [],
@@ -301,6 +389,7 @@ export function emptyProfileData(): ProfileData {
     languages: [],
     availability: {noticePeriod: '', startDate: '', timezone: ''},
     dealbreakers: [],
+    otherRequirements: {text: ''},
   };
 }
 
@@ -312,8 +401,15 @@ export function emptySkill(): Skill {
   return {key: '', name: '', level: '', context: ''};
 }
 
+let clientExperienceSequence = 0;
+
+function nextClientExperienceKey(): string {
+  clientExperienceSequence += 1;
+  return `draft-experience-${clientExperienceSequence}`;
+}
+
 export function emptyExperience(): Experience {
-  return {company: '', title: '', start: '', end: '', summary: '', skills: []};
+  return {company: '', title: '', start: '', end: '', current: false, summary: '', skills: [], clientKey: nextClientExperienceKey()};
 }
 
 // Editor drafts may start with one blank row when the stored section has none. The row exists
@@ -322,12 +418,26 @@ export function draftValues<K extends SectionKey>(data: ProfileData, key: K): Se
   const value = sectionValues(data, key);
   if (key === 'skills' && (value as Skill[]).length === 0) return [emptySkill()] as SectionValues[K];
   if (key === 'experience' && (value as Experience[]).length === 0) return [emptyExperience()] as SectionValues[K];
+  if (key === 'other-requirements') {
+    // The merged editor replaces the old Dealbreakers and Work limits blocks. Seed it with their
+    // retained text so those conditions are visible and editable; the server keeps the original
+    // arrays until this editor is deliberately saved, and then treats this block as the source.
+    const other = cloneData(value as OtherRequirements);
+    if (!other.selected && !(other.text ?? '').trim() && !other.document) {
+      const seeded = [...data.dealbreakers, ...data.workModes.limits]
+        .map((item) => item.trim())
+        .filter((item, index, all) => item !== '' && all.indexOf(item) === index);
+      if (seeded.length) other.text = seeded.join('\n');
+    }
+    return other as SectionValues[K];
+  }
   return value;
 }
 
 export function sectionValues<K extends SectionKey>(data: ProfileData, key: K): SectionValues[K] {
   switch (key) {
     case 'identity': return cloneData(data.identity) as SectionValues[K];
+    case 'demographics': return cloneData(data.demographics ?? emptyDemographics()) as SectionValues[K];
     case 'skills': return cloneData(data.skills) as SectionValues[K];
     case 'experience': return cloneData(data.experience) as SectionValues[K];
     case 'goals': return cloneData({targetRoles: data.targetRoles, targetIndustries: data.targetIndustries}) as SectionValues[K];
@@ -337,40 +447,88 @@ export function sectionValues<K extends SectionKey>(data: ProfileData, key: K): 
     case 'languages': return cloneData(data.languages) as SectionValues[K];
     case 'availability': return cloneData(data.availability) as SectionValues[K];
     case 'dealbreakers': return cloneData(data.dealbreakers) as SectionValues[K];
+    case 'other-requirements': return cloneData(data.otherRequirements ?? {text: ''}) as SectionValues[K];
   }
   throw new Error(`unknown profile section ${key}`);
 }
 
+// optionValues reads one declarative server vocabulary when capabilities have loaded and falls
+// back to the mirrored contract while they are unavailable. The server remains the validator.
+export function optionValues(capabilities: Capabilities | null, name: string, fallback: readonly string[]): string[] {
+  const set = capabilities?.optionSets?.find((candidate) => candidate.name === name);
+  return set?.values?.length ? [...set.values] : [...fallback];
+}
+
+export function optionNotes(capabilities: Capabilities | null, name: string): Record<string, string> {
+  return capabilities?.optionSets?.find((candidate) => candidate.name === name)?.notes ?? {};
+}
+
+export function skillLevelOptions(capabilities: Capabilities | null): string[] {
+  if (capabilities?.skillLevelOptions?.length) return [...capabilities.skillLevelOptions];
+  return ['Beginner', 'Proficient', 'Expert'];
+}
+
+// levelsWithRetained keeps an older stored value selectable without mapping it to a new level.
+export function levelsWithRetained(options: string[], stored: string): string[] {
+  const value = (stored ?? '').trim();
+  if (!value || options.includes(value)) return options;
+  return [...options, value];
+}
+
 // cleanSection prepares one section value for the server-side atomic merge. The server stays
-// authoritative and applies the final normalization and validation; this keeps the editor from
-// sending clearly empty rows or untrimmed user text.
-export function cleanSection<K extends SectionKey>(key: K, value: SectionValues[K]): SectionValues[K] {
+// authoritative and applies the final normalization and validation. Every cleaner spreads the
+// incoming value, so fields the current editor does not show (server row ids, retained legacy
+// values, rich documents, marker booleans) are never dropped. Marker-bearing keys are included
+// only when the structured value actually changed: an unchanged empty value must not turn a
+// no-op save into a marker migration.
+export function cleanSection<K extends SectionKey>(
+  key: K,
+  value: SectionValues[K],
+  current?: SectionValues[K],
+): SectionValues[K] {
   switch (key) {
     case 'identity': {
       const identity = value as Identity;
-      return {displayName: identity.displayName.trim(), headline: identity.headline.trim()} as SectionValues[K];
+      return {
+        ...identity,
+        displayName: identity.displayName.trim(),
+        legalName: (identity.legalName ?? '').trim(),
+        headline: (identity.headline ?? '').trim(),
+      } as SectionValues[K];
     }
+    case 'demographics': return cleanDemographics(value as Demographics) as SectionValues[K];
     case 'skills': return cleanSkills(value as Skill[]) as SectionValues[K];
     case 'experience': return cleanExperience(value as Experience[]) as SectionValues[K];
     case 'goals': {
       const goals = value as Goals;
-      return {targetRoles: cleanList(goals.targetRoles), targetIndustries: cleanList(goals.targetIndustries)} as SectionValues[K];
+      return {...goals, targetRoles: cleanList(goals.targetRoles), targetIndustries: cleanList(goals.targetIndustries)} as SectionValues[K];
     }
-    case 'compensation': return cleanCompensation(value as Compensation) as SectionValues[K];
-    case 'work': {
-      const work = value as WorkSection;
-      return {
-        engagement: {types: cleanList(work.engagement.types)},
-        hours: {mode: work.hours.mode, weekly: work.hours.weekly},
-        workModes: {modes: cleanList(work.workModes.modes), limits: cleanList(work.workModes.limits)},
-      } as SectionValues[K];
-    }
-    case 'geography': return cleanGeography(value as Geography) as SectionValues[K];
+    case 'compensation': return cleanCompensation(value as Compensation, current as Compensation | undefined) as SectionValues[K];
+    case 'work': return cleanWork(value as WorkSection, current as WorkSection | undefined) as SectionValues[K];
+    case 'geography': return cleanGeography(value as Geography, current as Geography | undefined) as SectionValues[K];
     case 'languages': return cleanLanguages(value as Language[]) as SectionValues[K];
-    case 'availability': return cleanAvailability(value as Availability) as SectionValues[K];
+    case 'availability': return cleanAvailability(value as Availability, current as Availability | undefined) as SectionValues[K];
     case 'dealbreakers': return cleanList(value as string[]) as SectionValues[K];
+    case 'other-requirements': return cleanOtherRequirements(value as OtherRequirements) as SectionValues[K];
   }
   throw new Error(`unknown profile section ${key}`);
+}
+
+function sameNumber(left: number | null | undefined, right: number | null | undefined): boolean {
+  return (left ?? null) === (right ?? null);
+}
+
+function cleanDemographics(value: Demographics): Demographics {
+  const race = [...new Set((value.race ?? []).filter((item) => item.trim() !== ''))];
+  return {
+    ...value,
+    gender: value.gender ?? '',
+    genderDescription: (value.genderDescription ?? '').trim(),
+    // Prefer not to say is exclusive; the server refuses a mixed answer.
+    race: race.includes('prefer_not_to_say') ? ['prefer_not_to_say'] : race,
+    raceDescription: (value.raceDescription ?? '').trim(),
+    ethnicity: value.ethnicity ?? '',
+  };
 }
 
 function cleanList(items: string[]): string[] {
@@ -403,62 +561,197 @@ function cleanSkills(skills: Skill[]): Skill[] {
 
 function cleanExperience(rows: Experience[]): Experience[] {
   return rows
-    .map((row) => ({
-      ...row,
-      company: row.company.trim(),
-      title: row.title.trim(),
-      start: row.start?.trim() || undefined,
-      end: row.end?.trim() || undefined,
-      summary: row.summary?.trim() || undefined,
-      skills: cleanList(row.skills),
-    }))
+    .map((row) => {
+      const cleaned: Experience = {
+        ...row,
+        company: row.company.trim(),
+        title: row.title.trim(),
+        start: row.start?.trim() || undefined,
+        end: row.end?.trim() || undefined,
+        summary: row.summary?.trim() || undefined,
+        skills: cleanList(row.skills),
+      };
+      // Draft identity is client-only; never send it as data or let it reach the server.
+      delete cleaned.clientKey;
+      return cleaned;
+    })
     // Keep any partially filled row. An empty additive row may be omitted, but
     // a user's start date, summary or skills must not vanish on Save.
     .filter((row) => row.company !== '' || row.title !== '' || !!row.start || !!row.end || !!row.summary || row.skills.length > 0);
 }
 
-function cleanCompensation(value: Compensation): Compensation {
-  return {
-    cashMin: value.cashMin,
-    cashTarget: value.cashTarget,
+function sameTriState(left: boolean | null | undefined, right: boolean | null | undefined): boolean {
+  return (left ?? null) === (right ?? null);
+}
+
+function cleanCompensation(value: Compensation, current?: Compensation): Compensation {
+  const out: Compensation = {
+    ...value,
     currency: value.currency.trim(),
-    grossNet: value.grossNet,
-    period: value.period,
     dayRates: {
-      min: value.dayRates.min,
-      target: value.dayRates.target,
+      ...value.dayRates,
       currency: value.dayRates.currency.trim(),
-      period: value.dayRates.period,
     },
-    equityOnTop: value.equityOnTop,
+  };
+  // Equity/tokens is an additive preference, not guaranteed cash. A checkbox starts off; when
+  // the stored value is unknown, keep it unknown rather than rewriting it to an explicit false
+  // merely because another compensation field was saved.
+  if (current) {
+    const unchanged = sameTriState(value.equityOnTop, current.equityOnTop)
+      || ((current.equityOnTop === null || current.equityOnTop === undefined) && value.equityOnTop === false);
+    out.equityOnTop = unchanged ? (current.equityOnTop ?? null) : value.equityOnTop;
+  }
+  return out;
+}
+
+function cleanWork(value: WorkSection, current?: WorkSection): WorkSection {
+  const hours: Hours = {
+    ...value.hours,
+    mode: value.hours.mode,
+    weekly: value.hours.weekly,
+  };
+  // Weekly is the desired part-time field exposed by the current editor; it is always echoed.
+  // Send the optional range keys and their marker only when the range actually changed, so
+  // saving another work field cannot silently set weeklyRangeSet.
+  if (current) {
+    if (sameNumber(value.hours.weeklyMin, current.hours.weeklyMin)) delete hours.weeklyMin;
+    else hours.weeklyMin = value.hours.weeklyMin ?? null;
+    if (sameNumber(value.hours.weeklyMax, current.hours.weeklyMax)) delete hours.weeklyMax;
+    else hours.weeklyMax = value.hours.weeklyMax ?? null;
+    if (Boolean(value.hours.weeklyRangeSet) === Boolean(current.hours.weeklyRangeSet)) delete hours.weeklyRangeSet;
+  }
+  return {
+    ...value,
+    engagement: {...value.engagement, types: cleanList(value.engagement.types)},
+    hours,
+    workModes: {
+      ...value.workModes,
+      modes: cleanList(value.workModes.modes),
+      // Limits are retained legacy storage; the editor no longer owns this block. Keep the
+      // exact stored rows so a save from another work field cannot rewrite them.
+      limits: current ? current.workModes.limits : value.workModes.limits,
+    },
   };
 }
 
-function cleanGeography(value: Geography): Geography {
-  return {
-    current: value.current.trim(),
-    desired: cleanList(value.desired),
-    eligibility: cleanList(value.eligibility),
-    relocation: cleanList(value.relocation),
-    willingToRelocate: value.willingToRelocate,
-    sponsorship: value.sponsorship,
-    timezones: cleanList(value.timezones),
-  };
+function cleanLocation(value: Location | null | undefined): Location | null {
+  const country = (value?.country ?? '').trim().toUpperCase();
+  const city = (value?.city ?? '').trim();
+  // An explicitly empty current location is a clear. A partially filled row (city without a
+  // country) is preserved so the server validator can name the missing country instead of the
+  // cleaner silently discarding the user's input.
+  if (!country && !city) return null;
+  return city ? {country, city} : {country};
+}
+
+function cleanLocations(rows: Location[] | undefined): Location[] {
+  return (rows ?? [])
+    .map(cleanLocation)
+    .filter((row): row is Location => row !== null);
+}
+
+function cleanAuthorizations(rows: WorkAuthorization[] | undefined): WorkAuthorization[] {
+  return (rows ?? [])
+    .map((row) => ({country: (row.country ?? '').trim().toUpperCase(), status: row.status ?? ''}))
+    // An untouched blank row may be omitted. A status without a country is a partial answer:
+    // keep it so the server validation error remains visible and the draft is not silently lost.
+    .filter((row) => row.country !== '' || row.status !== '');
+}
+
+function cleanTimezoneIDs(rows: string[] | undefined): string[] {
+  return [...new Set((rows ?? []).map((row) => row.trim()).filter((row) => row !== ''))];
+}
+
+function cleanGeography(value: Geography, current?: Geography): Geography {
+  // Legacy strings stay in the draft and are spread unchanged. They are retained unstructured
+  // values until the owner supplies structured fields; they are never parsed into countries.
+  const out: Partial<Geography> = {...value};
+  // Relocation notes are retained legacy data. Keep the stored rows exactly when unchanged so
+  // saving another geography field cannot rewrite their whitespace.
+  if (current) {
+    const nextRelocation = cleanList(value.relocation ?? []);
+    out.relocation = JSON.stringify(nextRelocation) === JSON.stringify(cleanList(current.relocation ?? []))
+      ? current.relocation
+      : nextRelocation;
+  }
+  if (!current) return out as Geography;
+
+  // Structured fields and their effective-source markers are emitted only on a real change. An
+  // unchanged empty value must not turn an ordinary no-op save into a marker migration; an
+  // explicit cleared choice must reach the server so it cannot revive retained legacy text.
+  const nextCurrent = cleanLocation(value.currentLocation);
+  if (JSON.stringify(nextCurrent) === JSON.stringify(cleanLocation(current.currentLocation))) {
+    delete out.currentLocation;
+  } else {
+    out.currentLocation = nextCurrent;
+  }
+
+  const nextPreferred = cleanLocations(value.preferredLocations);
+  if (JSON.stringify(nextPreferred) === JSON.stringify(cleanLocations(current.preferredLocations))) {
+    delete out.preferredLocations;
+  } else {
+    out.preferredLocations = nextPreferred;
+  }
+
+  const nextAuthorizations = cleanAuthorizations(value.workAuthorizations);
+  if (JSON.stringify(nextAuthorizations) === JSON.stringify(cleanAuthorizations(current.workAuthorizations))) {
+    delete out.workAuthorizations;
+  } else {
+    out.workAuthorizations = nextAuthorizations;
+  }
+
+  const nextTimezoneIDs = cleanTimezoneIDs(value.timezoneIds);
+  if (JSON.stringify(nextTimezoneIDs) === JSON.stringify(cleanTimezoneIDs(current.timezoneIds))) {
+    delete out.timezoneIds;
+  } else {
+    out.timezoneIds = nextTimezoneIDs;
+  }
+
+  if (sameNumber(value.desiredOverlapHours, current.desiredOverlapHours)) delete out.desiredOverlapHours;
+  else out.desiredOverlapHours = value.desiredOverlapHours ?? null;
+
+  for (const marker of ['currentLocationSet', 'preferredLocationsSet', 'workAuthorizationsSet', 'timezonesSet'] as const) {
+    if (Boolean(value[marker]) === Boolean(current[marker])) delete out[marker];
+    else out[marker] = Boolean(value[marker]);
+  }
+  return out as Geography;
 }
 
 function cleanLanguages(rows: Language[]): Language[] {
   return rows
-    .map((row) => ({name: row.name.trim(), level: row.level.trim()}))
+    .map((row) => ({...row, name: row.name.trim(), level: row.level.trim()}))
     // A level-only language is kept so validation can report the missing name.
     .filter((row) => row.name !== '' || row.level !== '');
 }
 
-function cleanAvailability(value: Availability): Availability {
-  return {
+function cleanAvailability(value: Availability, current?: Availability): Availability {
+  const out: Availability = {
+    ...value,
     noticePeriod: value.noticePeriod.trim(),
     startDate: value.startDate.trim(),
     timezone: value.timezone.trim(),
   };
+  delete out.noticeSet;
+  if (current) {
+    const changed = !sameNumber(value.noticeValue, current.noticeValue)
+      || (value.noticeUnit ?? '') !== (current.noticeUnit ?? '');
+    if (changed) {
+      out.noticeValue = value.noticeValue ?? null;
+      out.noticeUnit = value.noticeUnit ?? '';
+    } else {
+      // Unchanged structured notice: omit the keys so the server does not set NoticeSet.
+      delete out.noticeValue;
+      delete out.noticeUnit;
+    }
+  }
+  return out;
+}
+
+function cleanOtherRequirements(value: OtherRequirements): OtherRequirements {
+  const out: OtherRequirements = {text: (value.text ?? '').trim()};
+  if (value.document !== undefined && value.document !== null) out.document = value.document;
+  // `selected` is server-owned: the section merge sets it when this editor sends a real value.
+  return out;
 }
 
 export function listText(items: string[]): string {

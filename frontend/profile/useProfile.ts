@@ -23,6 +23,7 @@ import {
   DOCUMENT_ACTIVE_STATES,
   cleanSection,
   draftValues,
+  sectionValues,
   type Capabilities,
   type ConflictPayload,
   type Drafts,
@@ -34,6 +35,7 @@ import {
   type SectionKey,
   type SectionValues,
 } from './contract';
+import {humanizeSectionError} from './sectionErrors';
 
 // Poll only while a document is visibly extracting or analyzing. This is an update interval for
 // in-flight server work, not a configurable product limit.
@@ -146,10 +148,26 @@ export function useProfileEditor() {
     const draft = drafts[key];
     if (!draft) return false;
     const submitted = draft.value;
+    const currentProfile = profileRef.current;
+    const current = currentProfile ? sectionValues(currentProfile.data, key) : undefined;
+    const cleaned = cleanSection(key, submitted as never, current as never);
+    const cleanedCurrent = current ? cleanSection(key, current as never, current as never) : undefined;
+    // Saving an untouched editor (or a value changed and reverted) is a local no-op. Sending it
+    // would still let the server's effective-source markers turn an unchanged empty legacy field
+    // into a new revision, and a seeded Other requirements block into a migration.
+    if (!draft.dirty || (cleanedCurrent && sameSectionValue(cleaned, cleanedCurrent))) {
+      setDrafts((existing) => {
+        const next: Drafts = {...existing};
+        delete next[key];
+        return next;
+      });
+      setNotice('No changes to save.');
+      return true;
+    }
     patchDraft(key, {saving: true, error: ''});
     setNotice('');
     try {
-      const result = await putProfileSection(key, cleanSection(key, submitted as never));
+      const result = await putProfileSection(key, cleaned);
       applyNewerProfile(result.profile);
       setDrafts((existing) => {
         const next: Drafts = {...existing};
@@ -164,7 +182,7 @@ export function useProfileEditor() {
       setNotice(result.changed ? 'Saved.' : 'No changes to save.');
       return true;
     } catch (cause) {
-      patchDraft(key, {saving: false, error: messageOf(cause)});
+      patchDraft(key, {saving: false, error: humanizeSectionError(key, messageOf(cause))});
       return false;
     }
   }, [drafts, applyNewerProfile]);

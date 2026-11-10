@@ -127,24 +127,11 @@ var factFields = map[string]factField{
 	"dealbreakers":                   {kind: factStringList},
 }
 
-// AllowedFactFieldKeys returns the schema-approved field paths in a stable order.
+// AllowedFactFieldKeys returns the schema-approved field paths in a stable order. It is derived
+// from the field-use catalog, so a field that is not declared for document extraction (notably
+// the optional demographics) can never be proposed as a document-derived fact.
 func AllowedFactFieldKeys() []string {
-	return []string{
-		"identity.displayName", "identity.headline",
-		"targetRoles", "targetIndustries", "skills", "languages", "experience",
-		"compensation.cashMin", "compensation.cashTarget", "compensation.currency",
-		"compensation.grossNet", "compensation.period",
-		"compensation.dayRates.min", "compensation.dayRates.target",
-		"compensation.dayRates.currency", "compensation.dayRates.period",
-		"compensation.equityOnTop",
-		"engagement.types", "hours.mode", "hours.weekly",
-		"workModes.modes", "workModes.limits",
-		"geography.current", "geography.desired", "geography.eligibility",
-		"geography.relocation", "geography.willingToRelocate",
-		"geography.sponsorship", "geography.timezones",
-		"availability.noticePeriod", "availability.startDate", "availability.timezone",
-		"dealbreakers",
-	}
+	return DocumentFactFieldKeys()
 }
 
 // ValidateFactValue checks the field key and value type and returns the canonical JSON. Unknown
@@ -220,7 +207,7 @@ func ValidateFactValue(fieldKey string, raw json.RawMessage) (json.RawMessage, e
 		}
 		v.Level = canonicalSkillLevel(v.Level)
 		if v.Level != "" && !validSkillLevels[v.Level] {
-			return nil, fmt.Errorf("skills level must be Production, Familiar, Learning or empty (an unstated level is not invented)")
+			return nil, fmt.Errorf("skills level must be Beginner, Proficient, Expert or empty (legacy Production/Familiar/Learning are retained, not invented)")
 		}
 		v.Provenance = nil
 		return json.Marshal(v)

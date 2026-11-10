@@ -13,24 +13,26 @@ import (
 type Section string
 
 const (
-	SectionIdentity     Section = "identity"
-	SectionSkills       Section = "skills"
-	SectionExperience   Section = "experience"
-	SectionGoals        Section = "goals"
-	SectionCompensation Section = "compensation"
-	SectionWork         Section = "work"
-	SectionGeography    Section = "geography"
-	SectionLanguages    Section = "languages"
-	SectionAvailability Section = "availability"
-	SectionDealbreakers Section = "dealbreakers"
+	SectionIdentity          Section = "identity"
+	SectionDemographics      Section = "demographics"
+	SectionSkills            Section = "skills"
+	SectionExperience        Section = "experience"
+	SectionGoals             Section = "goals"
+	SectionCompensation      Section = "compensation"
+	SectionWork              Section = "work"
+	SectionGeography         Section = "geography"
+	SectionLanguages         Section = "languages"
+	SectionAvailability      Section = "availability"
+	SectionDealbreakers      Section = "dealbreakers"
+	SectionOtherRequirements Section = "other-requirements"
 )
 
 // ParseSection validates a route/section name.
 func ParseSection(value string) (Section, error) {
 	switch Section(value) {
-	case SectionIdentity, SectionSkills, SectionExperience, SectionGoals,
+	case SectionIdentity, SectionDemographics, SectionSkills, SectionExperience, SectionGoals,
 		SectionCompensation, SectionWork, SectionGeography, SectionLanguages,
-		SectionAvailability, SectionDealbreakers:
+		SectionAvailability, SectionDealbreakers, SectionOtherRequirements:
 		return Section(value), nil
 	}
 	return "", fmt.Errorf("unknown profile section %q", value)
@@ -60,6 +62,9 @@ func applySection(data *ProfileData, section Section, value json.RawMessage) (bo
 		return false, err
 	}
 	data.Normalize()
+	if err := data.SyncPlainText(); err != nil {
+		return false, err
+	}
 	after := sectionSnapshot(*data, section)
 	changed := !reflect.DeepEqual(before, after)
 	if !changed {
@@ -93,55 +98,87 @@ func validateExperiencePartials(rows []Experience) error {
 	return nil
 }
 
-// mergeSection decodes the editor value and assigns only the named section. Skills keep the
-// server-owned provenance for an unchanged row; a changed or new skill becomes manual.
+// mergeSection decodes the editor value and assigns only the named section. Object sections are
+// merged by field presence, not by zero values, so a client that does not know a retained field
+// cannot erase it by omitting it. An explicitly sent empty value still clears that field.
+// Skills keep the server-owned provenance for an unchanged row; a changed or new skill becomes
+// manual. Experience rows merge by role identity so removed per-row fields (skills, rich summary)
+// survive a save from the current editor.
 func mergeSection(data *ProfileData, section Section, value json.RawMessage) error {
 	switch section {
 	case SectionIdentity:
-		var incoming Identity
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(data.Identity, value)
+		if err != nil {
 			return fmt.Errorf("identity: %w", err)
 		}
-		data.Identity = incoming
+		data.Identity = merged
+	case SectionDemographics:
+		merged, err := mergeObject(data.Demographics, value)
+		if err != nil {
+			return fmt.Errorf("demographics: %w", err)
+		}
+		data.Demographics = merged
 	case SectionSkills:
-		var incoming []Skill
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		incoming, err := mergeSkills(data.Skills, value)
+		if err != nil {
 			return fmt.Errorf("skills: %w", err)
 		}
 		data.Skills = markManualSkillProvenance(incoming, data.Skills)
 	case SectionExperience:
-		var incoming []Experience
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		incoming, err := mergeExperience(data.Experience, value)
+		if err != nil {
 			return fmt.Errorf("experience: %w", err)
 		}
 		data.Experience = incoming
 	case SectionGoals:
-		var incoming goalsSection
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(goalsSection{TargetRoles: data.TargetRoles, TargetIndustries: data.TargetIndustries}, value)
+		if err != nil {
 			return fmt.Errorf("goals: %w", err)
 		}
-		data.TargetRoles = incoming.TargetRoles
-		data.TargetIndustries = incoming.TargetIndustries
+		data.TargetRoles = merged.TargetRoles
+		data.TargetIndustries = merged.TargetIndustries
 	case SectionCompensation:
-		var incoming Compensation
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(data.Compensation, value)
+		if err != nil {
 			return fmt.Errorf("compensation: %w", err)
 		}
-		data.Compensation = incoming
+		data.Compensation = merged
 	case SectionWork:
-		var incoming workSection
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(workSection{Engagement: data.Engagement, Hours: data.Hours, WorkModes: data.WorkModes}, value)
+		if err != nil {
 			return fmt.Errorf("work: %w", err)
 		}
-		data.Engagement = incoming.Engagement
-		data.Hours = incoming.Hours
-		data.WorkModes = incoming.WorkModes
+		if hours, ok := objectKeys(value)["hours"]; ok {
+			keys := objectKeys(hours)
+			if _, set := keys["weeklyMin"]; set {
+				merged.Hours.WeeklyRangeSet = true
+			}
+			if _, set := keys["weeklyMax"]; set {
+				merged.Hours.WeeklyRangeSet = true
+			}
+		}
+		data.Engagement = merged.Engagement
+		data.Hours = merged.Hours
+		data.WorkModes = merged.WorkModes
 	case SectionGeography:
-		var incoming Geography
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(data.Geography, value)
+		if err != nil {
 			return fmt.Errorf("geography: %w", err)
 		}
-		data.Geography = incoming
+		keys := objectKeys(value)
+		if _, set := keys["currentLocation"]; set {
+			merged.CurrentLocationSet = true
+		}
+		if _, set := keys["preferredLocations"]; set {
+			merged.PreferredLocationsSet = true
+		}
+		if _, set := keys["workAuthorizations"]; set {
+			merged.WorkAuthorizationsSet = true
+		}
+		if _, set := keys["timezoneIds"]; set {
+			merged.TimezonesSet = true
+		}
+		data.Geography = merged
 	case SectionLanguages:
 		var incoming []Language
 		if err := json.Unmarshal(value, &incoming); err != nil {
@@ -149,21 +186,234 @@ func mergeSection(data *ProfileData, section Section, value json.RawMessage) err
 		}
 		data.Languages = incoming
 	case SectionAvailability:
-		var incoming Availability
-		if err := json.Unmarshal(value, &incoming); err != nil {
+		merged, err := mergeObject(data.Availability, value)
+		if err != nil {
 			return fmt.Errorf("availability: %w", err)
 		}
-		data.Availability = incoming
+		keys := objectKeys(value)
+		if _, set := keys["noticeValue"]; set {
+			merged.NoticeSet = true
+		}
+		if _, set := keys["noticeUnit"]; set {
+			merged.NoticeSet = true
+		}
+		data.Availability = merged
 	case SectionDealbreakers:
 		var incoming []string
 		if err := json.Unmarshal(value, &incoming); err != nil {
 			return fmt.Errorf("dealbreakers: %w", err)
 		}
 		data.Dealbreakers = incoming
+	case SectionOtherRequirements:
+		merged, err := mergeObject(data.OtherRequirements, value)
+		if err != nil {
+			return fmt.Errorf("other requirements: %w", err)
+		}
+		keys := objectKeys(value)
+		if _, set := keys["text"]; set {
+			merged.Selected = true
+		}
+		if _, set := keys["document"]; set {
+			merged.Selected = true
+		}
+		data.OtherRequirements = merged
 	default:
 		return fmt.Errorf("unknown profile section %q", section)
 	}
 	return nil
+}
+
+// objectKeys decodes an object's top-level keys without changing the value. It is used only to
+// record which current groups the editor explicitly handled, so a cleared choice does not fall
+// back to retained legacy text.
+func objectKeys(value json.RawMessage) map[string]json.RawMessage {
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(value, &keys); err != nil {
+		return nil
+	}
+	return keys
+}
+
+// mergeObject overlays only the fields present in value onto current. Nested objects are merged
+// recursively; arrays are replaced when present. This is what keeps a hidden legacy field when a
+// newer editor omits it, while still allowing an explicit empty value to clear it.
+func mergeObject[T any](current T, value json.RawMessage) (T, error) {
+	var out T
+	currentJSON, err := json.Marshal(current)
+	if err != nil {
+		return out, err
+	}
+	currentMap := map[string]json.RawMessage{}
+	if err := json.Unmarshal(currentJSON, &currentMap); err != nil {
+		return out, err
+	}
+	var incomingMap map[string]json.RawMessage
+	if err := json.Unmarshal(value, &incomingMap); err != nil {
+		return out, err
+	}
+	mergeRawObject(currentMap, incomingMap)
+	mergedJSON, err := json.Marshal(currentMap)
+	if err != nil {
+		return out, err
+	}
+	if err := json.Unmarshal(mergedJSON, &out); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func mergeRawObject(dst, src map[string]json.RawMessage) {
+	for key, incoming := range src {
+		if isJSONObject(incoming) {
+			if existing, ok := dst[key]; ok && isJSONObject(existing) {
+				existingMap := map[string]json.RawMessage{}
+				incomingChild := map[string]json.RawMessage{}
+				if json.Unmarshal(existing, &existingMap) == nil && json.Unmarshal(incoming, &incomingChild) == nil {
+					mergeRawObject(existingMap, incomingChild)
+					merged, err := json.Marshal(existingMap)
+					if err == nil {
+						dst[key] = merged
+						continue
+					}
+				}
+			}
+		}
+		dst[key] = append(json.RawMessage(nil), incoming...)
+	}
+}
+
+func isJSONObject(raw json.RawMessage) bool {
+	for _, b := range raw {
+		switch b {
+		case ' ', '\t', '\r', '\n':
+			continue
+		case '{':
+			return true
+		default:
+			return false
+		}
+	}
+	return false
+}
+
+// mergeSkills keeps a retained context value when an incoming skill row omits it, then lets the
+// regular provenance rule decide whether the row is unchanged or manual.
+func mergeSkills(current []Skill, value json.RawMessage) ([]Skill, error) {
+	rows, err := decodeRawRows(value)
+	if err != nil {
+		return nil, err
+	}
+	used := make([]bool, len(current))
+	out := make([]Skill, 0, len(rows))
+	for _, row := range rows {
+		var incoming Skill
+		rowJSON, _ := json.Marshal(row)
+		if err := json.Unmarshal(rowJSON, &incoming); err != nil {
+			return nil, err
+		}
+		match := -1
+		if incoming.ID != "" {
+			for i, old := range current {
+				if !used[i] && old.ID == incoming.ID {
+					match = i
+					break
+				}
+			}
+		}
+		if match < 0 {
+			for i, old := range current {
+				if used[i] {
+					continue
+				}
+				if old.Key != "" && old.Key == incoming.Key || (old.Name != "" && strings.EqualFold(old.Name, incoming.Name)) {
+					match = i
+					break
+				}
+			}
+		}
+		if match >= 0 {
+			used[match] = true
+			old := current[match]
+			oldJSON, _ := json.Marshal(old)
+			oldMap := map[string]json.RawMessage{}
+			_ = json.Unmarshal(oldJSON, &oldMap)
+			mergeRawObject(oldMap, row)
+			mergedJSON, _ := json.Marshal(oldMap)
+			_ = json.Unmarshal(mergedJSON, &incoming)
+			// The server owns row identity. A client may echo it, but cannot replace it.
+			incoming.ID = old.ID
+		} else {
+			// An unknown client id must not let a different row inherit hidden data. The
+			// normalizer will assign a fresh deterministic id after the merge.
+			incoming.ID = ""
+		}
+		out = append(out, incoming)
+	}
+	return out, nil
+}
+
+// mergeExperience keeps removed per-row fields for a row the owner did not delete. Rows are
+// matched by company/title, then by position when the arrays have the same length, so a hidden
+// skills list or date field is not silently lost on an ordinary edit.
+func mergeExperience(current []Experience, value json.RawMessage) ([]Experience, error) {
+	rows, err := decodeRawRows(value)
+	if err != nil {
+		return nil, err
+	}
+	used := make([]bool, len(current))
+	out := make([]Experience, 0, len(rows))
+	for _, row := range rows {
+		var incoming Experience
+		rowJSON, _ := json.Marshal(row)
+		if err := json.Unmarshal(rowJSON, &incoming); err != nil {
+			return nil, err
+		}
+		match := -1
+		if incoming.ID != "" {
+			for i, old := range current {
+				if !used[i] && old.ID == incoming.ID {
+					match = i
+					break
+				}
+			}
+		}
+		if match < 0 {
+			for i, old := range current {
+				if used[i] {
+					continue
+				}
+				if strings.EqualFold(strings.TrimSpace(old.Company), strings.TrimSpace(incoming.Company)) &&
+					strings.EqualFold(strings.TrimSpace(old.Title), strings.TrimSpace(incoming.Title)) {
+					match = i
+					break
+				}
+			}
+		}
+		if match >= 0 {
+			used[match] = true
+			old := current[match]
+			oldJSON, _ := json.Marshal(old)
+			oldMap := map[string]json.RawMessage{}
+			_ = json.Unmarshal(oldJSON, &oldMap)
+			mergeRawObject(oldMap, row)
+			mergedJSON, _ := json.Marshal(oldMap)
+			_ = json.Unmarshal(mergedJSON, &incoming)
+			// The server owns row identity. A client may echo it, but cannot replace it.
+			incoming.ID = old.ID
+		} else {
+			incoming.ID = ""
+		}
+		out = append(out, incoming)
+	}
+	return out, nil
+}
+
+func decodeRawRows(value json.RawMessage) ([]map[string]json.RawMessage, error) {
+	var rows []map[string]json.RawMessage
+	if err := json.Unmarshal(value, &rows); err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // sectionSnapshot returns the part of the profile the section owns. It is used only to compare
@@ -172,6 +422,8 @@ func sectionSnapshot(data ProfileData, section Section) any {
 	switch section {
 	case SectionIdentity:
 		return data.Identity
+	case SectionDemographics:
+		return data.Demographics
 	case SectionSkills:
 		return data.Skills
 	case SectionExperience:
@@ -190,6 +442,8 @@ func sectionSnapshot(data ProfileData, section Section) any {
 		return data.Availability
 	case SectionDealbreakers:
 		return data.Dealbreakers
+	case SectionOtherRequirements:
+		return data.OtherRequirements
 	}
 	return nil
 }

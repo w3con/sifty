@@ -116,7 +116,10 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			"maxDocumentBytes":   cfg.Runtime.EffectiveProfileMaxDocumentBytes(),
 			"maxUploadBodyBytes": cfg.Runtime.EffectiveProfileUploadBodyBytes(),
 			"skillLevels":        profile.SkillLevels(),
+			"skillLevelOptions":  profile.SkillLevelOptions(),
 			"factFieldKeys":      profile.AllowedFactFieldKeys(),
+			"fieldDescriptors":   profile.FieldDescriptors(),
+			"optionSets":         profile.OptionSets(),
 			"documentStates":     profile.DocumentStates(),
 			"factStates":         profile.FactStates(),
 		})

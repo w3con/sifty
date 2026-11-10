@@ -17,6 +17,7 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/inspect"
+	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/server"
 	"github.com/w3con/sifty/internal/store"
 	"github.com/w3con/sifty/internal/worker"
@@ -81,7 +82,12 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	defer func() { _ = s.DB.Close() }()
 
-	deps := &server.Deps{Store: s, Dirs: d, Cfg: cfgHolder}
+	resolvedWorkersDir, _ := filepath.Abs(*workersDir)
+	deps := &server.Deps{Store: s, Dirs: d, Cfg: cfgHolder, Profiles: profile.NewService(
+		s, cfgHolder,
+		profile.WithDirs(d),
+		profile.WithDocxReader(profile.NewNodeDocxReader(resolvedWorkersDir)),
+	)}
 	deps.CollectFn = func(source string, force bool) (int64, string, error) {
 		return background.TriggerAsync(s, d, cfgHolder.Get(), background.TriggerOpts{
 			Source: source,
@@ -109,7 +115,6 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 
 	// Build the Playwright inspect function. The worker runs as a Node subprocess.
 	// resolvedWorkersDir is the workers/ directory; the playwright script is one level below it.
-	resolvedWorkersDir, _ := filepath.Abs(*workersDir)
 	rawInspectFn := newPlaywrightInspectFn(resolvedWorkersDir)
 	// Wrap with the browser discipline: per-host pacing, global concurrency limit and per-host
 	// cooldown all live here in the long-lived Go process, not in the ephemeral Node subprocess.

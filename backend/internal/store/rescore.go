@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"fmt"
 )
 
@@ -19,8 +20,15 @@ import (
 // When matchQuery is empty, all match_score values are reset to 0 and the function returns
 // without querying the FTS index.
 func (s *Store) Rescore(matchQuery string) error {
+	return s.RescoreForProfile(matchQuery, 0)
+}
+
+// RescoreForProfile is Rescore with the confirmed profile revision that produced the query
+// recorded on every role. Reads compare that revision with the current stored profile, so an
+// old score is never presented as current after a profile save or a failed refresh.
+func (s *Store) RescoreForProfile(matchQuery string, profileRevision int) error {
 	if matchQuery == "" {
-		if _, err := s.DB.Exec("UPDATE jobs SET match_score=0"); err != nil {
+		if _, err := s.DB.Exec("UPDATE jobs SET match_score=0, match_profile_revision=?", profileRevision); err != nil {
 			return fmt.Errorf("rescore: reset scores: %w", err)
 		}
 		return nil
@@ -87,7 +95,7 @@ func (s *Store) Rescore(matchQuery string) error {
 		}
 	}()
 
-	if _, err := tx.Exec("UPDATE jobs SET match_score=0"); err != nil {
+	if _, err := tx.Exec("UPDATE jobs SET match_score=0, match_profile_revision=?", profileRevision); err != nil {
 		return fmt.Errorf("rescore: reset: %w", err)
 	}
 
@@ -102,4 +110,25 @@ func (s *Store) Rescore(matchQuery string) error {
 	}
 	tx = nil
 	return nil
+}
+
+// FastRankingRevision reports the profile revision attribution currently stored on jobs.
+// known=false means there are no roles to rank; uniform=false means roles carry different
+// revisions (for example a new role inserted after the last rescore). Callers must not present
+// either case as a current score.
+func (s *Store) FastRankingRevision() (revision int, known, uniform bool, err error) {
+	var count int
+	var min, max sql.NullInt64
+	if err := s.DB.QueryRow(
+		"SELECT COUNT(*), MIN(match_profile_revision), MAX(match_profile_revision) FROM jobs").
+		Scan(&count, &min, &max); err != nil {
+		return 0, false, false, fmt.Errorf("fast ranking state: %w", err)
+	}
+	if count == 0 {
+		return 0, false, false, nil
+	}
+	if !min.Valid || !max.Valid {
+		return 0, true, false, nil
+	}
+	return int(min.Int64), true, min.Int64 == max.Int64, nil
 }

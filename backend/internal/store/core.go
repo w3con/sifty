@@ -12,14 +12,14 @@ import (
 
 // stageAliases maps every stored status value and stage name to its canonical stage.
 var stageAliases = map[string]string{
-	"new":        "triage",
-	"saved":      "preselected",
-	"rejected":   "no",
-	"shortlist":  "preselected",
-	"triage":     "triage",
-	"preselected":"preselected",
-	"no":         "no",
-	"applied":    "applied",
+	"new":         "triage",
+	"saved":       "preselected",
+	"rejected":    "no",
+	"shortlist":   "preselected",
+	"triage":      "triage",
+	"preselected": "preselected",
+	"no":          "no",
+	"applied":     "applied",
 }
 
 // stageFor returns the canonical stage for a stored status or stage name.
@@ -147,4 +147,27 @@ func jobVersionHash(title, company, description, descriptionStatus string, locat
 		"location":          loc,
 	})
 	return hashStr(string(data))
+}
+
+// JobVersionHash exposes the same vacancy fingerprint to the assessment worker so a stored
+// result carries the version that Get/List compare against.
+func JobVersionHash(title, company, description, descriptionStatus string, location *string) string {
+	return jobVersionHash(title, company, description, descriptionStatus, location)
+}
+
+// intValue reads a decoded JSON number without inventing a revision from an absent field.
+func intValue(v any) int {
+	switch n := v.(type) {
+	case float64:
+		return int(n)
+	case int:
+		return n
+	case int64:
+		return int(n)
+	case json.Number:
+		i, _ := n.Int64()
+		return int(i)
+	default:
+		return 0
+	}
 }

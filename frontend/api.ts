@@ -1,8 +1,19 @@
 import type {StopWord} from './model/core';
+// ApiError preserves the HTTP status and JSON body so callers can keep a draft on 409 and show
+// the server's current revision, instead of losing the payload in a generic message.
+export class ApiError extends Error {
+  status:number; data:any;
+  constructor(message:string,status:number,data:any){super(message);this.name='ApiError';this.status=status;this.data=data;}
+}
 export async function api(path:string,method='GET',body?:unknown):Promise<any> {
   const r=await fetch(`/api/${path}`,{method,headers:method==='GET'?{}:{'content-type':'application/json'},body:body===undefined?undefined:JSON.stringify(body)});
-  if(!r.headers.get('content-type')?.includes('application/json'))throw new Error(`API /api/${path} returned HTTP ${r.status} without JSON. Refresh after restarting the catalogue server.`);
-  const data=await r.json();if(!r.ok)throw new Error(data.error??`HTTP ${r.status}`);return data;
+  if(!r.headers.get('content-type')?.includes('application/json'))throw new ApiError(`API /api/${path} returned HTTP ${r.status} without JSON. Refresh after restarting the catalogue server.`,r.status,undefined);
+  const data=await r.json();
+  // A fresh database has no non-done queue rows. Normalise that empty state at the API boundary
+  // so every consumer receives an array instead of relying on optional chaining that stops at
+  // `queue` and then crashes on `rows.find`.
+  if(data&&typeof data==='object'&&'rows' in data&&data.rows==null)data.rows=[];
+  if(!r.ok)throw new ApiError(data.error??`HTTP ${r.status}`,r.status,data);return data;
 }
 export const blockJob=(id:number,dimension:'company'|'source')=>api(`jobs/${id}/block`,'POST',{dimension});
 export const listStopWords=():Promise<StopWord[]>=>api('stop-words');

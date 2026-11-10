@@ -19,3 +19,9 @@ var ApplicationPreparation string
 //
 //go:embed extraction.md
 var Extraction string
+
+// ProfileFacts is the system prompt used for extracting attributed profile facts from one
+// candidate input document.
+//
+//go:embed profile-facts.md
+var ProfileFacts string

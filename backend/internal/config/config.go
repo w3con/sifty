@@ -62,24 +62,81 @@ func (s *Search) EffectiveExpressions() []SearchExpression {
 
 // Runtime is the collection and assessment runtime configuration.
 type Runtime struct {
-	Version           int  `yaml:"version"`
-	Port              int  `yaml:"port"`
-	MaxPages          int  `yaml:"max_pages"`
-	MaxJobsPerSource  int  `yaml:"max_jobs_per_source"`
-	MaxReviewedPerSrc int  `yaml:"max_reviewed_per_source"`
-	MaxDetailRequests int  `yaml:"max_detail_requests"`
-	DetailConcurrency int  `yaml:"detail_concurrency"`
-	MaxQueryGroups    int  `yaml:"max_query_groups"`
-	RequestTimeoutMS  int  `yaml:"request_timeout_ms"`
-	MaxAssessmentsRun int  `yaml:"max_assessments_per_run"`
-	ModelExtraction    bool `yaml:"model_extraction"`
-	DailyHour          int  `yaml:"daily_hour"`
-	DailyMinute        int  `yaml:"daily_minute"`
-	BrowserIntervalMS  int  `yaml:"browser_interval_ms"`
-	BrowserJitterMS    int  `yaml:"browser_jitter_ms"`
-	BrowserConcurrency int  `yaml:"browser_concurrency"`
-	BrowserCooldownMS      int `yaml:"browser_cooldown_ms"`
-	CollectionCooldownMS   int `yaml:"collection_cooldown_ms"`
+	Version              int  `yaml:"version"`
+	Port                 int  `yaml:"port"`
+	MaxPages             int  `yaml:"max_pages"`
+	MaxJobsPerSource     int  `yaml:"max_jobs_per_source"`
+	MaxReviewedPerSrc    int  `yaml:"max_reviewed_per_source"`
+	MaxDetailRequests    int  `yaml:"max_detail_requests"`
+	DetailConcurrency    int  `yaml:"detail_concurrency"`
+	MaxQueryGroups       int  `yaml:"max_query_groups"`
+	RequestTimeoutMS     int  `yaml:"request_timeout_ms"`
+	MaxAssessmentsRun    int  `yaml:"max_assessments_per_run"`
+	ModelExtraction      bool `yaml:"model_extraction"`
+	DailyHour            int  `yaml:"daily_hour"`
+	DailyMinute          int  `yaml:"daily_minute"`
+	BrowserIntervalMS    int  `yaml:"browser_interval_ms"`
+	BrowserJitterMS      int  `yaml:"browser_jitter_ms"`
+	BrowserConcurrency   int  `yaml:"browser_concurrency"`
+	BrowserCooldownMS    int  `yaml:"browser_cooldown_ms"`
+	CollectionCooldownMS int  `yaml:"collection_cooldown_ms"`
+
+	// Profile document handling. Zero values select the documented defaults in the
+	// Effective methods below; they are the single configuration location for the
+	// extraction limits and accepted document types.
+	ProfileMaxDocumentBytes    int      `yaml:"profile_max_document_bytes"`
+	ProfileTextTimeoutMS       int      `yaml:"profile_text_timeout_ms"`
+	ProfileExtractionTimeoutMS int      `yaml:"profile_extraction_timeout_ms"`
+	ProfileMaxFacts            int      `yaml:"profile_max_facts"`
+	ProfileDocumentTypes       []string `yaml:"profile_document_types"`
+}
+
+// EffectiveProfileMaxDocumentBytes is the upload ceiling for one profile document.
+func (r Runtime) EffectiveProfileMaxDocumentBytes() int {
+	if r.ProfileMaxDocumentBytes > 0 {
+		return r.ProfileMaxDocumentBytes
+	}
+	return 2 << 20 // 2 MiB
+}
+
+// EffectiveProfileUploadBodyBytes is the JSON request-body allowance for one base64 document
+// upload. It is derived from the same configured document ceiling plus fixed base64/JSON overhead;
+// the upload handler enforces it before decoding.
+func (r Runtime) EffectiveProfileUploadBodyBytes() int {
+	max := r.EffectiveProfileMaxDocumentBytes()
+	return max*4/3 + 64*1024
+}
+
+// EffectiveProfileTextTimeoutMS bounds local text extraction (pdftotext/DOCX/plain read).
+func (r Runtime) EffectiveProfileTextTimeoutMS() int {
+	if r.ProfileTextTimeoutMS > 0 {
+		return r.ProfileTextTimeoutMS
+	}
+	return 30000
+}
+
+// EffectiveProfileExtractionTimeoutMS bounds one configured extraction-provider call.
+func (r Runtime) EffectiveProfileExtractionTimeoutMS() int {
+	if r.ProfileExtractionTimeoutMS > 0 {
+		return r.ProfileExtractionTimeoutMS
+	}
+	return 120000
+}
+
+// EffectiveProfileMaxFacts bounds how many attributed proposals one analysis may store.
+func (r Runtime) EffectiveProfileMaxFacts() int {
+	if r.ProfileMaxFacts > 0 {
+		return r.ProfileMaxFacts
+	}
+	return 100
+}
+
+// EffectiveProfileDocumentTypes returns the accepted upload extensions without a leading dot.
+func (r Runtime) EffectiveProfileDocumentTypes() []string {
+	if len(r.ProfileDocumentTypes) > 0 {
+		return r.ProfileDocumentTypes
+	}
+	return []string{"pdf", "docx", "md", "txt"}
 }
 
 // Provider is one inference provider definition.

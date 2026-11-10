@@ -1,6 +1,7 @@
 package assess
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,7 +10,7 @@ import (
 )
 
 // ollamaStubResponse returns a minimal valid ollama chat response whose content field
-// is already valid JSON for parseModelJSON.
+// is already valid JSON for decodeModelJSON.
 func ollamaStubResponse() any {
 	content := `{"score":0,"summary":"ok","evidence":[],"gaps":[],"confirmedMismatches":[],"candidateUnknowns":[],"employerUnknowns":[]}`
 	return map[string]any{
@@ -50,7 +51,7 @@ func TestInferHTTPOllamaNumCtx(t *testing.T) {
 		TimeoutMS:    5000,
 		ContextChars: contextChars,
 	}
-	if _, err := inferHTTP(p, "test prompt", map[string]any{"type": "object"}); err != nil {
+	if _, err := inferHTTP(context.Background(), p, "test prompt", map[string]any{"type": "object"}); err != nil {
 		t.Fatalf("inferHTTP: %v", err)
 	}
 
@@ -88,7 +89,7 @@ func TestInferHTTPOllamaNumCtxUpperBound(t *testing.T) {
 		TimeoutMS:    5000,
 		ContextChars: veryLargeContextChars,
 	}
-	if _, err := inferHTTP(p, "test prompt", map[string]any{"type": "object"}); err != nil {
+	if _, err := inferHTTP(context.Background(), p, "test prompt", map[string]any{"type": "object"}); err != nil {
 		t.Fatalf("inferHTTP: %v", err)
 	}
 
@@ -132,7 +133,7 @@ func TestInferHTTPCompatibleNoOptions(t *testing.T) {
 		TimeoutMS:    5000,
 		ContextChars: 32000,
 	}
-	if _, err := inferHTTP(p, "test prompt", map[string]any{"type": "object"}); err != nil {
+	if _, err := inferHTTP(context.Background(), p, "test prompt", map[string]any{"type": "object"}); err != nil {
 		t.Fatalf("inferHTTP: %v", err)
 	}
 

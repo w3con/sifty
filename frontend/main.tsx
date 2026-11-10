@@ -8,11 +8,13 @@ import {Filters} from './CatalogueFilters';
 import {emptySelection,filterCatalogue,migrateSelection,selectionCount,sortCatalogue,type CatalogueSelection} from './filters';
 import {emptyQuick,nextUndecided,quickMatch,shortcutGuard,visibleInStage,type QuickFilters,type View} from './workflow';
 import {Settings} from './Settings';
+import {ProfileScreen} from './profile/ProfileScreen';
 import {Collection} from './Collection';
 import {RoleContent} from './RoleContent';
 import {ApplicationConfirmation} from './ApplicationConfirmation';
 import {DeleteRole} from './DeleteRole';
 import {Icon} from './Icon';
+import {Logo} from './Logo';
 import '@fontsource/ibm-plex-sans/latin-400.css';
 import '@fontsource/ibm-plex-sans/latin-500.css';
 import '@fontsource/ibm-plex-sans/latin-600.css';
@@ -27,6 +29,8 @@ import './application.css';
 import './polish.css';
 import './queue-control.css';
 import './application-draft.css';
+import './theme.css';
+import './profile/profile.css';
 
 function preference<T>(key:string,fallback:T):T {try{return JSON.parse(localStorage.getItem(key)??'null')??fallback;}catch{return fallback;}}
 export const dateLabel=(date:string|null)=>date?new Date(date).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'}):'Date not recorded';
@@ -37,7 +41,7 @@ function App(){
   const [unread,setUnread]=useState(()=>preference('sift.unread',false)),[sort,setSort]=useState<'fit'|'newest'>(()=>preference('sift.sort','fit')),[heldUnread,setHeldUnread]=useState<number|null>(null);
   const [quick,setQuick]=useState<QuickFilters>(()=>({...emptyQuick(),...preference('sift.quick',{})}));
   const [filtersOpen,setFiltersOpen]=useState(false),[options,setOptions]=useState<any>(null),[queue,setQueue]=useState<any>(null);
-  const [settings,setSettings]=useState<string|null>(null),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importUrl,setImportUrl]=useState(''),[busy,setBusy]=useState(false);
+  const [settings,setSettings]=useState<string|null>(null),[profileOpen,setProfileOpen]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState(''),[importUrl,setImportUrl]=useState(''),[busy,setBusy]=useState(false);
   const [confirmation,setConfirmation]=useState<Job|null>(null);
   const [deleting,setDeleting]=useState<Job|null>(null);
   const [archiveView,setArchiveView]=useState<'applied'|'dismissed'>('applied');
@@ -105,7 +109,7 @@ function App(){
   function switchView(next:View){setView(next);setSelected(null);setHeldUnread(null);setError('');setNotice('');if(next!=='applied')setArchiveView('applied');}
   function move(delta:number){if(!filtered.length)return;const i=filtered.findIndex(j=>j.id===selected);setHeldUnread(null);setSelected(filtered[(i+delta+filtered.length)%filtered.length].id);}
   useEffect(()=>{function key(e:KeyboardEvent){
-    if(settings||document.querySelector('dialog[open]')||e.metaKey||e.ctrlKey||e.altKey||e.isComposing)return;
+    if(profileOpen||settings||document.querySelector('dialog[open]')||e.metaKey||e.ctrlKey||e.altKey||e.isComposing)return;
     if(e.key==='Escape'){setFiltersOpen(false);(document.activeElement as HTMLElement)?.blur();return;}
     if(shortcutGuard(e.target))return;
     const key=e.key.toLowerCase();
@@ -119,12 +123,13 @@ function App(){
   const activeCount=Object.values(quick).filter(Boolean).length+selectionCount(selection)+(unread?1:0);
   return <div className="sift-app">
     <header className="app-header">
-      <div className="brand"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 20 20"><circle cx="5" cy="5" r="3" fill="#58585e"/><circle cx="13" cy="5" r="3" fill="#58585e"/><circle cx="9" cy="14" r="4" fill="#8ab4ff"/></svg><strong>sift</strong></div>
+      <div className="brand"><Logo height={18}/><strong>sifty</strong></div>
       <nav className="stages" aria-label="Workflow stages"><button aria-pressed={view==='collection'} className={view==='collection'?'active':''} onClick={()=>switchView('collection')}>Collection</button><button aria-pressed={view==='triage'} className={view==='triage'?'active':''} onClick={()=>switchView('triage')}>Triage <span>{live.filter(j=>j.stage==='triage'&&!j.blocked).length}</span></button><button aria-pressed={view==='preselected'} className={view==='preselected'?'active':''} onClick={()=>switchView('preselected')}>Preparation <span>{live.filter(j=>j.stage==='preselected').length}</span></button><button aria-pressed={view==='applied'} className={view==='applied'?'active':''} onClick={()=>switchView('applied')}>Archive <span>{live.filter(j=>j.stage==='applied').length}</span></button></nav>
       <div className="header-spacer"/>
       <div className="search"><span aria-hidden="true"><Icon name="search" size={15}/></span><input ref={search} id="find" aria-label="Search catalogue" placeholder="Search company, role, tech" value={query} onChange={e=>setQuery(e.target.value)}/><kbd>/</kbd></div>
-      <div className="header-spacer"/><button className="settings-button" onClick={()=>setSettings('settings')}><Icon name="settings" size={15}/> Settings</button>
+      <div className="header-spacer"/><button className="settings-button" aria-pressed={profileOpen} onClick={()=>setProfileOpen(true)}><Icon name="target" size={15}/> Profile</button><button className="settings-button" onClick={()=>setSettings('settings')}><Icon name="settings" size={15}/> Settings</button>
     </header>
+    {profileOpen?<ProfileScreen onClose={()=>setProfileOpen(false)}/>:<>
     {view==='collection'&&<Collection onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}} onError={setError}/>}
     {view!=='collection'&&<div className="workspace">
       <aside className="catalogue" aria-label="Vacancies"><div className="list-toolbar">{!isArchive&&<button aria-pressed={unread} onClick={()=>setUnread(!unread)}>Unread</button>}<div className="filter-box" ref={filterBox}><button aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(!filtersOpen)}><Icon name="filters" size={14}/> Filters {activeCount>0&&<span className="filter-count">{activeCount}</span>}</button>{filtersOpen&&<div className="filter-popover"><div className="quick-filters">{([['web3','Web3 / blockchain only'],['remote','Remote only'],['strong','Strong fit (75+)'],['hideExpired','Hide expired'],['management','Management title']] as const).map(([key,label])=><label key={key}><input type="checkbox" checked={quick[key]} onChange={e=>setQuick({...quick,[key]:e.target.checked})}/>{label}</label>)}</div><p className="muted">Management matches CTO, Head, Director, Manager or Lead in the title, excluding lead generation. Responsibilities are not inferred.</p><Filters jobs={live} options={options} selection={selection} setSelection={setSelection} rows={queue?.rows??[]} shown={filtered.length} reset={resetFilters}/></div>}</div>{!isArchive&&<label className="sort-control"><span className="sr-only">Sort roles</span><select aria-label="Sort roles" value={sort} onChange={e=>setSort(e.target.value as 'fit'|'newest')}><option value="fit">Best fit</option><option value="newest">Newest</option></select></label>}</div>
@@ -143,13 +148,13 @@ function App(){
         {error&&<div className="banner error" role="alert">{error}</div>}{notice&&<div className="banner" role="status">{notice}<button aria-label="Dismiss notification" onClick={()=>setNotice('')}>×</button></div>}
         {job?<><div className="detail-top">
           <div className="role-heading"><p className="company">{job.isWeb3&&<span className="web3-chip"><span className="web3-mark">⬡</span> Web3</span>}{job.company}</p><h1>{job.title}</h1><div className="role-meta"><span>{job.location||'Location not stated'}</span>{job.expired&&<span>◷ Listing expired</span>}<a href={job.originalUrl} target="_blank" rel="noreferrer">Original listing ↗</a>{!job.applyUrl&&<span className="warning">Employer apply link not resolved</span>}</div></div>
-          <div className="review-actions">{inDismissed?<><span className="danger">Dismissed</span><button disabled={busy} onClick={()=>restoreDismissed(job)}>Restore to Triage</button></>:view==='triage'&&job.stage==='triage'?<><button className="no-button" disabled={busy} onClick={()=>transition('no')}>✕ Dismiss <kbd>N</kbd></button><button disabled={busy} onClick={doBlockCompany}>Block company</button><button className="primary" disabled={busy} onClick={()=>transition('preselected')}>✓ Select <kbd>Y</kbd></button></>:view==='preselected'?<><button disabled={busy} onClick={()=>transition('triage')}>Back to triage</button><button className="primary" disabled={busy} onClick={apply}>Apply ↗ <kbd>A</kbd></button><button className="confirm-later" disabled={busy} onClick={()=>setConfirmation(job)}>Confirm application…</button></>:<><span className={job.stage==='no'?'danger':'muted'}>{job.stage==='no'?'Dismissed — hidden after this session':job.stage==='applied'?`Applied ${dateLabel(job.appliedAt)}`:'Moved to Preparation'}</span><button disabled={busy} onClick={()=>transition(job.stage==='applied'?'preselected':'triage')}>Undo</button></>}</div>
+          <div className="review-actions">{inDismissed?<><span className="danger">Dismissed</span><button disabled={busy} onClick={()=>restoreDismissed(job)}>Restore to Triage</button></>:view==='triage'&&job.stage==='triage'?<><button disabled={busy} onClick={doBlockCompany}>Block company</button><button className="no-button" disabled={busy} onClick={()=>transition('no')}>✕ Dismiss <kbd>N</kbd></button><button className="primary" disabled={busy} onClick={()=>transition('preselected')}>✓ Select <kbd>Y</kbd></button></>:view==='preselected'?<><button disabled={busy} onClick={()=>transition('triage')}>Back to triage</button><button className="primary" disabled={busy} onClick={apply}>Apply ↗ <kbd>A</kbd></button><button className="confirm-later" disabled={busy} onClick={()=>setConfirmation(job)}>Confirm application…</button></>:<><span className={job.stage==='no'?'danger':'muted'}>{job.stage==='no'?'Dismissed — hidden after this session':job.stage==='applied'?`Applied ${dateLabel(job.appliedAt)}`:'Moved to Preparation'}</span><button disabled={busy} onClick={()=>transition(job.stage==='applied'?'preselected':'triage')}>Undo</button></>}</div>
         </div>
           {(view!=='triage')&&<div className="archive-actions">{job.stage==='applied'&&<p className="muted">{validAppliedAt(job.appliedAt)&&Date.parse(job.appliedAt)<=Date.now()?`Confirmed ${dateLabel(job.appliedAt)}. Permanent removal after ${new Date(Date.parse(job.appliedAt)+archiveRetentionMs).toLocaleString()}.`:'No valid past confirmed application date; automatic deletion is disabled.'}</p>}<button disabled={busy} onClick={()=>setDeleting(job)}>Delete role…</button></div>}
           <RoleContent key={job.id} job={job} queue={queue} onQueue={setQueue} refresh={refresh} onError={setError} onNotice={setNotice}/>
         </>:<div className="empty"><h1>{filtered.length?'Select a role':'No role selected'}</h1><p>{filtered.length?'Choose a role to review its evidence.':'This stage has no visible roles. Change stage or filters, or collect jobs in Sources.'}</p></div>}
       </div></main>
-    </div>}
+    </div>}</>}
     {settings&&<Settings panel={settings} setPanel={setSettings} queue={queue} assessmentOn={assessmentOn} savingAssessment={savingAssessment} assessmentError={assessmentError} toggleAssessment={toggleAssessment} onError={setError} onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}}/>}
     {confirmation&&<ApplicationConfirmation job={confirmation} onClose={()=>setConfirmation(null)} onConfirm={()=>transition('applied',true,confirmation)}/>}
     {deleting&&<DeleteRole job={deleting} onClose={()=>setDeleting(null)} onDeleted={(id,cleanupIncomplete)=>{epoch.current++;setJobs(old=>old.filter(j=>j.id!==id));setDismissedJobs(old=>old.filter(j=>j.id!==id));setDeleting(null);setNotice(cleanupIncomplete?'Role deleted, but a local technical log could not be removed. See server logs.':'Role and application history permanently deleted.');}}/>}

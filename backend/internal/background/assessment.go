@@ -5,6 +5,9 @@ package background
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -243,9 +246,36 @@ func defaultAssessJob(s *store.Store, d dirs.Dirs, cfg *config.Config, jobID int
 
 	result, err := assess.Assess(ac, assessJob, p, prompts.Assessment, inferFn)
 	if err != nil {
-		_ = s.AssessmentFailure(jobID, err.Error(), nil)
+		_ = s.AssessmentFailure(jobID, err.Error(), map[string]any{
+			"contextVersion": c.Version, "profileId": c.ProfileID,
+			"profileRevision": c.ProfileRevision, "provider": providerName,
+			"model": p.Model, "createdAt": assessmentNow(),
+		})
 		return err
 	}
 
-	return s.Assessment(jobID, result)
+	// Record the exact inputs this result used. A later profile/context change must make this
+	// result stale on read rather than letting a late assessment look current.
+	var resultMap map[string]any
+	encoded, _ := json.Marshal(result)
+	_ = json.Unmarshal(encoded, &resultMap)
+	resultMap["jobVersion"] = store.JobVersionHash(job.Title, job.Company, job.Description, job.DescriptionStatus, job.Location)
+	resultMap["contextVersion"] = c.Version
+	resultMap["profileId"] = c.ProfileID
+	resultMap["profileRevision"] = c.ProfileRevision
+	resultMap["provider"] = providerName
+	resultMap["model"] = p.Model
+	resultMap["promptVersion"] = promptVersion()
+	resultMap["createdAt"] = assessmentNow()
+
+	return s.Assessment(jobID, resultMap)
+}
+
+func assessmentNow() string {
+	return time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
+}
+
+func promptVersion() string {
+	sum := sha256.Sum256([]byte(prompts.Assessment))
+	return hex.EncodeToString(sum[:])
 }

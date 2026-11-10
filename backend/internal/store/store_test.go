@@ -9,7 +9,7 @@ import (
 	"github.com/w3con/sifty/internal/store"
 )
 
-// expectedTables is the complete set of tables the documented schema must contain at user_version 13.
+// expectedTables is the complete set of tables the documented schema must contain at user_version 16.
 // Derived from the target schema appendix in docs/architecture/backend-architecture.md section 13.
 var expectedTables = []string{
 	"migrations",
@@ -40,6 +40,10 @@ var expectedTables = []string{
 	"application_revisions",
 	"questionnaire_snapshots",
 	"preparation_operations",
+	"user_profiles",
+	"profile_documents",
+	"profile_facts",
+	"profile_revisions",
 }
 
 // expectedColumns maps table names to columns (including incrementally-added ones) that must
@@ -53,6 +57,8 @@ var expectedColumns = map[string][]string{
 		"apply_status", "tags", "seen_at", "applied_at",
 		// added by v13:
 		"match_score",
+		// added by v16:
+		"match_profile_revision",
 	},
 	"assessment_queue": {
 		"job_id", "fingerprint", "provider", "status", "priority", "attempts",
@@ -63,7 +69,7 @@ var expectedColumns = map[string][]string{
 }
 
 // TestSchema_FreshDatabase opens a brand-new database and verifies it converges on the
-// documented schema at user_version 14 with all tables and columns.
+// documented schema at user_version 16 with all tables and columns.
 func TestSchema_FreshDatabase(t *testing.T) {
 	s, err := store.Open(filepath.Join(t.TempDir(), "fresh.sqlite"))
 	if err != nil {
@@ -74,7 +80,7 @@ func TestSchema_FreshDatabase(t *testing.T) {
 }
 
 // TestSchema_ExistingDatabase copies the owner's live database to a temporary directory
-// and opens it with the Go store. The migration runs to user_version 14,
+// and opens it with the Go store. The migration runs to user_version 16,
 // and the schema must match the documented shape.
 //
 // Set SIFTY_OWNER_DB to the path of a local jobs database to run this test; it is skipped
@@ -105,7 +111,7 @@ func TestSchema_ExistingDatabase(t *testing.T) {
 	checkSchema(t, s.DB, "owner's existing database")
 }
 
-// checkSchema asserts that db is at user_version 14 in WAL mode and contains all documented
+// checkSchema asserts that db is at user_version 16 in WAL mode and contains all documented
 // tables and columns.
 func checkSchema(t *testing.T, db *sql.DB, label string) {
 	t.Helper()
@@ -114,8 +120,8 @@ func checkSchema(t *testing.T, db *sql.DB, label string) {
 	if err := db.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("[%s] PRAGMA user_version: %v", label, err)
 	}
-	if version != 14 {
-		t.Errorf("[%s] user_version = %d, want 14", label, version)
+	if version != 16 {
+		t.Errorf("[%s] user_version = %d, want 16", label, version)
 	}
 
 	var mode string

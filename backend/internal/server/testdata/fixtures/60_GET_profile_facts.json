@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/profile/facts — facts across the profile, optional documentId filter",
+  "method": "GET",
+  "path": "/api/profile/facts",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic"
+}

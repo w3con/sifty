@@ -13,7 +13,6 @@ import (
 	"math"
 	"net/http"
 	"os"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strings"
@@ -23,6 +22,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	gocfg "github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
+	"github.com/w3con/sifty/internal/extract"
 	"github.com/w3con/sifty/internal/records"
 )
 
@@ -43,11 +43,13 @@ type EvidenceSource struct {
 // CandidateContext is the assembled evidence snapshot. The JSON field names match the TypeScript
 // CandidateContext type.
 type CandidateContext struct {
-	Version     string           `json:"version"`
-	CreatedAt   string           `json:"createdAt"`
-	Preferences any              `json:"preferences"`
-	ReviewNotes []string         `json:"reviewNotes"`
-	Sources     []EvidenceSource `json:"sources"`
+	Version         string           `json:"version"`
+	CreatedAt       string           `json:"createdAt"`
+	ProfileID       string           `json:"profileId,omitempty"`
+	ProfileRevision int              `json:"profileRevision,omitempty"`
+	Preferences     any              `json:"preferences"`
+	ReviewNotes     []string         `json:"reviewNotes"`
+	Sources         []EvidenceSource `json:"sources"`
 }
 
 // ContextStore is the subset of *store.Store used here, allowing tests to inject a stub.
@@ -70,15 +72,23 @@ func nowISO() string { return time.Now().UTC().Format("2006-01-02T15:04:05.000Z"
 // ContextVersion returns a short fingerprint over the context content that changes whenever
 // preferences, review notes, or source content changes. It matches the TypeScript contextVersion.
 func ContextVersion(preferences any, reviewNotes []string, sources []EvidenceSource) string {
+	return ContextVersionForProfile("", 0, preferences, reviewNotes, sources)
+}
+
+// ContextVersionForProfile is ContextVersion with the authoritative profile identity included.
+// A confirmed-profile source and its revision therefore change the derived context version even
+// when the remaining evidence text happens to be unchanged. The profile fields are omitted for
+// an empty profile id so contexts assembled before profiles existed keep their old fingerprint.
+func ContextVersionForProfile(profileID string, profileRevision int, preferences any, reviewNotes []string, sources []EvidenceSource) string {
 	type sourceEntry struct {
-		ID          string  `json:"id"`
-		Reference   string  `json:"reference"`
-		Hash        string  `json:"hash"`
-		Status      string  `json:"status"`
-		Error       string  `json:"error,omitempty"`
-		Category    string  `json:"category,omitempty"`
-		Scope       string  `json:"scope,omitempty"`
-		TextHash    string  `json:"textHash"`
+		ID        string `json:"id"`
+		Reference string `json:"reference"`
+		Hash      string `json:"hash"`
+		Status    string `json:"status"`
+		Error     string `json:"error,omitempty"`
+		Category  string `json:"category,omitempty"`
+		Scope     string `json:"scope,omitempty"`
+		TextHash  string `json:"textHash"`
 	}
 	entries := make([]sourceEntry, len(sources))
 	for i, s := range sources {
@@ -90,6 +100,10 @@ func ContextVersion(preferences any, reviewNotes []string, sources []EvidenceSou
 	}
 	payload := map[string]any{
 		"preferences": preferences, "reviewNotes": reviewNotes, "sources": entries,
+	}
+	if profileID != "" {
+		payload["profileId"] = profileID
+		payload["profileRevision"] = profileRevision
 	}
 	data, _ := json.Marshal(payload)
 	return hashStr(string(data))
@@ -175,20 +189,23 @@ func cleanHTML(html string) (string, error) {
 	return strings.TrimSpace(text), nil
 }
 
-// fileText reads extractable text from a file. PDFs are extracted with pdftotext (system binary);
-// text files are read directly.
+// fileText reads extractable text from a file. PDFs are extracted with pdftotext; text files are
+// read directly. The small shared reader lives in internal/extract so the profile document path
+// uses the same PDF/plain-text behaviour.
 func fileText(path string) (string, error) {
-	if strings.HasSuffix(strings.ToLower(path), ".pdf") {
-		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
-		defer cancel()
-		out, err := exec.CommandContext(ctx, "pdftotext", "-layout", path, "-").Output()
-		if err != nil {
-			return "", fmt.Errorf("pdftotext %s: %w", path, err)
-		}
-		return string(out), nil
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	text, err := extract.PlainText(ctx, path)
+	if err == nil {
+		return text, nil
 	}
-	data, err := os.ReadFile(path)
-	if err != nil {
+	// Preserve the legacy candidate-context behaviour for other configured formats: they are
+	// read as raw text. PDF failures stay errors, and profile documents use the real DOCX reader.
+	if extract.Kind(path) == "pdf" {
+		return "", err
+	}
+	data, readErr := os.ReadFile(path)
+	if readErr != nil {
 		return "", err
 	}
 	return string(data), nil
@@ -248,7 +265,22 @@ func MapToContext(m map[string]any) (*CandidateContext, error) {
 // refreshRemote forces re-fetching of remote profiles even if the cache is current.
 // localOnly skips remote fetches and marks profiles without an export as stale/missing.
 func RefreshContext(store ContextStore, d dirs.Dirs, cfg *gocfg.Config, preferences any, refreshRemote, localOnly bool) (*CandidateContext, error) {
-	cc := &cfg.Candidate
+	return refreshContext(store, d, cfg, preferences, "", 0, refreshRemote, localOnly)
+}
+
+// RefreshContextForProfile is RefreshContext for a derived context whose authoritative source is
+// the stored confirmed profile. The profile identity is recorded on the snapshot (not inferred
+// from source text), and any extra sources (the confirmed-profile evidence) are appended after
+// the configured files and owner feedback.
+func RefreshContextForProfile(store ContextStore, d dirs.Dirs, cfg *gocfg.Config, preferences any, profileID string, profileRevision int, refreshRemote, localOnly bool, extra ...EvidenceSource) (*CandidateContext, error) {
+	return refreshContext(store, d, cfg, preferences, profileID, profileRevision, refreshRemote, localOnly, extra...)
+}
+
+func refreshContext(store ContextStore, d dirs.Dirs, cfg *gocfg.Config, preferences any, profileID string, profileRevision int, refreshRemote, localOnly bool, extra ...EvidenceSource) (*CandidateContext, error) {
+	var cc gocfg.Candidate
+	if cfg != nil {
+		cc = cfg.Candidate
+	}
 
 	// Load previous context from the store (for profile text reuse within cache window).
 	var previous *CandidateContext
@@ -445,19 +477,22 @@ func RefreshContext(store ContextStore, d dirs.Dirs, cfg *gocfg.Config, preferen
 	}
 
 	allSources := append(sources, feedback...)
+	allSources = append(allSources, extra...)
 
 	reviewNotes := cc.ReviewNotes
 	if reviewNotes == nil {
 		reviewNotes = []string{}
 	}
 
-	version := ContextVersion(preferences, reviewNotes, allSources)
+	version := ContextVersionForProfile(profileID, profileRevision, preferences, reviewNotes, allSources)
 	c := &CandidateContext{
-		Version:     version,
-		CreatedAt:   nowISO(),
-		Preferences: preferences,
-		ReviewNotes: reviewNotes,
-		Sources:     allSources,
+		Version:         version,
+		CreatedAt:       nowISO(),
+		ProfileID:       profileID,
+		ProfileRevision: profileRevision,
+		Preferences:     preferences,
+		ReviewNotes:     reviewNotes,
+		Sources:         allSources,
 	}
 
 	m, err := contextToMap(c)
@@ -494,10 +529,10 @@ func parseISO(s string) time.Time {
 type ContextForJobResult struct {
 	Overview map[string]any `json:"overview"`
 	Sources  []struct {
-		ID          string `json:"id"`
-		Text        string `json:"text"`
-		TotalChars  int    `json:"totalChars"`
-		OmittedChars int   `json:"omittedChars"`
+		ID           string `json:"id"`
+		Text         string `json:"text"`
+		TotalChars   int    `json:"totalChars"`
+		OmittedChars int    `json:"omittedChars"`
 	} `json:"sources"`
 }
 

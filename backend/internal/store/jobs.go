@@ -32,9 +32,38 @@ func (s *Store) ResolveID(id int64) (int64, error) {
 	}
 }
 
+// derivedState is the current authoritative profile revision and derived context version used to
+// decide whether stored fast scores and detailed assessments are still current. A missing value
+// is kept empty/zero rather than invented.
+type derivedState struct {
+	profileID       string
+	profileRevision int
+	contextVersion  string
+}
+
+func (s *Store) derivedState() derivedState {
+	var d derivedState
+	_ = s.DB.QueryRow(
+		"SELECT id, revision FROM user_profiles ORDER BY id LIMIT 1").
+		Scan(&d.profileID, &d.profileRevision)
+	err := s.DB.QueryRow(
+		"SELECT version FROM context_refreshes ORDER BY id DESC LIMIT 1").
+		Scan(&d.contextVersion)
+	if err == sql.ErrNoRows {
+		_ = s.DB.QueryRow(
+			"SELECT version FROM contexts ORDER BY created DESC LIMIT 1").
+			Scan(&d.contextVersion)
+	}
+	return d
+}
+
 // Get returns the full role record for id, resolving aliases transparently. Returns
 // a not-found error (contains "not found") when the role does not exist.
 func (s *Store) Get(id int64) (*model.Job, error) {
+	return s.get(id, s.derivedState())
+}
+
+func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 	id, err := s.ResolveID(id)
 	if err != nil {
 		return nil, err
@@ -44,25 +73,26 @@ func (s *Store) Get(id int64) (*model.Job, error) {
 		SELECT id, identity, title, company, original_url, apply_url, description,
 		       description_status, location, published_at, expires_at, status,
 		       first_seen, last_seen, assessment, assessment_error,
-		       apply_status, tags, seen_at, applied_at, match_score
+		       apply_status, tags, seen_at, applied_at, match_score, match_profile_revision
 		FROM jobs WHERE id=?`, id)
 
 	var r struct {
 		id, identity, title, company, originalURL string
-		applyURL                                   sql.NullString
-		description, descriptionStatus             string
-		location, publishedAt, expiresAt           sql.NullString
-		status, firstSeen, lastSeen                string
-		assessment, assessmentError                sql.NullString
-		applyStatus, tagsJSON, seenAt, appliedAt   sql.NullString
-		idInt                                      int64
-		matchScore                                 int
+		applyURL                                  sql.NullString
+		description, descriptionStatus            string
+		location, publishedAt, expiresAt          sql.NullString
+		status, firstSeen, lastSeen               string
+		assessment, assessmentError               sql.NullString
+		applyStatus, tagsJSON, seenAt, appliedAt  sql.NullString
+		idInt                                     int64
+		matchScore                                int
+		matchProfileRevision                      int
 	}
 	err = row.Scan(
 		&r.idInt, &r.identity, &r.title, &r.company, &r.originalURL, &r.applyURL,
 		&r.description, &r.descriptionStatus, &r.location, &r.publishedAt, &r.expiresAt,
 		&r.status, &r.firstSeen, &r.lastSeen, &r.assessment, &r.assessmentError,
-		&r.applyStatus, &r.tagsJSON, &r.seenAt, &r.appliedAt, &r.matchScore,
+		&r.applyStatus, &r.tagsJSON, &r.seenAt, &r.appliedAt, &r.matchScore, &r.matchProfileRevision,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("job %d not found", id)
@@ -97,7 +127,9 @@ func (s *Store) Get(id int64) (*model.Job, error) {
 			if _, ok := m["employerUnknowns"]; !ok {
 				m["employerUnknowns"] = []any{}
 			}
-			// Compute stale flag.
+			// Compute stale flag. An assessment is current only when the vacancy, the derived
+			// candidate context and the confirmed profile revision it recorded all still match.
+			// Missing version fields are stale, never assumed current.
 			var loc *string
 			if r.location.Valid {
 				v := r.location.String
@@ -107,6 +139,14 @@ func (s *Store) Get(id int64) (*model.Job, error) {
 			if jv, ok := m["jobVersion"].(string); ok {
 				m["stale"] = jv != jobVer
 			} else {
+				m["stale"] = true
+			}
+			if cv, ok := m["contextVersion"].(string); !ok || cv != derived.contextVersion {
+				m["stale"] = true
+			}
+			apID, _ := m["profileId"].(string)
+			apRev := intValue(m["profileRevision"])
+			if apID != derived.profileID || apRev != derived.profileRevision {
 				m["stale"] = true
 			}
 			assessmentObj = m
@@ -183,31 +223,33 @@ func (s *Store) Get(id int64) (*model.Job, error) {
 	}
 
 	job := &model.Job{
-		ID:                r.idInt,
-		Title:             r.title,
-		Company:           r.company,
-		Tags:              tags,
-		Stage:             stage,
-		Status:            r.status,
-		Seen:              seenAt != nil,
-		SeenAt:            seenAt,
-		AppliedAt:         appliedAt,
-		IsWeb3:            isWeb3(r.title, tags, r.description),
-		OriginalURL:       r.originalURL,
-		ApplyURL:          applyURLPtr,
-		ApplyStatus:       r.applyStatus.String,
-		Description:       r.description,
-		DescriptionStatus: r.descriptionStatus,
-		Location:          loc,
-		PublishedAt:       pubAt,
-		ExpiresAt:         expAt,
-		FirstSeen:         r.firstSeen,
-		LastSeen:          r.lastSeen,
-		Expired:           expired,
-		MatchScore:        r.matchScore,
-		Assessment:        assessmentObj,
-		AssessmentError:   assessmentErr,
-		Sources:           sources,
+		ID:                   r.idInt,
+		Title:                r.title,
+		Company:              r.company,
+		Tags:                 tags,
+		Stage:                stage,
+		Status:               r.status,
+		Seen:                 seenAt != nil,
+		SeenAt:               seenAt,
+		AppliedAt:            appliedAt,
+		IsWeb3:               isWeb3(r.title, tags, r.description),
+		OriginalURL:          r.originalURL,
+		ApplyURL:             applyURLPtr,
+		ApplyStatus:          r.applyStatus.String,
+		Description:          r.description,
+		DescriptionStatus:    r.descriptionStatus,
+		Location:             loc,
+		PublishedAt:          pubAt,
+		ExpiresAt:            expAt,
+		FirstSeen:            r.firstSeen,
+		LastSeen:             r.lastSeen,
+		Expired:              expired,
+		MatchScore:           r.matchScore,
+		MatchProfileRevision: r.matchProfileRevision,
+		MatchStale:           r.matchProfileRevision != derived.profileRevision,
+		Assessment:           assessmentObj,
+		AssessmentError:      assessmentErr,
+		Sources:              sources,
 	}
 
 	// Compute block status. Failure to load rules is non-fatal: the job is returned unblocked.
@@ -251,10 +293,11 @@ func (s *Store) List(status, query string) ([]*model.Job, error) {
 		}
 	}
 	normQuery := normalizeText(query)
+	derived := s.derivedState()
 
 	var out []*model.Job
 	for _, id := range ids {
-		job, err := s.Get(id)
+		job, err := s.get(id, derived)
 		if err != nil {
 			continue // skip deleted/missing
 		}

@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/profile/documents/{id}/facts — facts for one document (unknown id)",
+  "method": "GET",
+  "path": "/api/profile/documents/doc-1/facts",
+  "requestBody": null,
+  "responseStatus": 404,
+  "responseBodyShape": "object",
+  "requiredFields": [],
+  "source": "synthetic"
+}

@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/profile \u2014 current local typed profile",
+  "method": "GET",
+  "path": "/api/profile",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["profileId", "revision", "data"],
+  "source": "synthetic"
+}

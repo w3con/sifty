@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/profile/documents — list profile input documents",
+  "method": "GET",
+  "path": "/api/profile/documents",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic"
+}

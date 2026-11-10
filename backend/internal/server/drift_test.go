@@ -76,6 +76,11 @@ func normalizeFixturePath(path string) string {
 	if len(segs) == 4 && segs[0] == "api" && segs[1] == "search" && segs[2] == "sites" {
 		segs[3] = "{name}"
 	}
+	// /api/profile/documents/<id>/... and /api/profile/facts/<id>/...
+	if len(segs) >= 4 && segs[0] == "api" && segs[1] == "profile" &&
+		(segs[2] == "documents" || segs[2] == "facts") {
+		segs[3] = "{id}"
+	}
 	return "/" + strings.Join(segs, "/")
 }
 

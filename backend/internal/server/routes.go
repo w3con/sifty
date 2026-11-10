@@ -18,6 +18,7 @@ import (
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/fetch"
 	"github.com/w3con/sifty/internal/model"
+	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/records"
 	"github.com/w3con/sifty/internal/store"
 	"github.com/w3con/sifty/internal/version"
@@ -45,6 +46,10 @@ type Deps struct {
 	// error. When nil, POST /api/search falls back to the legacy behaviour of recording a run
 	// row and returning "running" without collecting anything.
 	CollectFn func(source string, force bool) (runID int64, status string, err error)
+
+	// Profiles is the profile application service. When nil, RegisterRoutes builds one from
+	// Store and Cfg so existing callers do not need to wire it explicitly.
+	Profiles *profile.Service
 }
 
 // exclusive serialises async operations so at most one runs at a time.
@@ -235,6 +240,11 @@ func RegisterRoutes(mux Router, d *Deps) {
 		}
 		if err := readBody(r, &body); err != nil {
 			return err
+		}
+		// An explicit assessment must use the current confirmed profile, even if an earlier
+		// projection failed or a concurrent save left the stored context one revision behind.
+		if _, err := d.profileService().SyncDerivedContext(); err != nil {
+			return fmt.Errorf("refresh profile context before assessment: %w", err)
 		}
 		job, err := d.Store.Get(id)
 		if err != nil {
@@ -462,13 +472,27 @@ func RegisterRoutes(mux Router, d *Deps) {
 	}))
 
 	// ------------------------------------------------------------------
-	// Phase 4.4 — Candidate context, providers, configuration
+	// Phase 4.4 — Candidate context, profile, providers, configuration
 	// ------------------------------------------------------------------
+
+	registerProfileRoutes(mux, d)
 
 	mux.HandleFunc("GET /api/context", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
 		ctx, err := d.Store.Context()
 		if err != nil {
 			return err
+		}
+		if ctx != nil {
+			if current, cerr := profile.Current(d.Store); cerr == nil && current != nil {
+				rev := 0
+				switch n := ctx["profileRevision"].(type) {
+				case float64:
+					rev = int(n)
+				}
+				pid, _ := ctx["profileId"].(string)
+				ctx["currentProfileRevision"] = current.Revision
+				ctx["profileCurrent"] = pid == current.ID && rev == current.Revision
+			}
 		}
 		writeJSON(w, http.StatusOK, ctx)
 		return nil
@@ -482,15 +506,31 @@ func RegisterRoutes(mux Router, d *Deps) {
 			return err
 		}
 		cfg := d.Cfg.Get()
+		current, err := profile.Current(d.Store)
+		if err != nil {
+			return err
+		}
+		var data *profile.ProfileData
+		preferences := any(cfg.Search.Preferences)
+		profileID := ""
+		revision := 0
+		var extras []candidate.EvidenceSource
+		if current != nil {
+			data = &current.Data
+			preferences = profile.ContextPreferences(current)
+			profileID = current.ID
+			revision = current.Revision
+			extras = append(extras, profile.ContextSource(current))
+		}
 		result, err := ex.Run(func() (any, error) {
-			ctx, err := candidate.RefreshContext(d.Store, d.Dirs, cfg, cfg.Search.Preferences, body.RefreshRemote, false)
+			ctx, err := candidate.RefreshContextForProfile(
+				d.Store, d.Dirs, cfg, preferences, profileID, revision, body.RefreshRemote, false, extras...)
 			if err != nil {
 				return nil, err
 			}
 			// Rescore all roles using the updated profile. Errors are non-fatal: the
 			// context was saved successfully, so return the context even if rescoring fails.
-			matchQuery := store.BuildFTSQueryExprs(configExprsToFTSGroups(cfg.Search.EffectiveExpressions()))
-			if rerr := d.Store.Rescore(matchQuery); rerr != nil {
+			if rerr := d.Store.RescoreForProfile(profile.FastRankingQuery(cfg, data), revision); rerr != nil {
 				_ = rerr // logged by Rescore internals; context response is not affected
 			}
 			return ctx, nil
@@ -758,6 +798,11 @@ func RegisterRoutes(mux Router, d *Deps) {
 		var body map[string]any
 		if err := readBody(r, &body); err != nil {
 			return err
+		}
+		// Preparation reads the derived candidate context, so use the current confirmed profile
+		// before queueing rather than a snapshot that may lag a save.
+		if _, err := d.profileService().SyncDerivedContext(); err != nil {
+			return fmt.Errorf("refresh profile context before preparation: %w", err)
 		}
 		row, err := d.Store.QueuePreparation(id, body)
 		if err != nil {

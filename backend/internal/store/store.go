@@ -2,7 +2,7 @@
 // backend: roles and sightings, assessments and the queue, workflow history, application drafts,
 // collection telemetry, feedback and context indexes, cross-process locks. It opens the database
 // with WAL journal mode, busy_timeout and foreign-key enforcement, runs the idempotent migration
-// sequence to user_version 13, and exposes the underlying *sql.DB so that higher-level packages
+// sequence to user_version 16, and exposes the underlying *sql.DB so that higher-level packages
 // can prepare and execute their own statements.
 package store
 
@@ -22,7 +22,7 @@ type Store struct {
 
 // Open opens or creates the SQLite database at path. It sets WAL journal mode, a 5000 ms
 // busy timeout and foreign-key enforcement, then calls migrate to bring the schema to
-// user_version 13. An existing database already at user_version 13 is opened without
+// user_version 16. An existing database already at user_version 16 is opened without
 // any schema modification. A fresh database is brought to that version in one pass.
 func Open(path string) (*Store, error) {
 	db, err := sql.Open("sqlite", path)

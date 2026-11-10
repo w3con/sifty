@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-const maxBodyBytes = 1 << 20 // 1 MB
+const maxBodyBytes = 1 << 20 // 1 MB for ordinary JSON requests
 
 // errorShape is the JSON body returned for all errors.
 type errorShape struct {
@@ -103,8 +103,10 @@ func securityMiddleware(port int, next http.Handler) http.Handler {
 			}
 		}
 
-		// Cap request body size.
-		if r.Body != nil {
+		// Cap request body size. The profile document upload path is deliberately deferred to its
+		// handler, which derives the byte allowance from the configured document limit before
+		// decoding base64 content. No second upload ceiling is kept here.
+		if r.Body != nil && !(r.Method == http.MethodPost && r.URL.Path == "/api/profile/documents") {
 			r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
 		}
 

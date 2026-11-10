@@ -5,10 +5,10 @@ import (
 	"fmt"
 )
 
-const targetVersion = 14
+const targetVersion = 16
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
-// needed to produce the complete Sifty schema at user_version 10. Every statement is idempotent,
+// needed to produce the complete Sifty schema through user_version 16. Every statement is idempotent,
 // so migrate executes the whole block unconditionally. Columns that the TypeScript store added
 // after the initial CREATE TABLE (apply_status, tags, seen_at, applied_at on jobs;
 // override_provider and routing on assessment_queue) are handled separately by addColumnIfMissing,
@@ -230,6 +230,66 @@ CREATE TABLE IF NOT EXISTS id_sequence(name TEXT PRIMARY KEY, value INTEGER NOT 
 // its transaction commits) and in Store.Delete (called before the row is removed from jobs).
 const fts5Stmt = `CREATE VIRTUAL TABLE IF NOT EXISTS jobs_fts USING fts5(title, description, company, tags)`
 
+// profileSchema creates the additive v15 profile tables. user_profiles holds the current
+// confirmed typed JSON and its revision; profile_documents records input metadata and extracted
+// text while the original file stays under the data directory; profile_facts carries attributed
+// proposals, manual assertions and their state; profile_revisions is the immutable snapshot
+// history. All statements are idempotent and touch no existing table or row.
+const profileSchema = `
+CREATE TABLE IF NOT EXISTS user_profiles(
+  id         TEXT    PRIMARY KEY,
+  revision   INTEGER NOT NULL,
+  data       TEXT    NOT NULL,
+  created_at TEXT    NOT NULL,
+  updated_at TEXT    NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS profile_documents(
+  id                TEXT PRIMARY KEY,
+  profile_id        TEXT NOT NULL REFERENCES user_profiles(id),
+  kind              TEXT NOT NULL DEFAULT '',
+  original_name     TEXT NOT NULL DEFAULT '',
+  storage_path      TEXT,
+  source_url        TEXT,
+  content_hash      TEXT,
+  processing_state  TEXT NOT NULL DEFAULT 'pending',
+  extracted_text    TEXT,
+  analysis_metadata TEXT,
+  error             TEXT,
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS profile_documents_profile ON profile_documents(profile_id);
+
+CREATE TABLE IF NOT EXISTS profile_facts(
+  id               TEXT PRIMARY KEY,
+  profile_id       TEXT NOT NULL REFERENCES user_profiles(id),
+  document_id      TEXT REFERENCES profile_documents(id),
+  field_key        TEXT NOT NULL,
+  value_json       TEXT NOT NULL,
+  quote            TEXT,
+  source_reference TEXT,
+  origin           TEXT NOT NULL,
+  state            TEXT NOT NULL,
+  supersedes_id    TEXT REFERENCES profile_facts(id),
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS profile_facts_profile_field ON profile_facts(profile_id, field_key);
+
+CREATE TABLE IF NOT EXISTS profile_revisions(
+  id         INTEGER PRIMARY KEY,
+  profile_id TEXT    NOT NULL REFERENCES user_profiles(id),
+  revision   INTEGER NOT NULL,
+  data       TEXT    NOT NULL,
+  reason     TEXT    NOT NULL,
+  origin     TEXT    NOT NULL,
+  created_at TEXT    NOT NULL,
+  UNIQUE(profile_id, revision)
+);
+CREATE INDEX IF NOT EXISTS profile_revisions_profile ON profile_revisions(profile_id);
+`
+
 // migrate checks the current user_version and, when below targetVersion, idempotently applies
 // every schema change needed to reach it.
 func migrate(db *sql.DB) error {
@@ -337,6 +397,29 @@ func migrate(db *sql.DB) error {
 		}
 		if _, err := db.Exec("PRAGMA user_version=14"); err != nil {
 			return fmt.Errorf("set user_version=14: %w", err)
+		}
+	}
+
+	// Phase 4 — v15: additive profile tables. No existing table, row, config or feedback entry
+	// is modified; the bootstrap import runs later through the profile service.
+	if version < 15 {
+		if _, err := db.Exec(profileSchema); err != nil {
+			return fmt.Errorf("apply profile schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=15"); err != nil {
+			return fmt.Errorf("set user_version=15: %w", err)
+		}
+	}
+
+	// Phase 5 — v16: record which profile revision produced each fast match_score. A NULL/0
+	// value means no confirmed profile was used, so reads can report an old score honestly
+	// rather than presenting it as current.
+	if version < 16 {
+		if err := addColumnIfMissing(db, "jobs", "match_profile_revision", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("PRAGMA user_version=16"); err != nil {
+			return fmt.Errorf("set user_version=16: %w", err)
 		}
 	}
 

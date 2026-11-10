@@ -133,39 +133,28 @@ export function Collection({onRulesChanged,onError}:Props){
       </div>
     </div>}
 
-    {section==='search'&&<div className="page collection-section">
-      <h1>Search expressions</h1>
-      <p className="muted">OR terms: a role matches any. AND terms: role must contain all of them. Exclusions: hides roles whose title or company matches. All three columns combine with AND — a role must satisfy every non-empty column.</p>
-      <div className="search-columns">
-        <div className="search-col">
-          <h3>OR terms</h3>
-          <div className="col-input">
-            <input value={orInput} onChange={e=>setOrInput(e.target.value)} placeholder="e.g. CTO" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addOrTerm();}}}/>
-            <button disabled={!!busy||!orInput.trim()} onClick={()=>void addOrTerm()}>+</button>
-          </div>
-          <div className="term-chips">{orTerms.map((t,i)=><span key={i} className="term-chip">{t}<button aria-label={`Remove ${t}`} disabled={!!busy} onClick={()=>void removeOrTerm(i)}>×</button></span>)}</div>
-          {orTerms.length===0&&<p className="muted" style={{fontSize:'12px',margin:0}}>No terms yet.</p>}
-        </div>
-        <div className="search-col">
-          <h3>AND terms</h3>
-          <div className="col-input">
-            <input value={andInput} onChange={e=>setAndInput(e.target.value)} placeholder="e.g. Web3" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addAndTerm();}}}/>
-            <button disabled={!!busy||!andInput.trim()} onClick={()=>void addAndTerm()}>+</button>
-          </div>
-          <div className="term-chips">{andTerms.map((t,i)=><span key={i} className="term-chip">{t}<button aria-label={`Remove ${t}`} disabled={!!busy} onClick={()=>void removeAndTerm(i)}>×</button></span>)}</div>
-          {andTerms.length===0&&<p className="muted" style={{fontSize:'12px',margin:0}}>No terms yet.</p>}
-        </div>
-        <div className="search-col">
-          <h3>Exclusions</h3>
-          <div className="col-input">
-            <input value={exclInput} onChange={e=>setExclInput(e.target.value)} placeholder="e.g. risk engineer" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addExcl();}}}/>
-            <button disabled={!!busy||!exclInput.trim()} onClick={()=>void addExcl()}>+</button>
-          </div>
-          {exclPreview&&exclPreview.word===exclInput.trim()&&<p className="muted" style={{fontSize:'12px',margin:'0 0 8px'}}>Would hide {exclPreview.count} {exclPreview.count===1?'role':'roles'}.</p>}
-          <div className="term-chips">{stopWords.map(w=><span key={w.id} className="term-chip">{w.word}<button aria-label={`Remove ${w.word}`} disabled={!!busy} onClick={()=>void removeExcl(w.id)}>×</button></span>)}</div>
-          {stopWords.length===0&&<p className="muted" style={{fontSize:'12px',margin:0}}>No active exclusions.</p>}
-        </div>
-      </div>
+    {section==='search'&&<div className="page collection-section q-page">
+      <div className="q-top"><h1>Search expressions</h1><p className="muted">Read it as a sentence, top to bottom. Changes save immediately and apply to the next collection.</p></div>
+      <div className="q-row"><div className="q-op">Show roles with</div><div className="q-card">
+        <div className="q-head"><strong>Any of these</strong><span>at least one must appear</span></div>
+        <div className="q-chips">{orTerms.map((t,i)=><span key={i} className="q-chip any">{t}<button aria-label={`Remove ${t}`} disabled={!!busy} onClick={()=>void removeOrTerm(i)}>×</button></span>)}
+          <label className="q-add"><span aria-hidden="true">+</span><input aria-label="Add a term to Any of these" value={orInput} onChange={e=>setOrInput(e.target.value)} placeholder="Add a title or keyword…" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addOrTerm();}}}/></label>
+          {orInput.trim()&&<button className="q-add-btn" disabled={!!busy} onClick={()=>void addOrTerm()}>Add</button>}</div>
+      </div></div>
+      <div className="q-row"><div className="q-op">and</div><div className="q-card">
+        <div className="q-head"><strong>All of these</strong><span>every term must appear</span></div>
+        <div className="q-chips">{andTerms.map((t,i)=><span key={i} className="q-chip all">{t}<button aria-label={`Remove ${t}`} disabled={!!busy} onClick={()=>void removeAndTerm(i)}>×</button></span>)}
+          <label className="q-add"><span aria-hidden="true">+</span><input aria-label="Add a term to All of these" value={andInput} onChange={e=>setAndInput(e.target.value)} placeholder="Add a required term…" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addAndTerm();}}}/></label>
+          {andInput.trim()&&<button className="q-add-btn" disabled={!!busy} onClick={()=>void addAndTerm()}>Add</button>}</div>
+      </div></div>
+      <div className="q-row"><div className="q-op">but not</div><div className="q-card">
+        <div className="q-head"><strong>None of these</strong><span>title or company · hides matching roles</span></div>
+        <div className="q-chips">{stopWords.map(w=><span key={w.id} className="q-chip none">{w.word}<button aria-label={`Remove ${w.word}`} disabled={!!busy} onClick={()=>void removeExcl(w.id)}>×</button></span>)}
+          <label className="q-add"><span aria-hidden="true">+</span><input aria-label="Add an exclusion" value={exclInput} onChange={e=>setExclInput(e.target.value)} placeholder="Add an exclusion…" onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();void addExcl();}}}/></label>
+          {exclInput.trim()&&<button className="q-add-btn" disabled={!!busy} onClick={()=>void addExcl()}>Add</button>}</div>
+        {exclPreview&&exclPreview.word===exclInput.trim()&&<p className="muted q-preview">Would hide {exclPreview.count} {exclPreview.count===1?'role':'roles'}.</p>}
+      </div></div>
+      {(orTerms.length+andTerms.length+stopWords.length)>0&&<div className="q-formula"><span className="muted">Query</span><code>{[orTerms.length?`(${orTerms.join(' OR ')})`:'',...andTerms].filter(Boolean).join(' AND ')}{stopWords.length?` NOT (${stopWords.map(w=>w.word).join(' OR ')})`:''}</code></div>}
     </div>}
   </div>;
 }

@@ -117,9 +117,9 @@ export function LocationsEditor({
   return <div className="profile-rows">
     {rows.map((row, index) => <div className="profile-row profile-row-location" key={index}>
       <LocationFields value={row} onChange={(next) => onChange(rows.map((item, current) => current === index ? next : item))}/>
-      <button type="button" onClick={() => onChange(rows.filter((_, current) => current !== index))}>Remove</button>
+      <button type="button" className="profile-remove" aria-label="Remove" title="Remove" onClick={() => onChange(rows.filter((_, current) => current !== index))}>×</button>
     </div>)}
-    <button type="button" onClick={() => onChange([...rows, {country: '', city: ''}])}>Add location</button>
+    <button type="button" className="profile-add" onClick={() => onChange([...rows, {country: '', city: ''}])}>+ Add location</button>
   </div>;
 }
 
@@ -140,9 +140,9 @@ export function AuthorizationEditor({
         emptyLabel="Not set"
         onChange={(status) => onChange(rows.map((item, current) => current === index ? {...item, status} : item))}
       />
-      <button type="button" onClick={() => onChange(rows.filter((_, current) => current !== index))}>Remove</button>
+      <button type="button" className="profile-remove" aria-label="Remove" title="Remove" onClick={() => onChange(rows.filter((_, current) => current !== index))}>×</button>
     </div>)}
-    <button type="button" onClick={() => onChange([...rows, {country: '', status: ''}])}>Add country</button>
+    <button type="button" className="profile-add" onClick={() => onChange([...rows, {country: '', status: ''}])}>+ Add country</button>
   </div>;
 }
 
@@ -160,7 +160,7 @@ export function TimezonePicker({
     {selected.length ? <div className="profile-rows">{selected.map((id) => <div className="profile-row profile-row-timezone" key={id}>
       <span>{timezoneLabel(id)}</span>
       <code>{id}</code>
-      <button type="button" onClick={() => onChange(selected.filter((item) => item !== id))}>Remove</button>
+      <button type="button" className="profile-remove" aria-label="Remove" title="Remove" onClick={() => onChange(selected.filter((item) => item !== id))}>×</button>
     </div>)}</div> : <p className="profile-hint">No timezones selected.</p>}
     <label className="profile-field-block">
       <span>Add timezone</span>

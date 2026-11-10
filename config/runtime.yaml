@@ -24,3 +24,9 @@ profile_document_types:
   - docx
   - md
   - txt
+# Profile photo. The server verifies the actual image type, not the filename.
+profile_avatar_max_bytes: 2097152
+profile_avatar_types:
+  - png
+  - jpg
+  - webp

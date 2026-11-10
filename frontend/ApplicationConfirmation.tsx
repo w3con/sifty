@@ -58,7 +58,7 @@ export function ApplicationConfirmation({
       <p id="application-explanation" className="muted">
         Opening the employer page does not submit an application. Confirm only
         after you have submitted it yourself. You can also confirm later from
-        Pre-selected. Choose a negative outcome only if you will not apply.
+        Shortlist. Choose a negative outcome only if you will not apply.
       </p>
       {failed && (
         <p className="error" role="alert">

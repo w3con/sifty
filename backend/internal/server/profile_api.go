@@ -106,6 +106,92 @@ func registerProfileRoutes(mux Router, d *Deps) {
 	})
 
 	// ------------------------------------------------------------------
+	// Profile photo
+	// ------------------------------------------------------------------
+
+	mux.HandleFunc("GET /api/profile/avatar/meta", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		avatar, err := d.profileService().GetAvatar()
+		if err != nil {
+			return err
+		}
+		if avatar == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"exists": false})
+			return nil
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"exists":      true,
+			"contentType": avatar.ContentType,
+			"byteSize":    avatar.ByteSize,
+			"updatedAt":   avatar.UpdatedAt,
+		})
+		return nil
+	}))
+
+	mux.HandleFunc("GET /api/profile/avatar", func(w http.ResponseWriter, r *http.Request) {
+		path, contentType, err := d.profileService().AvatarFile()
+		if err != nil {
+			if errors.Is(err, profile.ErrAvatarNotFound) {
+				writeError(w, http.StatusNotFound, "profile photo is not set")
+				return
+			}
+			writeProfileError(w, err)
+			return
+		}
+		w.Header().Set("Content-Type", contentType)
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Disposition", "inline")
+		http.ServeFile(w, r, path)
+	})
+
+	mux.HandleFunc("POST /api/profile/avatar", func(w http.ResponseWriter, r *http.Request) {
+		if d.Cfg != nil {
+			r.Body = http.MaxBytesReader(w, r.Body,
+				int64(d.Cfg.Get().Runtime.EffectiveProfileAvatarUploadBodyBytes()))
+		}
+		var body struct {
+			Filename      string `json:"filename"`
+			ContentBase64 string `json:"contentBase64"`
+		}
+		if err := readBody(r, &body); err != nil {
+			if strings.Contains(err.Error(), "request body too large") {
+				writeError(w, http.StatusRequestEntityTooLarge, "photo exceeds the configured upload allowance")
+				return
+			}
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if body.ContentBase64 == "" {
+			writeError(w, http.StatusBadRequest, "contentBase64 is required")
+			return
+		}
+		content, err := base64.StdEncoding.DecodeString(body.ContentBase64)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "contentBase64 is not valid base64")
+			return
+		}
+		avatar, err := d.profileService().SaveAvatar(body.Filename, content)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"exists":      true,
+			"contentType": avatar.ContentType,
+			"byteSize":    avatar.ByteSize,
+			"updatedAt":   avatar.UpdatedAt,
+		})
+	})
+
+	mux.HandleFunc("DELETE /api/profile/avatar", func(w http.ResponseWriter, r *http.Request) {
+		deleted, err := d.profileService().DeleteAvatar()
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"exists": false, "deleted": deleted})
+	})
+
+	// ------------------------------------------------------------------
 	// Documents
 	// ------------------------------------------------------------------
 
@@ -115,6 +201,8 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			"documentTypes":      cfg.Runtime.EffectiveProfileDocumentTypes(),
 			"maxDocumentBytes":   cfg.Runtime.EffectiveProfileMaxDocumentBytes(),
 			"maxUploadBodyBytes": cfg.Runtime.EffectiveProfileUploadBodyBytes(),
+			"avatarTypes":        cfg.Runtime.EffectiveProfileAvatarTypes(),
+			"maxAvatarBytes":     cfg.Runtime.EffectiveProfileAvatarMaxBytes(),
 			"skillLevels":        profile.SkillLevels(),
 			"skillLevelOptions":  profile.SkillLevelOptions(),
 			"factFieldKeys":      profile.AllowedFactFieldKeys(),

@@ -254,3 +254,15 @@ export function timezoneOptions(): string[] {
 export function timezoneOptionsWithRetained(selected: Array<string | null | undefined>): string[] {
   return optionsWithRetained(timezoneOptions(), ...selected);
 }
+
+// Broad work regions for "where would you work". A fixed list so matching can rely on it.
+export const REGION_ORDER = ['europe', 'asia', 'southeast_asia', 'japan_oceania', 'north_america', 'south_america', 'middle_east_africa'];
+export const REGION_LABELS: Record<string, string> = {
+  europe: 'Europe',
+  asia: 'Asia',
+  southeast_asia: 'Southeast Asia',
+  japan_oceania: 'Japan & Oceania',
+  north_america: 'North America',
+  south_america: 'South America',
+  middle_east_africa: 'Middle East & Africa',
+};

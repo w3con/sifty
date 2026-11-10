@@ -89,6 +89,12 @@ type Runtime struct {
 	ProfileExtractionTimeoutMS int      `yaml:"profile_extraction_timeout_ms"`
 	ProfileMaxFacts            int      `yaml:"profile_max_facts"`
 	ProfileDocumentTypes       []string `yaml:"profile_document_types"`
+
+	// Profile avatar handling. These are the single authority for the accepted
+	// actual image types and the upload ceiling; zero/empty values select the
+	// documented defaults below.
+	ProfileAvatarMaxBytes int      `yaml:"profile_avatar_max_bytes"`
+	ProfileAvatarTypes    []string `yaml:"profile_avatar_types"`
 }
 
 // EffectiveProfileMaxDocumentBytes is the upload ceiling for one profile document.
@@ -137,6 +143,28 @@ func (r Runtime) EffectiveProfileDocumentTypes() []string {
 		return r.ProfileDocumentTypes
 	}
 	return []string{"pdf", "docx", "md", "txt"}
+}
+
+// EffectiveProfileAvatarMaxBytes is the upload ceiling for the profile photo.
+func (r Runtime) EffectiveProfileAvatarMaxBytes() int {
+	if r.ProfileAvatarMaxBytes > 0 {
+		return r.ProfileAvatarMaxBytes
+	}
+	return 2 << 20 // 2 MiB
+}
+
+// EffectiveProfileAvatarUploadBodyBytes is the JSON request-body allowance for one base64
+// avatar. It is derived from the same configured ceiling plus fixed base64/JSON overhead.
+func (r Runtime) EffectiveProfileAvatarUploadBodyBytes() int {
+	return r.EffectiveProfileAvatarMaxBytes()*4/3 + 64*1024
+}
+
+// EffectiveProfileAvatarTypes returns the accepted actual image types without a leading dot.
+func (r Runtime) EffectiveProfileAvatarTypes() []string {
+	if len(r.ProfileAvatarTypes) > 0 {
+		return r.ProfileAvatarTypes
+	}
+	return []string{"png", "jpg", "webp"}
 }
 
 // Provider is one inference provider definition.

@@ -1,12 +1,14 @@
 import React,{useEffect,useState} from 'react';
+import {messageKind} from './messages';
 import {api,listStopWords,addStopWord as apiAddStopWord,removeStopWord as apiRemoveStopWord,previewStopWord,getSearchExpressions,putSearchExpressions,getSearchSites,addSearchSite,removeSearchSite,toggleSearchSite} from './api';
 import type {StopWord} from './model/core';
 import type {SearchExpression,SiteConfig} from './api';
 
-type Props={onRulesChanged:()=>void;onError:(s:string)=>void};
+type Props={onRulesChanged:()=>void;onError:(s:string)=>void;section?:'sources'|'search'};
 
-export function Collection({onRulesChanged,onError}:Props){
-  const [section,setSection]=useState<'sources'|'search'>('sources');
+export function Collection({onRulesChanged,onError,section:fixedSection}:Props){
+  const [ownSection,setSection]=useState<'sources'|'search'>('sources');
+  const section=fixedSection??ownSection;
   const [run,setRun]=useState<any>(null);
   const [busy,setBusy]=useState('');
   const [error,setError]=useState('');
@@ -98,11 +100,11 @@ export function Collection({onRulesChanged,onError}:Props){
   }
 
   return <div className="collection-view">
-    <nav className="collection-nav" aria-label="Collection sections">
+    {!fixedSection&&<nav className="collection-nav" aria-label="Collection sections">
       <button className={section==='sources'?'active':''} aria-pressed={section==='sources'} onClick={()=>setSection('sources')}>Sources</button>
       <button className={section==='search'?'active':''} aria-pressed={section==='search'} onClick={()=>setSection('search')}>Search</button>
-    </nav>
-    {error&&<div className="banner error" role="alert">{error}</div>}
+    </nav>}
+    {error&&<div className="banner error" data-kind={messageKind(error)} role="alert">{error}</div>}
     {notice&&<div className="banner" role="status">{notice}</div>}
 
     {section==='sources'&&<div className="collection-section">
@@ -117,7 +119,7 @@ export function Collection({onRulesChanged,onError}:Props){
           <tbody>{sites.map(s=><tr key={s.name}>
             <td>{s.name}</td>
             <td>{s.url?<a href={s.url} target="_blank" rel="noreferrer" className="site-url">{s.url}</a>:<span className="muted">—</span>}</td>
-            <td><input type="checkbox" checked={s.enabled!==false} onChange={async e=>{setBusy('toggle');setError('');try{await toggleSearchSite(s.name,e.target.checked);setSites(await getSearchSites());}catch(err:any){setError(err.message);}finally{setBusy('');}}}/></td>
+            <td><button type="button" role="switch" className="s-switch" aria-checked={s.enabled!==false} aria-label={`${s.name} enabled`} disabled={!!busy} onClick={async()=>{const next=s.enabled===false;setBusy('toggle');setError('');try{await toggleSearchSite(s.name,next);setSites(await getSearchSites());}catch(err:any){setError(err.message);}finally{setBusy('');}}}><span className="s-track" aria-hidden="true"><span/></span></button></td>
             <td><button disabled={!!busy} onClick={async()=>{setBusy('remove-site');setError('');try{await removeSearchSite(s.name);setSites(await getSearchSites());onRulesChanged();}catch(err:any){setError(err.message);}finally{setBusy('');}}} style={{fontSize:'13px',padding:'5px 10px'}}>Remove</button></td>
           </tr>)}</tbody>
         </table>}

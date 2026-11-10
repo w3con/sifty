@@ -6,6 +6,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.13.0
 	github.com/google/uuid v1.6.0
 	gopkg.in/yaml.v3 v3.0.1
+	golang.org/x/image v0.36.0
 	modernc.org/sqlite v1.61.1
 )
 

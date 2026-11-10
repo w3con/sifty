@@ -54,7 +54,7 @@ export function ApplicationDraftView({jobId,canPrepare}:{jobId:number;canPrepare
  const ready=hasFields&&!!(draft!.provenance||draft!.fields.some((f:AnswerField)=>f.edited||(Array.isArray(f.value)?f.value.length:f.value.trim())));
  const reviewing=hasFields&&(!canPrepare||(!isFailed));
  const primary=starting?'Starting…':busy?'Preparing…':reviewing?'Review saved answers':isLoginRequired?'Sign in to continue':isFailed?'Retry preparation':'Prepare application';
- return <section ref={panel} className="application-drawer application-panel" aria-label="Application draft"><h2>Application draft</h2><p className="muted">Review and edit your answers before applying.</p>{!canPrepare&&<p className="muted">Move this role to Pre-selected to prepare answers. Any saved draft is available below.</p>}{error&&<p className="error" role="alert">{error}</p>}
+ return <section ref={panel} className="application-drawer application-panel" aria-label="Application draft"><h2>Application draft</h2><p className="muted">Review and edit your answers before applying.</p>{!canPrepare&&<p className="muted">Shortlist this role to prepare answers. Any saved draft is available below.</p>}{error&&<p className="error" role="alert">{error}</p>}
  {/* Step 1.1: indeterminate spinner while form is being read with no questions known */}
  {isSpinner&&<div className="banner banner-spinner" role="status"><span className="spinner" aria-hidden="true"/><span>Reading the application form…</span></div>}
  {/* Operational states for running/done operations when questions exist */}

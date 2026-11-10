@@ -4,9 +4,12 @@ import {
   acceptProfileFact,
   analyzeDocument,
   cancelDocumentAnalysis,
+  deleteProfileDocument,
+  deleteProfileAvatar,
   documentFileUrl,
   getDocumentText,
   getProfile,
+  getProfileAvatarMeta,
   getProfileCapabilities,
   listProfileDocuments,
   listProfileFacts,
@@ -15,8 +18,11 @@ import {
   rejectProfileFact,
   resolveProfileFact,
   retryDocument,
+  profileAvatarUrl,
+  uploadProfileAvatar,
   uploadProfileDocument,
   uploadProfileText,
+  type ProfileAvatarMeta,
 } from './api';
 import {actionErrorHelp, type DocumentErrorHelp} from './documentPresentation';
 import {
@@ -221,7 +227,7 @@ export function useProfileEditor() {
 
 export type ProfileEditor = ReturnType<typeof useProfileEditor>;
 
-function readBase64(file: File): Promise<string> {
+export function readBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Could not read the selected file.'));
@@ -239,6 +245,79 @@ function fileExtension(name: string): string {
   return index >= 0 ? name.slice(index + 1).toLowerCase() : '';
 }
 
+export function useProfileAvatar(capabilities: Capabilities | null) {
+  const [meta, setMeta] = useState<ProfileAvatarMeta>({exists: false});
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  const load = useCallback(async () => {
+    try {
+      setMeta(await getProfileAvatarMeta());
+      setError('');
+    } catch (cause) {
+      setError(messageOf(cause));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const upload = useCallback(async (file: File): Promise<boolean> => {
+    setBusy(true);
+    setError('');
+    try {
+      if (capabilities) {
+        const extension = fileExtension(file.name);
+        const normalized = extension === 'jpeg' ? 'jpg' : extension;
+        const allowed = capabilities.avatarTypes.map((type) => type.toLowerCase() === 'jpeg' ? 'jpg' : type.toLowerCase());
+        if (!allowed.includes(normalized)) {
+          setError(`This photo type is not accepted. Configured types: ${capabilities.avatarTypes.join(', ')}.`);
+          return false;
+        }
+        if (file.size > capabilities.maxAvatarBytes) {
+          setError(`This photo is too large. The configured limit is ${capabilities.maxAvatarBytes} bytes.`);
+          return false;
+        }
+      }
+      const encoded = await readBase64(file);
+      const saved = await uploadProfileAvatar(file.name, encoded);
+      setMeta(saved);
+      return true;
+    } catch (cause) {
+      setError(messageOf(cause));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, [capabilities]);
+
+  const remove = useCallback(async (): Promise<boolean> => {
+    setBusy(true);
+    setError('');
+    try {
+      await deleteProfileAvatar();
+      setMeta({exists: false});
+      return true;
+    } catch (cause) {
+      setError(messageOf(cause));
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }, []);
+
+  return {
+    meta, loading, busy, error, upload, remove,
+    url: meta.exists ? profileAvatarUrl(meta.updatedAt) : '',
+  };
+}
+
+export type ProfileAvatar = ReturnType<typeof useProfileAvatar>;
+
 function describeActionError(cause: unknown): DocumentErrorHelp {
   if (cause instanceof ApiError) {
     return actionErrorHelp(String(cause.data?.code ?? ''), messageOf(cause), cause.status === 503);
@@ -255,6 +334,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
   const [errorOpenSettings, setErrorOpenSettings] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
+  const [uploadResults, setUploadResults] = useState<{name: string; ok: boolean; message: string}[]>([]);
   const [texts, setTexts] = useState<Record<string, {loading: boolean; text: string; error: string}>>({});
   // Names the document whose explicit action produced the current transient notice, so a later
   // poll can replace "started" with the real outcome instead of leaving a stale success message.
@@ -352,6 +432,39 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
     }
   }, [capabilities]);
 
+  // Several files are uploaded one after another through the existing upload path. A failure
+  // names that file and keeps every earlier success; no file is analyzed automatically.
+  const uploadFiles = useCallback(async (files: File[]): Promise<{name: string; ok: boolean; message: string}[]> => {
+    if (!files.length) return [];
+    setBusy('upload');
+    clearActionError();
+    setNotice('');
+    const results: {name: string; ok: boolean; message: string}[] = [];
+    for (const file of files) {
+      try {
+        const invalid = validate(file.name, file.size);
+        if (invalid) throw new Error(invalid);
+        const encoded = await readBase64(file);
+        const uploaded = await uploadProfileDocument(file.name, encoded);
+        setDocuments((existing) => [uploaded, ...existing.filter((document) => document.documentId !== uploaded.documentId)]);
+        results.push({name: file.name, ok: true, message: 'Uploaded; analysis is explicit.'});
+      } catch (cause) {
+        const help = describeActionError(cause);
+        results.push({name: file.name, ok: false, message: [help.cause, help.action].filter(Boolean).join(' ')});
+      }
+    }
+    setUploadResults(results);
+    const succeeded = results.filter((result) => result.ok).length;
+    if (succeeded) {
+      setNotice(`Uploaded ${succeeded} ${succeeded === 1 ? 'document' : 'documents'}. Review status; analysis is explicit.`);
+    }
+    if (succeeded < results.length) {
+      setError(`${results.length - succeeded} of ${results.length} uploads failed. Successful files are kept.`);
+    }
+    setBusy('');
+    return results;
+  }, [capabilities]);
+
   const uploadText = useCallback(async (filename: string, text: string): Promise<boolean> => {
     setBusy('upload');
     clearActionError();
@@ -413,6 +526,30 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
     }
   }
 
+  async function removeDocument(id: string, name: string) {
+    setBusy(id);
+    clearActionError();
+    setNotice('');
+    try {
+      await deleteProfileDocument(id);
+      setDocuments((current) => current.filter((document) => document.documentId !== id));
+      setNotice(`${name} deleted.`);
+      return true;
+    } catch (cause) {
+      // Until the server implements DELETE, say so plainly instead of a raw HTTP error.
+      if (cause instanceof ApiError && [404, 405, 501].includes(cause.status)) {
+        setError('Deleting files is not supported by the server yet.');
+        setErrorAction('');
+        setErrorTechnical(cause.message);
+      } else {
+        showActionError(cause);
+      }
+      return false;
+    } finally {
+      setBusy('');
+    }
+  }
+
   const loadText = useCallback(async (id: string) => {
     setTexts((current) => ({...current, [id]: {loading: true, text: current[id]?.text ?? '', error: ''}}));
     try {
@@ -425,8 +562,9 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
 
   return {
     documents, loading, error, errorAction, errorTechnical, errorOpenSettings, notice, busy, active, texts,
-    refresh, uploadFile, uploadText, analyze: (id: string) => act('analyze', id),
-    cancel: (id: string) => act('cancel', id), retry: (id: string) => act('retry', id), loadText,
+    uploadResults,
+    refresh, uploadFile, uploadFiles, uploadText, analyze: (id: string) => act('analyze', id),
+    cancel: (id: string) => act('cancel', id), retry: (id: string) => act('retry', id), remove: removeDocument, loadText,
     fileUrl: documentFileUrl, setError, setNotice,
   };
 }

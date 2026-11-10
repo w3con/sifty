@@ -37,6 +37,11 @@ export const cancelDocumentAnalysis = (id: string): Promise<ProfileDocument> =>
 export const retryDocument = (id: string): Promise<ProfileDocument> =>
   api(`profile/documents/${encodeURIComponent(id)}/retry`, 'POST', {});
 
+// Deletes one uploaded file or link. Server rule (to implement): open proposals from this document
+// are removed with it; facts already accepted into the profile stay and keep a "deleted file" source.
+export const deleteProfileDocument = (id: string): Promise<{deleted: boolean}> =>
+  api(`profile/documents/${encodeURIComponent(id)}`, 'DELETE');
+
 export const documentFileUrl = (id: string): string =>
   `/api/profile/documents/${encodeURIComponent(id)}/file`;
 
@@ -48,3 +53,19 @@ export const rejectProfileFact = (factId: string): Promise<FactDecision> =>
   api(`profile/facts/${encodeURIComponent(factId)}/reject`, 'POST', {});
 export const resolveProfileFact = (factId: string, expectedRevision: number, choice: 'current' | 'proposed'): Promise<FactDecision> =>
   api(`profile/facts/${encodeURIComponent(factId)}/resolve`, 'POST', {expectedRevision, choice});
+
+// Profile photo. Metadata is separate from the bytes; the stored image is never sent to a model
+// and is not part of the CV/document evidence list.
+export interface ProfileAvatarMeta {
+  exists: boolean;
+  contentType?: string;
+  byteSize?: number;
+  updatedAt?: string;
+}
+export const getProfileAvatarMeta = (): Promise<ProfileAvatarMeta> => api('profile/avatar/meta');
+export const uploadProfileAvatar = (filename: string, contentBase64: string): Promise<ProfileAvatarMeta> =>
+  api('profile/avatar', 'POST', {filename, contentBase64});
+export const deleteProfileAvatar = (): Promise<{exists: false; deleted: boolean}> =>
+  api('profile/avatar', 'DELETE');
+export const profileAvatarUrl = (updatedAt?: string): string =>
+  `/api/profile/avatar${updatedAt ? `?v=${encodeURIComponent(updatedAt)}` : ''}`;

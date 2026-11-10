@@ -4,9 +4,10 @@ import type {ProfileDocument} from './contract';
 // stored error classification into a plain label, explanation and single next action. The view
 // renders this model; it owns no request, persistence or workflow effect.
 
+import type {MessageKind} from '../messages';
 export type DocumentAction = 'analyze' | 'retry' | 'cancel';
 
-export interface DocumentErrorHelp {
+export interface DocumentErrorHelp { kind?: MessageKind;
   cause: string;
   action: string;
   openSettings: boolean;
@@ -18,6 +19,7 @@ export interface DocumentErrorHelp {
 export function actionErrorHelp(code: string, message: string, unavailable: boolean): DocumentErrorHelp {
   if (unavailable || code === 'analyzer_unavailable') {
     return {
+      kind: 'broken',
       cause: 'The configured extraction model is not available.',
       action: 'Open Settings and choose an available model.',
       openSettings: true,
@@ -70,18 +72,21 @@ function errorHelp(kind: string): DocumentErrorHelp {
       };
     case 'unavailable':
       return {
+        kind: 'broken',
         cause: 'The selected model could not be reached.',
         action: 'Check that the local model service is running, or choose another model in Settings.',
         openSettings: true,
       };
     case 'model_unavailable':
       return {
+        kind: 'broken',
         cause: 'The selected model is not available.',
         action: 'Open Settings and choose an available model.',
         openSettings: true,
       };
     case 'context_overflow':
       return {
+        kind: 'broken',
         cause: 'The document is longer than the selected model can read at once.',
         action: 'Shorten the text or choose a model with a larger context in Settings.',
         openSettings: true,
@@ -113,6 +118,7 @@ function errorHelp(kind: string): DocumentErrorHelp {
   }
 }
 
+// Kinds not marked 'broken' above can be retried.
 export function documentSummary(document: ProfileDocument): DocumentSummary {
   const state = document.processingState;
   const hasText = document.hasText || document.textChars > 0;

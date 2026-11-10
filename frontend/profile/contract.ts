@@ -109,6 +109,8 @@ export interface Geography {
   timezones: string[];
   currentLocation?: Location | null;
   preferredLocations?: Location[];
+  // Broad regions the owner would work in (multi-select, fixed values; see REGION_ORDER).
+  preferredRegions?: string[];
   workAuthorizations?: WorkAuthorization[];
   timezoneIds?: string[];
   desiredOverlapHours?: number | null;
@@ -193,6 +195,8 @@ export interface Capabilities {
   documentTypes: string[];
   maxDocumentBytes: number;
   maxUploadBodyBytes: number;
+  avatarTypes: string[];
+  maxAvatarBytes: number;
   skillLevels: string[];
   skillLevelOptions?: string[];
   factFieldKeys: string[];
@@ -691,6 +695,13 @@ function cleanGeography(value: Geography, current?: Geography): Geography {
     delete out.preferredLocations;
   } else {
     out.preferredLocations = nextPreferred;
+  }
+
+  const nextRegions = [...new Set((value.preferredRegions ?? []).filter(Boolean))];
+  if (JSON.stringify(nextRegions) === JSON.stringify([...new Set((current.preferredRegions ?? []).filter(Boolean))])) {
+    delete out.preferredRegions;
+  } else {
+    out.preferredRegions = nextRegions;
   }
 
   const nextAuthorizations = cleanAuthorizations(value.workAuthorizations);

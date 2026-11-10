@@ -2,7 +2,7 @@
 
 **Epic:** triage
 **Created:** 2026-11-10
-**Status:** backlog
+**Status:** review
 **Kind:** bug
 
 ## Owner's words
@@ -29,7 +29,7 @@ Excluded: other shortcut keys, backend changes, user-data changes, deploy/releas
 
 ## Steps
 
-- [ ] K.1 — Use physical KeyY for Select; build frontend and verify layout-independent action and input guard in a real browser.
+- [x] K.1 — Use physical KeyY for Select; build frontend and verify layout-independent action and input guard in a real browser.
 
 ## Acceptance criteria
 
@@ -40,3 +40,18 @@ Excluded: other shortcut keys, backend changes, user-data changes, deploy/releas
 ## Must not touch
 
 Other shortcuts, backend, user data, persistence, settings, deploy, history rewrite, integration and push.
+
+## Approved follow-through: integration and repository publication
+
+The coordinator proposed the following complete Git operation after technical acceptance, and the owner answered verbatim «да, делай». This separately approves integration and normal push and supersedes the earlier exclusion of those operations for this follow-through only; production release, data changes and rewriting existing history remain excluded. The beneficiary is the owner using the main checkout and its GitHub backup; demonstrated use is the accepted keyboard fix in main plus the reviewed documents/design assets committed and main successfully published to origin/main.
+
+Complexity:3 because of existing uncommitted documentation/design assets, preservation requirements and remote history uncertainty. AI preparation/review approximately1minute, integration of the keyboard fix approximately1minute, grouping and committing pending records/assets approximately2–4minutes, remote verification and normal push approximately1–2minutes; total approved AI elapsed4–7minutes with shared review included. No new paid service is needed; external network/credential delays are separate and uncertain. Preserve every existing worktree and recovery ref. Existing source/build/browser evidence already covers the unchanged accepted fix; do not rerun broad suites.
+
+- [ ] K.2 — Integrate the accepted Y fix once and commit reviewed pending workflow records, plans and design assets in meaningful groups.
+- [ ] K.3 — Verify remote history and publish the reviewed main branch with a normal push, then record the resulting clean/synchronized state.
+
+K.2 concrete results: one application-fix commit containing only the accepted main.tsx change and its current task records/navigation; separate Conventional Commits for workflow instructions, planning records/runtime documentation, and owner-approved design assets. Explicitly inspect all staged paths/blobs, preserve unrelated runtime/local data and secrets guards, and retain the exact pre-operation source and dirty-file recovery material. Existing-history squash is not approved; no amend, reset, force push or existing worktree removal. Any guard finding must be diagnosed rather than bypassed. Historical benchmark/run evidence is data, not permission to rerun operations.
+
+K.3 concrete result: after coordinator review of K.2's actual diff/commits, refresh origin/main, verify ancestry and push main normally to its configured origin. Do not overwrite another actor's commits. Report the actual remote revision, ahead/behind counts and pending paths. No automatic production deployment follows from publication.
+
+Acceptance for this approved follow-through: accepted three-line keyboard change present in main; all intended existing dirty/untracked documents and design assets accounted for; real commit/secret guards applied; existing history and recovery branches preserved; normal push succeeds and local main matches the verified remote ref. Inputs/configuration are Git's existing index/refs and configured origin; logic is existing Git/work commands, with no application data/configuration or presentation changes beyond the accepted fix.

@@ -122,11 +122,11 @@ function App(){
     if(profileOpen||settings||document.querySelector('dialog[open]')||e.metaKey||e.ctrlKey||e.altKey||e.isComposing)return;
     if(e.key==='Escape'){setFiltersOpen(false);(document.activeElement as HTMLElement)?.blur();return;}
     if(shortcutGuard(e.target))return;
-    const key=e.key.toLowerCase();
-    if(['j','k','arrowdown','arrowup','/','y','n','a'].includes(key))e.preventDefault();
+    const key=e.key.toLowerCase(),select=e.code==='KeyY';
+    if(['j','k','arrowdown','arrowup','/','y','n','a'].includes(key)||select)e.preventDefault();
     if(key==='j'||key==='arrowdown')move(1);if(key==='k'||key==='arrowup')move(-1);
     if(key==='/')search.current?.focus();
-    if(view==='triage'&&job?.stage==='triage'){if(key==='y')void transition('preselected');if(key==='n')void transition('no');}
+    if(view==='triage'&&job?.stage==='triage'){if(select)void transition('preselected');if(key==='n')void transition('no');}
     if(key==='a')apply();
   }window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key);});
   useEffect(()=>{function outside(e:PointerEvent){if(filterBox.current&&!filterBox.current.contains(e.target as Node))setFiltersOpen(false);}document.addEventListener('pointerdown',outside);return()=>document.removeEventListener('pointerdown',outside);},[]);

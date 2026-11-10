@@ -104,7 +104,7 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 
 **Checks.** [role/store tests](../backend/internal/store/jobs_test.go), [preselection tests](../backend/internal/server/preselect_test.go), [block tests](../backend/internal/store/blocks_test.go).
 
-**Tasks and gaps.** `NAVIGATION-1`, `NAVIGATION-4`, `TRI-1`, `TRI-2`. The archive-retention method exists but no ticker calls it; `GO-7` owns that wiring.
+**Tasks and gaps.** `NAVIGATION-1`, `NAVIGATION-4`, `TRI-1`, `TRI-2`, `TRIAGE-2`. The archive-retention method exists but no ticker calls it; `GO-7` owns that wiring.
 
 <a id="req-asm"></a>
 ### R-ASM — Assess fit
@@ -294,6 +294,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [COL-7](../work/tasks/collection/COL-7_production-refresh-and-assess/description.md) | R-COL, R-ASM | backlog (owner-requested existing production operation) | preserve old pending queue; no Profile execution or deploy |
 | [COLLECTION-1](../work/tasks/collection/COLLECTION-1_publication-date-and-age/description.md) | R-COL, R-TRI, R-ASM | review; technically accepted; source in main `3ee6260` (final `58af432`); approx35min vs20–35; source dates/basis and Newest, automatic scoring deferred | legacy origin unverified; release separate; production not updated |
 | [TRIAGE-1](../work/tasks/triage/TRIAGE-1_recognize-previously-applied-vacancy-duplicates/description.md) | R-COL, R-TRI, R-APP | backlog bug; Coinbag/Uniswap examples expose same-ID divergent application histories across environments;25–45min provisional | choose authoritative real history before reconciliation; no automatic merge or execution approved |
+| [TRIAGE-2](../work/tasks/triage/TRIAGE-2_layout-independent-select-shortcut/description.md) | R-TRI | in progress; K.1 physical `KeyY` Select fix; browser-checked, awaiting coordinator acceptance | guards/other shortcuts preserved; no release or push |
 | [DESIGN-1](../work/tasks/design/DESIGN-1_design-token-layer/description.md) | R-DESIGN | backlog | GO-11 |
 | [DESIGN-2](../work/tasks/design/DESIGN-2_separate-presentation-and-logic/description.md) | R-DESIGN, R-SEARCH, R-TRI, R-SET, R-APP | backlog (approved; preparing worktree) | GO-11 |
 | [DESIGN-3](../work/tasks/design/DESIGN-3_reusable-design-blocks/description.md) | R-DESIGN, R-SET | review; owner confirmed design finished; technical acceptance stands; source in main `5bedae3` (final `58af432`) | corrected25–45min, approximately28–30min technical stage; functional owner acceptance/release separate; production not updated |

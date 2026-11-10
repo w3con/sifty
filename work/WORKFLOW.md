@@ -18,6 +18,10 @@ There is one canonical card per task. `bin/work-list` derives the backlog and bu
 
 Before proposing implementation, the coordinator reads affected requirements, architecture, code, tests and related decisions; checks dependencies and possible contradictions; and prepares scope, exclusions, acceptance criteria and independently checkable steps. Product questions are settled before implementation. The owner approves the complete plan; the coordinator then handles technical details and review within it.
 
+## Behavior specifications
+
+Product behavior that outlives one change is recorded as a persistent specification under `docs/specs/<subject>.md`. A specification is not a task plan: it fixes meaning, invariants, inputs, approved direction, proposed numerical policy and current implementation gaps, without checkpoints, estimates or an implementation journal. Its status must distinguish approved product direction, proposed policy, implemented behavior and released behavior wherever they differ. `docs/MAP.md` indexes each specification next to the requirements and code it constrains; the task card remains the place for the plan, steps, estimate and acceptance evidence. A specification does not authorize implementation by itself.
+
 ## Bounded execution and review
 
 Coding uses `.opencode/agents/executor.md`, configured for `opencode-go/deepseek-v4.1-flash` through the owner's existing subscription. The coordinator maintains plans, records and instructions directly. An unavailable model or profile is a blocker, not authorization to use the coordinator's model or a direct billed API.

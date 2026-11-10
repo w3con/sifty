@@ -20,6 +20,17 @@ Work only inside your working copy. Never touch another worktree. Never switch o
 
 Before starting, require the coordinator to supply the exact assigned step IDs, checks and stopping point with this brief. If missing, return the missing prerequisites without editing. The list of open steps below is background, not authorization to execute all remaining work.
 
+## Required implementation boundaries
+
+- Separate persisted/domain data and configuration from application logic/effects and presentation. Views receive data and named callbacks rather than owning requests, persistence or workflow operations.
+- Identify and reuse the authoritative data store/configuration, existing path resolver and provider adapters for the assigned stage. Pass dependencies explicitly at the relevant boundaries.
+- Do not hardcode user/profile/mockup values, machine paths, environment addresses/ports, provider/model selections or adjustable limits/weights into logic/views. Read them from configuration, parameters or stored data; keep configurable defaults in one explicit configuration location rather than duplicate magic values.
+- In the handback, name the data/configuration sources and the files separating these responsibilities so the coordinator can verify the implementation. This adds no authorization for unrelated configuration rewrites.
+
+## Verification scope
+
+Build the affected app and use real running-app/browser review for visible behavior. Add/run only a few critical targeted tests for hidden failures the owner cannot see in the UI, such as silent data loss, stale-write races, version/scoring invariants or unintended model calls; name the failure each catches. Do not duplicate visible UI checks, mirror implementation, expand to broad suites/coverage matrices or build test infrastructure. Preserved full suites require an explicit owner request. Record narrow critical-test results separately from the default SKIPPED suite status.
+
 ## The loop, one assigned step at a time
 
 1. Read the next assigned open step (`- [ ]`) in the plan ({{steps_file}}).
@@ -37,7 +48,7 @@ Before starting, require the coordinator to supply the exact assigned step IDs, 
 - On any stop, hand off: preserve incomplete work without closing its step, leave a committed checkpoint and record checks, findings and the exact next action, so `work-resume {{id}}` can pick it up.
 - If current context becomes too large, save that checkpoint and return for a fresh-context handoff; do not confuse context size with cumulative token spend.
 - Return branch/revision, completed steps, checks, decisions, failures/corrections and remaining findings. Same-stage corrections may return to this session; the next independent stage gets a fresh executor context after this session has stopped.
-- When every step is closed, run the full check once (`bin/work-test`) and stop. Acceptance and merge are the coordinator's act, not yours.
+- When every step is closed, run the default `bin/work-test` once, report its actual status (currently SKIPPED), and stop. Do not add `--full` or enable full mode without an explicit owner request. Acceptance and merge are the coordinator's act, not yours.
 - If a business question blocks you (not a technical one), write `question.md` in the card folder and stop.
 
 ## Open steps

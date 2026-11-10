@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve, relative, isAbsolute } from 'node:path';
 import { mkdirSync, readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import type {QuickMatchView} from '../quickmatch';
 import YAML from 'yaml';
 import { z } from 'zod';
 
@@ -60,7 +61,7 @@ export function canonical(url: string): string {
 export type JobInput = { title: string; company: string; boardCompany?:string; tags?:string[]; originalUrl: string; applyUrl?: string | null; applyStatus?: string; description: string; descriptionStatus: string; detailRetryAt?:number; location?: string; publishedAt?: string; publishedBasis?: string; expiresAt?: string; source: string };
 export type StopWord = { id: number; word: string; createdAt: string };
 export type BlockRule = { id: number; kind: string; value: string; createdAt: string };
-export type Job = JobInput & { id: number; status: string; stage: import('./workflow.js').Stage; seen: boolean; seenAt: string|null; appliedAt: string|null; outcomeReason: string|null; isWeb3: boolean; firstSeen: string; lastSeen: string; expired: boolean; matchScore: number; matchProfileRevision: number; matchStale: boolean; assessment: any; assessmentError: string | null; sources: { name: string; url: string; seen: string }[]; blocked: boolean; blockedBy: string; stopped: boolean; stoppedBy: string };
+export type Job = JobInput & { id: number; status: string; stage: import('./workflow.js').Stage; seen: boolean; seenAt: string|null; appliedAt: string|null; outcomeReason: string|null; isWeb3: boolean; firstSeen: string; lastSeen: string; expired: boolean; matchScore: number; matchProfileRevision: number; matchStale: boolean; quickMatch?: QuickMatchView | null; quickMatchError?: string; assessment: any; assessmentError: string | null; sources: { name: string; url: string; seen: string }[]; blocked: boolean; blockedBy: string; stopped: boolean; stoppedBy: string };
 export const assessmentSchema = z.object({
   score: z.number().min(0).max(100), summary: z.string().min(1).max(4000),
   evidence: z.array(z.object({ claim: z.string().max(1000), sourceId: z.string(), quote: z.string().min(5).max(800) })).max(15),

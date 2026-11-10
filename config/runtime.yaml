@@ -30,3 +30,22 @@ profile_avatar_types:
   - png
   - jpg
   - webp
+# Quick Match v1. These are the approved starting rules, still uncalibrated; change them in
+# this one configuration extension, not in application logic or views. Omitting the block
+# selects the same built-in defaults. Source-field policy records when a board's structured
+# field needs corroboration; it is not a per-site preference coefficient.
+quick_match:
+  version: 1
+  rules_version: quickmatch.rules/1
+  source_policy_version: source-policy/1
+  weights:
+    role: 0.25
+    professional: 0.30
+    compensation: 0.20
+    geography: 0.15
+    conditions: 0.10
+  required_weight: 2
+  preferred_weight: 1
+  source_fields:
+    Wellfound:
+      location: needs_corroboration

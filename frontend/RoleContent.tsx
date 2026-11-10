@@ -5,32 +5,29 @@ import {assessmentStatus} from './filters';
 import {publicationInfo} from './dates';
 import {summarizeLocation} from './location';
 import {ApplicationDraftView} from './ApplicationDraft';
+import {QuickMatchPanel} from './QuickMatchPanel';
+import {buildFactStrip,coveragePercent,scorePresentation} from './quickmatch';
 
-type Props={job:Job;queue:any;onQueue:(q:any)=>void;refresh:()=>Promise<void>;onError:(s:string)=>void;onNotice:(s:string)=>void};
-export function RoleContent({job,queue,onQueue,refresh,onError,onNotice}:Props){
+type Props={job:Job;queue:any;onQueue:(q:any)=>void;refresh:()=>Promise<void>;onError:(s:string)=>void;onNotice:(s:string)=>void;onOpenProfile:(section?:string)=>void};
+export function RoleContent({job,queue,onQueue,refresh,onError,onNotice,onOpenProfile}:Props){
   const [tab,setTab]=useState<'overview'|'application'>('overview'),[applicationOpened,setApplicationOpened]=useState(false);
   const [options,setOptions]=useState<any>(null),[provider,setProvider]=useState('');
   const [feedback,setFeedback]=useState(''),[scope,setScope]=useState('general'),[history,setHistory]=useState<any[]>([]),[revision,setRevision]=useState<string>(),[saving,setSaving]=useState(false);
   useEffect(()=>{api('assessment-options').then(setOptions).catch(e=>onError(e.message));},[]);
   useEffect(()=>{let active=true;api(`jobs/${job.id}/feedback`).then(r=>{if(active)setHistory(r);}).catch(e=>onError(e.message));return()=>{active=false;};},[job.id]);
   const assessment=job.assessment,row=queue?.rows.find((r:any)=>r.job_id===job.id),publication=publicationInfo(job.publishedAt,job.publishedBasis);
-    // Facts about the job itself. Dates, source and expiry live next to the title.
+  const quick=scorePresentation(job.quickMatch,job.quickMatchError),quickCoverage=coveragePercent(job.quickMatch);
+  const quickWidth=job.quickMatch?.result.score==null?0:Math.max(0,Math.min(100,job.quickMatch.result.score));
   // Facts about the job itself. Dates, source and expiry live next to the title.
   const loc=summarizeLocation(job.location);
-  const facts:{icon:FactIconName;label:string;value?:React.ReactNode;note?:string}[]=[
-    {icon:'pin',label:'Location',value:loc.text?loc.text:undefined,note:loc.remote?'remote from location text':undefined},
-    {icon:'money',label:'Compensation'},
-    {icon:'case',label:'Employment type'},
-    {icon:'level',label:'Seniority'},
-  ];
+  const facts=buildFactStrip(job.quickMatch,loc.text);
   const known=facts.filter(f=>f.value),unknown=facts.filter(f=>!f.value);
-  const bucket=job.matchScore>=75?{key:'strong',label:'Strong fit'}:job.matchScore>=55?{key:'partial',label:'Partial fit'}:job.matchScore>0?{key:'weak',label:'Weak fit'}:{key:'none',label:'Not scored'};
   const stale=assessment&&(assessment.stale||(row&&row.fingerprint!==assessment.inputFingerprint));
   async function reassess(){try{await api(`jobs/${job.id}/assess`,'POST',{provider:provider||undefined});onQueue(await api('queue'));onNotice('Assessment queued with priority.');}catch(e:any){onError(e.message);}}
   return <>
-    <div className="detail-tabs-row"><nav className="detail-tabs" aria-label="Vacancy view"><button aria-pressed={tab==='overview'} className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}>Overview</button><button disabled={job.stage==='triage'} title={job.stage==='triage'?'Shortlist this role to open Application':undefined} aria-describedby={job.stage==='triage'?'ai-analysis-note':undefined} aria-pressed={tab==='application'} className={tab==='application'?'active':''} onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button></nav>{tab==='overview'&&<div className="fact-strip" aria-label="Key facts">{known.map(f=><span key={f.label} className="fact-chip" title={f.note?`${f.label} · ${f.note}`:f.label}><FactIcon name={f.icon}/><span className="sr-only">{f.label}: </span>{f.value}</span>)}{!!unknown.length&&<span className="fact-unknown" title={`Not stated in the listing: ${unknown.map(f=>f.label.toLowerCase()).join(', ')}`}><span className="sr-only">Not stated: {unknown.map(f=>f.label).join(', ')}</span>{unknown.map(f=><FactIcon key={f.label} name={f.icon}/>)}<span aria-hidden="true">not stated</span></span>}</div>}</div>
+    <div className="detail-tabs-row">    <nav className="detail-tabs" aria-label="Vacancy view"><button aria-pressed={tab==='overview'} className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}>Overview</button><button disabled={job.stage==='triage'} title={job.stage==='triage'?'Shortlist this role to open Application':undefined} aria-describedby={job.stage==='triage'?'ai-analysis-note':undefined} aria-pressed={tab==='application'} className={tab==='application'?'active':''} onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button></nav>{tab==='overview'&&<div className="fact-strip" aria-label="Key facts">{known.map(f=><span key={f.label} className="fact-chip" title={f.note?`${f.label} · ${f.note}`:f.label}><FactIcon name={f.icon}/><span className="sr-only">{f.label}: </span>{f.value}</span>)}{!!unknown.length&&<span className="fact-unknown" title={`Not separately verified: ${unknown.map(f=>f.label.toLowerCase()).join(', ')}`}><span className="sr-only">Not separately verified: {unknown.map(f=>f.label).join(', ')}</span>{unknown.map(f=><FactIcon key={f.label} name={f.icon}/>)}<span aria-hidden="true">not separately verified</span></span>}</div>}</div>
     {tab==='application'&&<><section className="assessment">
-        <div className="summary-card"><div className="score-overview"><div className="large-score">{job.matchScore>0?job.matchScore:'—'}<small>/100</small></div><div className="score-track"><span style={{width:`${job.matchScore}%`}}/></div><strong>{job.matchScore>=75?'Strong fit':job.matchScore>=55?'Partial fit':job.matchScore>0?'Weak fit':'Not scored'}</strong></div><div className="summary-copy"><p>{assessment?.summary??'Not assessed yet. A configured provider will compare this description with versioned candidate evidence. No role is hidden for low fit.'}</p><div className="assessment-toolbar"><span className="assessed-date">{assessment?.createdAt?`Assessed ${new Date(assessment.createdAt).toLocaleString()}`:assessmentStatus(job,queue?.rows??[])}</span><select aria-label="Assessment provider" value={provider} onChange={e=>setProvider(e.target.value)}><option value="">Configured default ({options?.selected??'loading'})</option>{options?.providers.map((p:any)=><option key={p.name} value={p.name}>{p.name} · {p.model}</option>)}</select><button onClick={reassess}>{assessment?'Assess now':'Assess now'}</button></div></div></div>
+        <div className="summary-card"><div className="score-overview"><div className="large-score">{quick.number}<small>/100</small></div><div className="score-track"><span style={{width:`${quickWidth}%`}}/></div><strong>Quick match — {quick.label}{quickCoverage===null?'':' · evidence coverage '+quickCoverage+'%'}</strong></div><div className="summary-copy"><p>{assessment?.summary??'Not assessed yet. A configured provider will compare this description with versioned candidate evidence. No role is hidden for low fit.'}</p><div className="assessment-toolbar"><span className="assessed-date">{assessment?.createdAt?`Assessed ${new Date(assessment.createdAt).toLocaleString()}`:assessmentStatus(job,queue?.rows??[])}</span><select aria-label="Assessment provider" value={provider} onChange={e=>setProvider(e.target.value)}><option value="">Configured default ({options?.selected??'loading'})</option>{options?.providers.map((p:any)=><option key={p.name} value={p.name}>{p.name} · {p.model}</option>)}</select><button onClick={reassess}>{assessment?'Assess now':'Assess now'}</button></div></div></div>
         {stale&&<p className="warning assessment-state">Candidate evidence or vacancy changed; this assessment uses an older snapshot.</p>}
         {job.matchStale&&<p className="warning assessment-state">Quick score uses an older profile revision; it is not presented as current.</p>}
         {row&&<p className={`assessment-state ${row.error?'warning':'muted'}`}>{row.status} · {row.provider} · {Math.floor(row.elapsedMs/1000)}s · attempt {row.attempts}{row.error?` · ${row.error}`:''}{row.next_at?` · Retry after ${new Date(row.next_at).toLocaleString()}`:''}</p>}
@@ -48,13 +45,8 @@ export function RoleContent({job,queue,onQueue,refresh,onError,onNotice}:Props){
       </section></div>
       <aside className="overview-rail">
         
-        <section className="rail-card quick-match"><div className="qm-head"><h3>Quick match</h3>{job.matchScore>0&&<span className="qm-status">Explanation pending</span>}</div>
-          <div className="qm-score"><b>{job.matchScore>0?job.matchScore:'—'}</b><small>/100</small><span className={`qm-bucket ${bucket.key}`}>{bucket.label}</span></div>
-          <div className="qm-track"><span style={{width:`${Math.max(0,Math.min(100,job.matchScore))}%`}}/></div>
-          <p>{job.matchScore>0?'Instant score from your profile and search terms. Why it is this number and what is unknown will appear here once the backend sends it.':'This role has no quick score yet. It is not hidden or ranked down for that.'}</p>
-          {job.matchStale&&<p className="qm-warn">Uses an older profile revision; not presented as current.</p>}
-        </section>
-        <section className="rail-card ai-note" id="ai-analysis-note"><h3>AI analysis</h3><p>{job.stage==='triage'?<>A detailed analysis runs after you shortlist this role. It appears in <b>Application</b>.</>:assessment?<>Assessed{assessment.createdAt?` ${new Date(assessment.createdAt).toLocaleDateString()}`:''}. Open <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button> to read it.</>:<>Status: {assessmentStatus(job,queue?.rows??[])}. Results appear in <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button>.</>}</p></section>
+        <QuickMatchPanel view={job.quickMatch} error={job.quickMatchError} onOpenProfile={onOpenProfile}/>
+        <section className="rail-card ai-note" id="ai-analysis-note"><h3>AI analysis</h3><p>{job.stage==='triage'?<>Detailed model assessment is shown in <b>Application</b> for shortlisted roles.</>:assessment?<>Assessed{assessment.createdAt?` ${new Date(assessment.createdAt).toLocaleDateString()}`:''}. Open <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button> to read it.</>:<>Status: {assessmentStatus(job,queue?.rows??[])}. Results appear in <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button>.</>}</p></section>
       </aside>
     </div>}
     {tab==='application'&&<section className="source-record"><h3>Source record</h3>{job.sources.map(s=><p key={s.url}><a href={s.url} target="_blank" rel="noreferrer">{s.name} ↗</a> · {new Date(s.seen).toLocaleString()}</p>)}<p className="muted">Board and employer metadata may be inaccurate. Application links open externally for your manual review. This app does not fill or submit forms.</p></section>}
@@ -72,12 +64,13 @@ function ListingText({text}:{text:string}){
   return <div className="listing-text">{out}</div>;
 }
 
-type FactIconName='money'|'mode'|'pin'|'case'|'level';
+type FactIconName='money'|'mode'|'pin'|'case'|'level'|'clock';
 const FACT_PATHS:Record<FactIconName,React.ReactNode>={
   money:<><circle cx="12" cy="12" r="8.5"/><path d="M14.6 9.2c-.5-.8-1.5-1.3-2.6-1.3-1.5 0-2.6.8-2.6 2s1.1 1.7 2.6 2 2.6.8 2.6 2-1.1 2-2.6 2c-1.1 0-2.1-.5-2.6-1.3M12 6.3v1.6M12 16.1v1.6"/></>,
   mode:<><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9h12v-9"/><path d="M10 19v-5h4v5"/></>,
   pin:<><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></>,
   case:<><rect x="3.5" y="7.5" width="17" height="12" rx="2"/><path d="M9 7.5V6a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 6v1.5M3.5 12.5h17"/></>,
   level:<path d="M4 19h4v-4h4v-4h4V7h4"/>,
+  clock:<><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5l3 2"/></>,
 };
 function FactIcon({name}:{name:FactIconName}){return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">{FACT_PATHS[name]}</svg>;}

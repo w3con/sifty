@@ -7,6 +7,7 @@ import (
 
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
+	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/model"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/store"
@@ -48,7 +49,9 @@ func TestProfileSaveUpdatesDerivedContextAndFastRanking(t *testing.T) {
 
 	// No configured search expressions: any observed score change must come from the profile.
 	cfg := &config.Config{}
-	svc := profile.NewService(s, config.NewHolder(cfg), profile.WithDirs(d))
+	holder := config.NewHolder(cfg)
+	svc := profile.NewService(s, holder, profile.WithDirs(d))
+	svc.SetQuickMatchRefresher(matchsvc.New(s, holder))
 	boot, err := svc.Get()
 	if err != nil {
 		t.Fatalf("bootstrap profile: %v", err)
@@ -133,11 +136,12 @@ func TestProfileSaveUpdatesDerivedContextAndFastRanking(t *testing.T) {
 		t.Errorf("unknown skill level became %q in derived context", skill["level"])
 	}
 
-	// Force the next rescore to fail after the context save. GET must not infer "current" from
-	// the context revision alone: the scores still carry the older revision.
-	if _, err := s.DB.Exec("DROP TABLE jobs_fts"); err != nil {
-		t.Fatalf("drop FTS table to force rescore failure: %v", err)
-	}
+	// Force the next Quick Match recomputation to fail after the context save. GET must not infer
+	// "current" from the context revision alone: the persisted results still carry the older
+	// revision.
+	bad := config.DefaultQuickMatch()
+	bad.Weights.Role = -1
+	holder.Set(&config.Config{Runtime: config.Runtime{QuickMatch: bad}})
 	next = saved.Data
 	next.TargetRoles = []string{"Product Designer"}
 	second, err := svc.Update(saved.Revision, next)

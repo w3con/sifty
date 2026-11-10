@@ -1,6 +1,7 @@
 package profile
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -64,7 +65,20 @@ type Service struct {
 	startMu sync.Mutex
 	runsMu  sync.Mutex
 	runs    map[string]activeRun
+
+	quickMatch QuickMatchRefresher
 }
+
+// QuickMatchRefresher is the application effect that recomputes persisted Quick Match results
+// from saved facts. It is an interface so the profile package does not depend on the evaluator
+// or the result store.
+type QuickMatchRefresher interface {
+	Recalculate(ctx context.Context) error
+}
+
+// SetQuickMatchRefresher wires the local recalculation effect used after a profile save. A nil
+// refresher keeps the profile save working without inventing a score.
+func (s *Service) SetQuickMatchRefresher(r QuickMatchRefresher) { s.quickMatch = r }
 
 // NewService builds the profile application service from its persistence and configuration
 // dependencies. cfg may be nil for tests that do not exercise bootstrap. Document storage and
@@ -262,15 +276,18 @@ func (s *Service) refreshDerived(p *Profile) (contextErr, rankingErr error) {
 	if s.cfg != nil {
 		cfg = s.cfg.Get()
 	}
-	_, err := candidate.RefreshContextForProfile(
-		s.store, s.dirs, cfg, ContextPreferences(p), p.ID, p.Revision, false, true, ContextSource(p))
-	if err != nil {
-		return fmt.Errorf("refresh derived candidate context: %w", err), nil
+	if _, err := candidate.RefreshContextForProfile(
+		s.store, s.dirs, cfg, ContextPreferences(p), p.ID, p.Revision, false, true, ContextSource(p)); err != nil {
+		contextErr = fmt.Errorf("refresh derived candidate context: %w", err)
 	}
-	if err := s.store.RescoreForProfile(FastRankingQuery(cfg, &p.Data), p.Revision); err != nil {
-		return nil, fmt.Errorf("refresh catalogue fast ranking: %w", err)
+	// Quick Match is recomputed independently from persisted facts. A profile-only change never
+	// captures, extracts, fetches or calls a model; a candidate-context failure must not block it.
+	if s.quickMatch != nil {
+		if err := s.quickMatch.Recalculate(context.Background()); err != nil {
+			rankingErr = fmt.Errorf("refresh quick match: %w", err)
+		}
 	}
-	return nil, nil
+	return contextErr, rankingErr
 }
 
 // decorate reports whether the latest derived context snapshot belongs to this profile revision.
@@ -282,27 +299,25 @@ func (s *Service) decorate(p *Profile) *Profile {
 	if err != nil {
 		p.ContextCurrent = false
 		p.ContextError = err.Error()
-		return p
-	}
-	if raw == nil {
+	} else if raw == nil {
 		p.ContextCurrent = false
 		p.ContextError = "candidate context has not been refreshed"
-		return p
-	}
-	version, _ := raw["version"].(string)
-	profileID, _ := raw["profileId"].(string)
-	revision := intValue(raw["profileRevision"])
-	p.ContextVersion = version
-	p.ContextProfileRevision = revision
-	p.ContextCurrent = profileID == p.ID && revision == p.Revision
-	if p.ContextCurrent {
-		p.ContextError = ""
-	} else if profileID == "" {
-		p.ContextError = "stored context predates the confirmed profile; refresh context"
-	} else if revision != p.Revision {
-		p.ContextError = fmt.Sprintf("stored context reflects profile revision %d, current is %d", revision, p.Revision)
 	} else {
-		p.ContextError = "stored context belongs to a different profile"
+		version, _ := raw["version"].(string)
+		profileID, _ := raw["profileId"].(string)
+		revision := intValue(raw["profileRevision"])
+		p.ContextVersion = version
+		p.ContextProfileRevision = revision
+		p.ContextCurrent = profileID == p.ID && revision == p.Revision
+		if p.ContextCurrent {
+			p.ContextError = ""
+		} else if profileID == "" {
+			p.ContextError = "stored context predates the confirmed profile; refresh context"
+		} else if revision != p.Revision {
+			p.ContextError = fmt.Sprintf("stored context reflects profile revision %d, current is %d", revision, p.Revision)
+		} else {
+			p.ContextError = "stored context belongs to a different profile"
+		}
 	}
 
 	rankRevision, known, uniform, rankErr := s.store.FastRankingRevision()

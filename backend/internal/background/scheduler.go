@@ -23,11 +23,12 @@ type CollectionFn func(s *store.Store, d dirs.Dirs, cfg *config.Config) error
 // per calendar day at or after the configured hour and minute. It serialises through the
 // database 'daily' lock so a concurrent CLI call does not duplicate a run.
 type DailyScheduler struct {
-	store      *store.Store
-	dirs       dirs.Dirs
-	cfg        *config.Holder
-	collectFn  CollectionFn
-	nowFn      func() time.Time // injectable for tests
+	store        *store.Store
+	dirs         dirs.Dirs
+	cfg          *config.Holder
+	collectFn    CollectionFn
+	afterCollect func() error
+	nowFn        func() time.Time // injectable for tests
 
 	mu      sync.Mutex
 	busy    bool
@@ -49,6 +50,10 @@ func NewDailyScheduler(s *store.Store, d dirs.Dirs, cfg *config.Holder, collectF
 		collectFn: collectFn, nowFn: nowFn,
 	}
 }
+
+// SetAfterCollect wires the live post-collection effect (Quick Match under the authoritative
+// config holder). The collector keeps the config snapshot it used for fetching.
+func (sc *DailyScheduler) SetAfterCollect(fn func() error) { sc.afterCollect = fn }
 
 // Start launches the scheduler goroutine, which checks every minute whether the daily run is due.
 func (sc *DailyScheduler) Start() {
@@ -145,7 +150,14 @@ func (sc *DailyScheduler) runOnce() {
 		_ = sc.store.FinishDailyRun(runID, "failed", err.Error())
 		return
 	}
-	_ = sc.store.FinishDailyRun(runID, "complete", map[string]any{"triggered": "scheduler"})
+	details := map[string]any{"triggered": "scheduler"}
+	if sc.afterCollect != nil {
+		if qerr := sc.afterCollect(); qerr != nil {
+			log.Printf("daily scheduler: post-collection quick match: %v", qerr)
+			details["quickMatchWarning"] = qerr.Error()
+		}
+	}
+	_ = sc.store.FinishDailyRun(runID, "complete", details)
 }
 
 // defaultCollect is defined in collect.go.

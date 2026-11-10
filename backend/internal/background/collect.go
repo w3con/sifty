@@ -10,7 +10,6 @@ import (
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/fetch"
 	"github.com/w3con/sifty/internal/model"
-	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/source"
 	"github.com/w3con/sifty/internal/store"
 )
@@ -85,17 +84,6 @@ func defaultCollect(s *store.Store, d dirs.Dirs, cfg *config.Config) error {
 	}
 
 	log.Printf("collect: upserted %d postings, skipped %d by stop-word", total, skipped)
-	current, err := profile.Current(s)
-	var data *profile.ProfileData
-	revision := 0
-	if err == nil && current != nil {
-		data = &current.Data
-		revision = current.Revision
-	}
-	matchQuery := profile.FastRankingQuery(cfg, data)
-	if err := s.RescoreForProfile(matchQuery, revision); err != nil {
-		log.Printf("collect: rescore: %v", err)
-	}
 	return nil
 }
 

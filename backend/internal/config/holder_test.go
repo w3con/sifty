@@ -3,6 +3,7 @@ package config_test
 import (
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
@@ -90,5 +91,43 @@ providers:
 	got := h.Get().Providers.Providers["primary"].Model
 	if got != "mistral" {
 		t.Errorf("after Reload: model = %q, want mistral", got)
+	}
+}
+
+// TestHolderSnapshotBlocksSet verifies that a Quick Match recomputation guard cannot have the
+// active configuration swapped between identity derivation and its dependent result write.
+func TestHolderSnapshotBlocksSet(t *testing.T) {
+	h := config.NewHolder(&config.Config{Runtime: config.Runtime{Port: 1111}})
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	snapshotDone := make(chan struct{})
+	go func() {
+		_ = h.WithSnapshot(func(cfg *config.Config) error {
+			if cfg.Runtime.Port != 1111 {
+				t.Errorf("snapshot port = %d, want 1111", cfg.Runtime.Port)
+			}
+			close(entered)
+			<-release
+			return nil
+		})
+		close(snapshotDone)
+	}()
+	<-entered
+
+	setDone := make(chan struct{})
+	go func() {
+		h.Set(&config.Config{Runtime: config.Runtime{Port: 2222}})
+		close(setDone)
+	}()
+	select {
+	case <-setDone:
+		t.Fatal("Set completed while a configuration snapshot was held")
+	case <-time.After(20 * time.Millisecond):
+	}
+	close(release)
+	<-snapshotDone
+	<-setDone
+	if got := h.Get().Runtime.Port; got != 2222 {
+		t.Fatalf("post-snapshot port = %d, want 2222", got)
 	}
 }

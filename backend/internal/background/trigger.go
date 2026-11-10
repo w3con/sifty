@@ -30,6 +30,10 @@ type TriggerOpts struct {
 	NowFn func() time.Time
 	// Cooldown overrides the default 3-hour cooldown; zero uses defaultCooldown.
 	Cooldown time.Duration
+	// AfterCollect runs after a successful collection using the live runtime services. It is
+	// where the server recomputes Quick Match with its authoritative config holder; the
+	// collector itself keeps the snapshot config it used for fetching.
+	AfterCollect func() error
 }
 
 // TriggerResult is the outcome of TriggerCollection.
@@ -94,6 +98,11 @@ func TriggerCollection(s *store.Store, d dirs.Dirs, cfg *config.Config, opts Tri
 	if collectErr != nil {
 		_ = s.FinishCollectionRun(runID, "failed")
 		return TriggerResult{RunID: runID, Status: "failed"}, collectErr
+	}
+	if opts.AfterCollect != nil {
+		if err := opts.AfterCollect(); err != nil {
+			log.Printf("trigger: post-collection quick match: %v", err)
+		}
 	}
 
 	if err := s.FinishCollectionRun(runID, "complete"); err != nil {
@@ -165,6 +174,11 @@ func TriggerAsync(s *store.Store, d dirs.Dirs, cfg *config.Config, opts TriggerO
 			log.Printf("trigger: collection failed (run %d): %v", runID, collectErr)
 			_ = s.FinishCollectionRun(runID, "failed")
 			return
+		}
+		if opts.AfterCollect != nil {
+			if err := opts.AfterCollect(); err != nil {
+				log.Printf("trigger: post-collection quick match (run %d): %v", runID, err)
+			}
 		}
 		if err := s.FinishCollectionRun(runID, "complete"); err != nil {
 			log.Printf("trigger: finish run %d: %v", runID, err)

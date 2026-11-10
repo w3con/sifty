@@ -5,10 +5,11 @@ import (
 	"fmt"
 )
 
-const targetVersion = 18
+const targetVersion = 20
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
-// needed to produce the complete Sifty schema through user_version 16. Every statement is idempotent,
+// needed to produce the complete Sifty schema through user_version 16 (later versions add
+// separate tables/columns below). Every statement is idempotent,
 // so migrate executes the whole block unconditionally. Columns that the TypeScript store added
 // after the initial CREATE TABLE (apply_status, tags, seen_at, applied_at on jobs;
 // override_provider and routing on assessment_queue) are handled separately by addColumnIfMissing,
@@ -450,8 +451,51 @@ func migrate(db *sql.DB) error {
 		}
 	}
 
+	// Phase 8 — v19: additive Quick Match input/fact storage. The retained snapshot and its
+	// facts are separate rows so the source hash and the production versions stay inspectable
+	// independently. No existing table, column, index or row is changed.
+	if version < 19 {
+		if _, err := db.Exec(quickMatchSchema); err != nil {
+			return fmt.Errorf("apply quick match schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=19"); err != nil {
+			return fmt.Errorf("set user_version=19: %w", err)
+		}
+	}
+
+	// Phase 9 — v20: additive Quick Match result storage. Existing tables, columns and rows are
+	// unchanged; a result row is written only after the same-transaction input checks in
+	// SaveMatchResult pass.
+	if version < 20 {
+		if _, err := db.Exec(quickMatchResultSchema); err != nil {
+			return fmt.Errorf("apply quick match result schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=20"); err != nil {
+			return fmt.Errorf("set user_version=20: %w", err)
+		}
+	}
+
 	return nil
 }
+
+const quickMatchSchema = `
+CREATE TABLE IF NOT EXISTS match_job_inputs(
+  job_id          INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  raw_source_hash TEXT    NOT NULL,
+  snapshot        TEXT    NOT NULL,
+  captured_at     TEXT    NOT NULL
+);
+CREATE TABLE IF NOT EXISTS match_job_facts(
+  job_id                INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  facts_hash            TEXT    NOT NULL,
+  raw_source_hash       TEXT    NOT NULL,
+  schema_version        TEXT    NOT NULL,
+  extractor_version     TEXT    NOT NULL,
+  source_policy_version TEXT    NOT NULL,
+  facts                 TEXT    NOT NULL,
+  updated_at            TEXT    NOT NULL
+);
+`
 
 // addColumnIfMissing adds column with definition to table only when it is not already present.
 // It is the idempotent equivalent of ALTER TABLE … ADD COLUMN, which SQLite does not support
@@ -481,3 +525,24 @@ func addColumnIfMissing(db *sql.DB, table, column, definition string) error {
 	}
 	return nil
 }
+
+const quickMatchResultSchema = `
+CREATE TABLE IF NOT EXISTS match_job_results(
+  job_id                INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  profile_id            TEXT    NOT NULL,
+  profile_revision      INTEGER NOT NULL,
+  facts_hash            TEXT    NOT NULL,
+  raw_source_hash       TEXT    NOT NULL,
+  schema_version        TEXT    NOT NULL,
+  extractor_version     TEXT    NOT NULL,
+  source_policy_version TEXT    NOT NULL,
+  source_policy_identity TEXT   NOT NULL,
+  rules_version         TEXT    NOT NULL,
+  rules_identity        TEXT    NOT NULL,
+  status                TEXT    NOT NULL,
+  score                 INTEGER,
+  raw_score             REAL,
+  result                TEXT    NOT NULL,
+  computed_at           TEXT    NOT NULL
+);
+`

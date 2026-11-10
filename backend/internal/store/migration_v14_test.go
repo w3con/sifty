@@ -10,7 +10,8 @@ import (
 
 // TestMigrationV14 verifies that the v13 → v14 migration copies company block rules into
 // stop_words and removes source block rules, leaving title block rules untouched. Opening the
-// database also applies the additive v15 profile schema, so the reported version is 16.
+// database also applies every later additive migration, so the reported version is the current
+// target.
 //
 // The setup opens a raw SQLite file, creates only the tables that the migration touches, sets
 // user_version=13, inserts representative v13 data, and then opens it through store.Open so the
@@ -89,8 +90,8 @@ func TestMigrationV14(t *testing.T) {
 	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("read user_version: %v", err)
 	}
-	if version != 18 {
-		t.Errorf("user_version = %d, want 18", version)
+	if version != 20 {
+		t.Errorf("user_version = %d, want 20", version)
 	}
 
 	// stop_words must contain exactly "acme" and "megacorp" (no duplicates for acme, no source).

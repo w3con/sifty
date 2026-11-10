@@ -322,21 +322,21 @@ export function ProfileView({editor, documents, facts, avatar, onClose, onOpenSe
       </header>}
 
       {profile ? <div className={`profile-derived ${profile.derivedCurrent ? 'current' : 'warning'}`}>
-        {profile.derivedCurrent
+        {profile.fastRankingCurrent
           ? <p className="profile-hint"><span className="profile-ok-dot" aria-hidden="true"/>Quick ranking up to date</p>
           : <>
             <p className="profile-hint">Quick ranking is not current for the saved profile. Your profile is saved; refresh scoring to update it.</p>
-            {editor.derivedError ? <p className="profile-hint warning">Scoring refresh failed; the saved profile is unchanged. Try again.</p> : null}
             <div className="profile-document-actions">
               <button type="button" disabled={editor.derivedRefreshing} onClick={() => void editor.refreshDerived()}>
                 {editor.derivedRefreshing ? 'Refreshing…' : 'Refresh scoring'}
               </button>
             </div>
-            {(profile.contextError || profile.fastRankingError || editor.derivedError) ? <details>
-              <summary>Technical details</summary>
-              <code>{editor.derivedError || profile.contextError || profile.fastRankingError}</code>
-            </details> : null}
           </>}
+        {profile.contextCurrent ? null : <p className="profile-hint warning">Candidate context is not current{profile.contextError ? ': ' + profile.contextError : '.'} This is separate from Quick ranking.</p>}
+        {(editor.derivedError || profile.fastRankingError || profile.contextError) ? <details>
+          <summary>Technical details</summary>
+          <code>{editor.derivedError || profile.fastRankingError || profile.contextError}</code>
+        </details> : null}
       </div> : null}
 
       {error ? <div className="banner error" data-kind={messageKind(error)} role="alert">{error}</div> : null}

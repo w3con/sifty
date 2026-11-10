@@ -149,6 +149,44 @@ func (c *Config) validateRuntime() error {
 	if c.Runtime.Port < 1024 || c.Runtime.Port > 65535 {
 		return fmt.Errorf("runtime.yaml: port must be between 1024 and 65535")
 	}
+	if err := validateQuickMatch(c.Runtime.QuickMatch); err != nil {
+		return err
+	}
+	return nil
+}
+
+// validateQuickMatch refuses partial or contradictory Quick Match configuration. A zero
+// version means the block is absent and the documented defaults apply.
+func validateQuickMatch(q QuickMatch) error {
+	if q.Version == 0 {
+		return nil
+	}
+	if q.Version != 1 {
+		return fmt.Errorf("runtime.yaml: quick_match.version must be 1")
+	}
+	if q.RulesVersion == "" {
+		return fmt.Errorf("runtime.yaml: quick_match.rules_version is required")
+	}
+	if q.SourcePolicyVersion == "" {
+		return fmt.Errorf("runtime.yaml: quick_match.source_policy_version is required")
+	}
+	if q.RequiredWeight <= 0 || q.PreferredWeight <= 0 {
+		return fmt.Errorf("runtime.yaml: quick_match requirement weights must be positive")
+	}
+	if q.Weights.Role <= 0 || q.Weights.Professional <= 0 || q.Weights.Compensation <= 0 ||
+		q.Weights.Geography <= 0 || q.Weights.Conditions <= 0 {
+		return fmt.Errorf("runtime.yaml: quick_match weights must all be positive")
+	}
+	if sum := q.Weights.Sum(); sum < 1-1e-9 || sum > 1+1e-9 {
+		return fmt.Errorf("runtime.yaml: quick_match weights sum to %v, want 1", sum)
+	}
+	for source, rule := range q.SourceFields {
+		switch rule.Location {
+		case "", "usable", "needs_corroboration", "unusable":
+		default:
+			return fmt.Errorf("runtime.yaml: quick_match source %q has invalid location reliability %q", source, rule.Location)
+		}
+	}
 	return nil
 }
 

@@ -95,6 +95,77 @@ type Runtime struct {
 	// documented defaults below.
 	ProfileAvatarMaxBytes int      `yaml:"profile_avatar_max_bytes"`
 	ProfileAvatarTypes    []string `yaml:"profile_avatar_types"`
+
+	// Quick Match. This is the one configuration extension for the v1 rule defaults and
+	// source-field usability policy. It contains no user/profile values and creates no new
+	// settings framework. An absent block selects DefaultQuickMatch.
+	QuickMatch QuickMatch `yaml:"quick_match"`
+}
+
+// QuickMatchWeights are the fixed v1 group weights. They sum to 1 and are versioned with the
+// rule set; no corpus-relative normalization uses them.
+type QuickMatchWeights struct {
+	Role         float64 `yaml:"role"         json:"role"`
+	Professional float64 `yaml:"professional" json:"professional"`
+	Compensation float64 `yaml:"compensation" json:"compensation"`
+	Geography    float64 `yaml:"geography"    json:"geography"`
+	Conditions   float64 `yaml:"conditions"   json:"conditions"`
+}
+
+// Sum returns the total of the five group weights.
+func (w QuickMatchWeights) Sum() float64 {
+	return w.Role + w.Professional + w.Compensation + w.Geography + w.Conditions
+}
+
+// QuickMatchSourceField declares the usability of one source's structured fields. Only
+// fields whose trust genuinely differs by source belong here; this is not a site preference
+// coefficient.
+type QuickMatchSourceField struct {
+	Location string `yaml:"location,omitempty" json:"location,omitempty"`
+}
+
+// QuickMatch is the extractor/evaluator configuration extension. SourceFields maps a saved
+// source name to field usability declarations. Weights and requirement weights are the
+// approved v1 defaults, still uncalibrated.
+type QuickMatch struct {
+	Version             int                              `yaml:"version"              json:"version"`
+	RulesVersion        string                           `yaml:"rules_version"        json:"rulesVersion"`
+	SourcePolicyVersion string                           `yaml:"source_policy_version" json:"sourcePolicyVersion"`
+	Weights             QuickMatchWeights                `yaml:"weights"              json:"weights"`
+	RequiredWeight      float64                          `yaml:"required_weight"      json:"requiredWeight"`
+	PreferredWeight     float64                          `yaml:"preferred_weight"     json:"preferredWeight"`
+	SourceFields        map[string]QuickMatchSourceField `yaml:"source_fields"        json:"sourceFields"`
+}
+
+// DefaultSourcePolicyVersion identifies the default source-field policy data shape.
+const DefaultSourcePolicyVersion = "source-policy/1"
+
+// DefaultQuickMatch returns the approved v1 numerical defaults and the known ambiguous board
+// location declaration. These values are configuration defaults, not calibrated preferences.
+func DefaultQuickMatch() QuickMatch {
+	return QuickMatch{
+		Version:             1,
+		RulesVersion:        "quickmatch.rules/1",
+		SourcePolicyVersion: DefaultSourcePolicyVersion,
+		Weights: QuickMatchWeights{
+			Role: 0.25, Professional: 0.30, Compensation: 0.20,
+			Geography: 0.15, Conditions: 0.10,
+		},
+		RequiredWeight:  2,
+		PreferredWeight: 1,
+		SourceFields: map[string]QuickMatchSourceField{
+			"Wellfound": {Location: "needs_corroboration"},
+		},
+	}
+}
+
+// EffectiveQuickMatch returns the configured block, or the documented defaults when the block
+// is absent. It does not merge partial blocks: a present block must be complete and valid.
+func (r Runtime) EffectiveQuickMatch() QuickMatch {
+	if r.QuickMatch.Version == 0 {
+		return DefaultQuickMatch()
+	}
+	return r.QuickMatch
 }
 
 // EffectiveProfileMaxDocumentBytes is the upload ceiling for one profile document.
@@ -302,6 +373,9 @@ func (c *Config) validate() error {
 	}
 	if c.Runtime.Port < 1024 || c.Runtime.Port > 65535 {
 		return fmt.Errorf("runtime.yaml: port must be between 1024 and 65535")
+	}
+	if err := validateQuickMatch(c.Runtime.QuickMatch); err != nil {
+		return err
 	}
 	if c.Providers.Version != 1 {
 		return fmt.Errorf("providers.yaml: version must be 1")

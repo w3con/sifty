@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +18,7 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/inspect"
+	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/server"
 	"github.com/w3con/sifty/internal/store"
@@ -83,15 +85,21 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	defer func() { _ = s.DB.Close() }()
 
 	resolvedWorkersDir, _ := filepath.Abs(*workersDir)
-	deps := &server.Deps{Store: s, Dirs: d, Cfg: cfgHolder, Profiles: profile.NewService(
+	profiles := profile.NewService(
 		s, cfgHolder,
 		profile.WithDirs(d),
 		profile.WithDocxReader(profile.NewNodeDocxReader(resolvedWorkersDir)),
-	)}
+	)
+	quickMatches := matchsvc.New(s, cfgHolder)
+	profiles.SetQuickMatchRefresher(quickMatches)
+	deps := &server.Deps{Store: s, Dirs: d, Cfg: cfgHolder, Profiles: profiles}
 	deps.CollectFn = func(source string, force bool) (int64, string, error) {
 		return background.TriggerAsync(s, d, cfgHolder.Get(), background.TriggerOpts{
 			Source: source,
 			Force:  force,
+			AfterCollect: func() error {
+				return quickMatches.Recalculate(context.Background())
+			},
 		})
 	}
 	mux := server.New(servePort, func(m *http.ServeMux) {
@@ -121,10 +129,21 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	discipline := background.NewBrowserDiscipline(cfgHolder, background.SystemClock{})
 	inspectFn := discipline.Wrap(rawInspectFn)
 
+	// Fresh startup recomputes Quick Match locally from retained facts. It performs no fetch,
+	// model or queue work; a failure is logged and leaves saved data/results unchanged.
+	go func() {
+		if _, err := quickMatches.Recompute(context.Background()); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
+			log.Printf("startup quick match: %v", err)
+		}
+	}()
+
 	// Start background workers.
 	assessW := background.NewAssessmentWorker(s, d, cfgHolder, nil, nil)
 	prepW := background.NewPreparationWorker(s, d, cfgHolder, nil, nil, inspectFn)
 	sched := background.NewDailyScheduler(s, d, cfgHolder, nil, nil)
+	sched.SetAfterCollect(func() error {
+		return quickMatches.Recalculate(context.Background())
+	})
 	assessW.Start()
 	prepW.Start()
 	sched.Start()

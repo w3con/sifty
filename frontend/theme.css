@@ -255,6 +255,57 @@
 .fact-unknown svg{width:15px;height:15px}
 .fact-more{margin-left:6px;font-size:12px!important;font-weight:600;padding:2px 8px!important;border-radius:6px;background:var(--well)!important;color:var(--ink-2)!important}
 .fact-places{margin:0;padding:12px 16px;border-radius:10px;background:var(--card);font:12px/1.7 'IBM Plex Mono',monospace;color:var(--ink-3);overflow-wrap:anywhere}
+
+/* Q.4: stored Quick Match envelope in the Overview rail. */
+.qm-score .previous-score{color:var(--ink-3,#71717a)}
+.qm-status.scored{background:#e3f2df;color:#1f5a17}
+.qm-status.stale{background:#f3eed8;color:#6b5a12}
+.qm-status.unscored{background:var(--well,#efeff1);color:var(--ink-2,#52525b)}
+.qm-status.error{background:#fde8e4;color:#9b2c19}
+.qm-bucket.previous{background:#f3eed8;color:#6b5a12}
+.qm-bucket.unavailable,.qm-bucket.unscored{background:var(--well,#efeff1);color:var(--ink-3,#71717a)}
+.qm-error{color:#9b2c19}
+.qm-coverage{margin:14px 0 4px;font-size:12px;color:var(--ink-2,#52525b)}
+.qm-coverage b{font:12px 'IBM Plex Mono',monospace;color:var(--ink,#18181b)}
+.qm-coverage.previous b{color:var(--ink-3,#71717a)}
+.qm-coverage-track{height:4px}
+.qm-coverage-note{margin:6px 0 0;font-size:12px;line-height:1.5;color:#8a5a00}
+.qm-groups{margin-top:14px;display:grid;gap:8px}
+.qm-group{border-top:1px solid var(--well-2,#e4e4e7);padding-top:8px}
+.qm-group:first-child{border-top:0;padding-top:0}
+.qm-group-head{display:flex;justify-content:space-between;gap:8px;font-size:12px}
+.qm-group-head span{color:var(--ink-3,#71717a)}
+.qm-group.not_applicable .qm-group-head span,.qm-group.unknown .qm-group-head span{font-style:italic}
+.qm-group-meta{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:3px;font:11px 'IBM Plex Mono',monospace;color:var(--ink-3,#71717a)}
+.qm-group-note{margin:3px 0 0;font-size:12px;color:var(--ink-3,#71717a)}
+.qm-note{margin:10px 0 0;font-size:11px;line-height:1.5;color:var(--ink-3,#71717a)}
+.qm-details{margin-top:10px;border-top:1px solid var(--well-2,#e4e4e7);padding-top:8px;font-size:12px}
+.qm-details>summary{cursor:pointer;font-weight:600;color:var(--ink-2,#52525b)}
+.qm-details>summary span{font:11px 'IBM Plex Mono',monospace;color:var(--ink-3,#71717a)}
+.qm-unknowns,.qm-conflicts,.qm-reasons{margin:8px 0 0;padding-left:16px;display:grid;gap:8px}
+.qm-unknown-head{display:grid;gap:2px}
+.qm-unknown-head span{color:var(--ink-3,#71717a)}
+.qm-unknown-value{margin:4px 0 0}
+.qm-unknown-meta{margin:4px 0 0;color:var(--ink-4,#a1a1aa);font-size:11px}
+.qm-details blockquote{margin:5px 0 0;padding-left:9px;border-left:2px solid var(--well-2,#e4e4e7);color:var(--ink-2,#52525b);overflow-wrap:anywhere}
+.qm-edit{margin-top:5px;font-size:12px}
+.qm-compare-group h4{margin:10px 0 6px;font-size:12px}
+.qm-compare{border-top:1px solid var(--well,#efeff1);padding-top:7px;margin-top:7px}
+.qm-compare:first-of-type{border-top:0;margin-top:0;padding-top:0}
+.qm-compare-head{display:flex;justify-content:space-between;gap:8px}
+.qm-compare-head span{font-size:11px;color:var(--ink-3,#71717a);text-align:right}
+.qm-compare-values{display:grid;gap:3px;margin:5px 0 0}
+.qm-compare-values>div{display:grid;grid-template-columns:64px minmax(0,1fr);gap:6px}
+.qm-compare-values dt{font-size:11px;color:var(--ink-3,#71717a)}
+.qm-compare-values dd{margin:0;overflow-wrap:anywhere}
+.qm-evidence{margin:5px 0 0;font-size:11px;color:var(--ink-3,#71717a);overflow-wrap:anywhere}
+.qm-compare-meta{margin:5px 0 0;font-size:11px;color:var(--ink-3,#71717a)}
+.qm-reasons li code{font-size:10px;color:var(--ink-4,#a1a1aa)}
+.qm-provenance{display:grid;gap:4px;margin:8px 0 0}
+.qm-provenance>div{display:grid;grid-template-columns:120px minmax(0,1fr);gap:6px}
+.qm-provenance dt{font-size:11px;color:var(--ink-3,#71717a)}
+.qm-provenance dd{margin:0;font:11px 'IBM Plex Mono',monospace;overflow-wrap:anywhere}
+.score.previous{color:var(--ink-3,#71717a)}
 /* DESIGN-7: logo centred in the header, search above the list */
 .app-header{display:grid!important;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:16px}
 .app-header .stages{justify-self:start;grid-column:1;grid-row:1}

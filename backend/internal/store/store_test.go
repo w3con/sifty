@@ -44,6 +44,8 @@ var expectedTables = []string{
 	"profile_documents",
 	"profile_facts",
 	"profile_revisions",
+	"match_job_inputs",
+	"match_job_facts",
 }
 
 // expectedColumns maps table names to columns (including incrementally-added ones) that must

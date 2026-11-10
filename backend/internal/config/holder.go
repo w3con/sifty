@@ -1,6 +1,7 @@
 package config
 
 import (
+	"sync"
 	"sync/atomic"
 
 	"github.com/w3con/sifty/internal/dirs"
@@ -10,7 +11,8 @@ import (
 // and lock-free swaps without data races. All callers share one Holder; each
 // config reload calls Set with the freshly loaded *Config.
 type Holder struct {
-	p atomic.Pointer[Config]
+	p  atomic.Pointer[Config]
+	mu sync.RWMutex
 }
 
 // NewHolder returns a Holder initialised with cfg. cfg must not be nil.
@@ -28,7 +30,18 @@ func (h *Holder) Get() *Config {
 
 // Set atomically replaces the held config with cfg. cfg must not be nil.
 func (h *Holder) Set(cfg *Config) {
+	h.mu.Lock()
 	h.p.Store(cfg)
+	h.mu.Unlock()
+}
+
+// WithSnapshot runs fn against the active configuration while blocking Set/Reload for the
+// duration. It lets an effect derive identities and write the dependent result under one
+// stable configuration snapshot without introducing a second config framework.
+func (h *Holder) WithSnapshot(fn func(*Config) error) error {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	return fn(h.p.Load())
 }
 
 // Reload reads and validates all configuration files from d, and if successful
@@ -42,6 +55,6 @@ func (h *Holder) Reload(d dirs.Dirs) error {
 	if err != nil {
 		return err
 	}
-	h.p.Store(cfg)
+	h.Set(cfg)
 	return nil
 }

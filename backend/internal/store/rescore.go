@@ -5,8 +5,10 @@ import (
 	"fmt"
 )
 
-// Rescore recomputes the match_score column for every role in the jobs table using BM25
-// relevance from the FTS5 index. The score is derived by:
+// Rescore is the retained legacy BM25 path. It never changes a role that already has a persisted
+// Quick Match result, so it cannot overwrite a deterministic score. Production code now uses
+// the Quick Match effect; this compatibility path remains for historical rows and FTS tooling.
+// The score is derived by:
 //
 //  1. Running the given FTS5 MATCH query against jobs_fts. SQLite's bm25() returns a
 //     negative value where a more negative value means a better match (the sign is
@@ -28,7 +30,8 @@ func (s *Store) Rescore(matchQuery string) error {
 // old score is never presented as current after a profile save or a failed refresh.
 func (s *Store) RescoreForProfile(matchQuery string, profileRevision int) error {
 	if matchQuery == "" {
-		if _, err := s.DB.Exec("UPDATE jobs SET match_score=0, match_profile_revision=?", profileRevision); err != nil {
+		if _, err := s.DB.Exec(`UPDATE jobs SET match_score=0, match_profile_revision=?
+			WHERE NOT EXISTS (SELECT 1 FROM match_job_results r WHERE r.job_id=jobs.id)`, profileRevision); err != nil {
 			return fmt.Errorf("rescore: reset scores: %w", err)
 		}
 		return nil
@@ -95,12 +98,14 @@ func (s *Store) RescoreForProfile(matchQuery string, profileRevision int) error 
 		}
 	}()
 
-	if _, err := tx.Exec("UPDATE jobs SET match_score=0, match_profile_revision=?", profileRevision); err != nil {
+	if _, err := tx.Exec(`UPDATE jobs SET match_score=0, match_profile_revision=?
+		WHERE NOT EXISTS (SELECT 1 FROM match_job_results r WHERE r.job_id=jobs.id)`, profileRevision); err != nil {
 		return fmt.Errorf("rescore: reset: %w", err)
 	}
 
 	for id, score := range scores {
-		if _, err := tx.Exec("UPDATE jobs SET match_score=? WHERE id=?", score, id); err != nil {
+		if _, err := tx.Exec(`UPDATE jobs SET match_score=? WHERE id=?
+			AND NOT EXISTS (SELECT 1 FROM match_job_results r WHERE r.job_id=jobs.id)`, score, id); err != nil {
 			return fmt.Errorf("rescore: update id=%d: %w", id, err)
 		}
 	}

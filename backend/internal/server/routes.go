@@ -1,11 +1,14 @@
 package server
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"hash"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
@@ -17,6 +20,7 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/fetch"
+	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/model"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/records"
@@ -97,6 +101,15 @@ func RegisterRoutes(mux Router, d *Deps) {
 		if jobs == nil {
 			jobs = []*model.Job{}
 		}
+		ms := matchsvc.New(d.Store, d.Cfg)
+		ms.Decorate(jobs)
+		// Preserve the existing date/title/archive order unless the caller explicitly asks for
+		// the deterministic fit order. Q.4 will adapt the frontend to pass this parameter or
+		// sort by the returned quickMatch value.
+		switch r.URL.Query().Get("sort") {
+		case "fit", "match", "best-fit", "bestfit":
+			matchsvc.Sort(jobs)
+		}
 		writeJSON(w, http.StatusOK, jobs)
 		return nil
 	}))
@@ -110,6 +123,8 @@ func RegisterRoutes(mux Router, d *Deps) {
 		if err != nil {
 			return err
 		}
+		jobList := []*model.Job{job}
+		matchsvc.New(d.Store, d.Cfg).Decorate(jobList)
 		writeJSON(w, http.StatusOK, job)
 		return nil
 	}))
@@ -222,12 +237,23 @@ func RegisterRoutes(mux Router, d *Deps) {
 			}
 		}
 		result, err := ex.Run(func() (any, error) {
-			return enrichFn(d.Store, id)
+			id, err := enrichFn(d.Store, id)
+			if err != nil {
+				return nil, err
+			}
+			// A refreshed saved description changes only this source input. Recompute this role
+			// locally from the retained facts/source. A derived failure is surfaced, not hidden.
+			if qerr := matchsvc.New(d.Store, d.Cfg).RecalculateJob(context.Background(), id); qerr != nil && !errors.Is(qerr, matchsvc.ErrNoProfile) {
+				log.Printf("read: quick match for job %d: %v", id, qerr)
+				return map[string]any{"id": id, "quickMatchWarning": qerr.Error()}, nil
+			}
+			// Keep the historical object response shape on success as well as warning paths.
+			return map[string]any{"id": id}, nil
 		})
 		if err != nil {
 			return err
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"id": result})
+		writeJSON(w, http.StatusOK, result)
 		return nil
 	}))
 
@@ -511,13 +537,11 @@ func RegisterRoutes(mux Router, d *Deps) {
 		if err != nil {
 			return err
 		}
-		var data *profile.ProfileData
 		preferences := any(cfg.Search.Preferences)
 		profileID := ""
 		revision := 0
 		var extras []candidate.EvidenceSource
 		if current != nil {
-			data = &current.Data
 			preferences = profile.ContextPreferences(current)
 			profileID = current.ID
 			revision = current.Revision
@@ -529,10 +553,10 @@ func RegisterRoutes(mux Router, d *Deps) {
 			if err != nil {
 				return nil, err
 			}
-			// Rescore all roles using the updated profile. Errors are non-fatal: the
-			// context was saved successfully, so return the context even if rescoring fails.
-			if rerr := d.Store.RescoreForProfile(profile.FastRankingQuery(cfg, data), revision); rerr != nil {
-				_ = rerr // logged by Rescore internals; context response is not affected
+			// Recompute Quick Match locally from saved facts. Errors are non-fatal: the
+			// context was saved successfully, so return the context and log the derived failure.
+			if _, rerr := matchsvc.New(d.Store, d.Cfg).Recompute(context.Background()); rerr != nil && !errors.Is(rerr, matchsvc.ErrNoProfile) {
+				log.Printf("context: quick match: %v", rerr)
 			}
 			return ctx, nil
 		})
@@ -607,12 +631,17 @@ func RegisterRoutes(mux Router, d *Deps) {
 			}
 			resp := map[string]any{"saved": name}
 			// For runtime config, detect a port change before reloading so we can report
-			// it without reverting the in-memory config to the old port value.
+			// it without reverting the in-memory config to the old port value. The file is
+			// saved and the reload is not rolled back when local Quick Match recomputation
+			// fails; the failure is surfaced as an explicit warning.
 			if name == "runtime" {
 				oldPort := d.Cfg.Get().Runtime.Port
 				if err := d.Cfg.Reload(d.Dirs); err == nil {
 					if d.Cfg.Get().Runtime.Port != oldPort {
 						resp["restartRequired"] = "port change requires a restart to take effect"
+					}
+					if _, qerr := matchsvc.New(d.Store, d.Cfg).Recompute(context.Background()); qerr != nil && !errors.Is(qerr, matchsvc.ErrNoProfile) {
+						resp["quickMatchWarning"] = qerr.Error()
 					}
 				}
 			} else {

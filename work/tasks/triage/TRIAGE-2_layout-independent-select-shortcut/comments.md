@@ -134,3 +134,12 @@ Exit: 0
 ```
 main checkout clean; git diff --check clean
 ```
+
+## 2026-11-10 — K.2 final guard scan after record commit
+
+Check: `python3 backend/scripts/leakcheck/range-check 39a8745..main --repo .`
+Exit: 0
+
+```
+range-check: 6 commit(s) checked, clean
+```

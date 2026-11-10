@@ -38,6 +38,7 @@ type Job struct {
 	Seen                 bool        `json:"seen"`
 	SeenAt               *string     `json:"seenAt"`
 	AppliedAt            *string     `json:"appliedAt"`
+	OutcomeReason        *string     `json:"outcomeReason"`
 	IsWeb3               bool        `json:"isWeb3"`
 	OriginalURL          string      `json:"originalUrl"`
 	ApplyURL             *string     `json:"applyUrl"`

@@ -123,6 +123,7 @@ func RegisterRoutes(mux Router, d *Deps) {
 			Stage     string `json:"stage"`
 			Status    string `json:"status"`
 			Confirmed bool   `json:"confirmed"`
+			Reason    string `json:"reason"`
 		}
 		if err := readBody(r, &body); err != nil {
 			return err
@@ -137,7 +138,7 @@ func RegisterRoutes(mux Router, d *Deps) {
 		if prevJob != nil {
 			prevStage = prevJob.Stage
 		}
-		job, err := d.Store.Status(id, stageOrStatus, body.Confirmed)
+		job, err := d.Store.StatusWithReason(id, stageOrStatus, body.Confirmed, body.Reason)
 		if err != nil {
 			return err
 		}

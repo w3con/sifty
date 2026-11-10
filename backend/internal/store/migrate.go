@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const targetVersion = 16
+const targetVersion = 17
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
 // needed to produce the complete Sifty schema through user_version 16. Every statement is idempotent,
@@ -420,6 +420,21 @@ func migrate(db *sql.DB) error {
 		}
 		if _, err := db.Exec("PRAGMA user_version=16"); err != nil {
 			return fmt.Errorf("set user_version=16: %w", err)
+		}
+	}
+
+	// Phase 6 — v17: durable manual outcome reason. Jobs keep the current reason so the
+	// archive can render it after reload; workflow_history keeps the reason recorded with
+	// each transition for audit. Scraped vacancy metadata is untouched.
+	if version < 17 {
+		if err := addColumnIfMissing(db, "jobs", "outcome_reason", "TEXT"); err != nil {
+			return err
+		}
+		if err := addColumnIfMissing(db, "workflow_history", "reason", "TEXT"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("PRAGMA user_version=17"); err != nil {
+			return fmt.Errorf("set user_version=17: %w", err)
 		}
 	}
 

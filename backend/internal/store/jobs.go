@@ -73,7 +73,8 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		SELECT id, identity, title, company, original_url, apply_url, description,
 		       description_status, location, published_at, expires_at, status,
 		       first_seen, last_seen, assessment, assessment_error,
-		       apply_status, tags, seen_at, applied_at, match_score, match_profile_revision
+		       apply_status, tags, seen_at, applied_at, match_score, match_profile_revision,
+		       outcome_reason
 		FROM jobs WHERE id=?`, id)
 
 	var r struct {
@@ -84,6 +85,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		status, firstSeen, lastSeen               string
 		assessment, assessmentError               sql.NullString
 		applyStatus, tagsJSON, seenAt, appliedAt  sql.NullString
+		outcomeReason                             sql.NullString
 		idInt                                     int64
 		matchScore                                int
 		matchProfileRevision                      int
@@ -93,6 +95,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		&r.description, &r.descriptionStatus, &r.location, &r.publishedAt, &r.expiresAt,
 		&r.status, &r.firstSeen, &r.lastSeen, &r.assessment, &r.assessmentError,
 		&r.applyStatus, &r.tagsJSON, &r.seenAt, &r.appliedAt, &r.matchScore, &r.matchProfileRevision,
+		&r.outcomeReason,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("job %d not found", id)
@@ -212,6 +215,11 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		v := r.assessmentError.String
 		assessmentErr = &v
 	}
+	var outcomeReason *string
+	if r.outcomeReason.Valid && r.outcomeReason.String != "" {
+		v := r.outcomeReason.String
+		outcomeReason = &v
+	}
 
 	expired := false
 	if expAt != nil {
@@ -232,6 +240,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 		Seen:                 seenAt != nil,
 		SeenAt:               seenAt,
 		AppliedAt:            appliedAt,
+		OutcomeReason:        outcomeReason,
 		IsWeb3:               isWeb3(r.title, tags, r.description),
 		OriginalURL:          r.originalURL,
 		ApplyURL:             applyURLPtr,
@@ -671,15 +680,50 @@ func (s *Store) Seen(id int64) (*model.Job, error) {
 // Status moves the role to the given workflow status. Moving to applied requires the
 // role to be pre-selected and confirmed=true. Moving to the same stage is a no-op.
 func (s *Store) Status(id int64, status string, confirmed bool) (*model.Job, error) {
+	return s.StatusWithReason(id, status, confirmed, "")
+}
+
+// OutcomeReasonStale, OutcomeReasonClosed and OutcomeReasonNotSuitable are the durable
+// reasons for a deliberate negative application outcome. An empty reason keeps the
+// existing plain-dismissal behavior valid.
+const (
+	OutcomeReasonStale       = "stale"
+	OutcomeReasonClosed      = "closed"
+	OutcomeReasonNotSuitable = "not_suitable"
+)
+
+func validOutcomeReason(reason string) bool {
+	switch reason {
+	case "", OutcomeReasonStale, OutcomeReasonClosed, OutcomeReasonNotSuitable:
+		return true
+	}
+	return false
+}
+
+// StatusWithReason moves the role and, for a negative (dismissed) outcome, stores a
+// distinct durable reason. The write is conditional on the stage observed at read time,
+// so a stale negative confirmation cannot overwrite an application another actor
+// confirmed in the meantime: no applied timestamp, history or current stage is erased.
+// Reason validation and the atomic stage/reason/history write belong here, in the store.
+func (s *Store) StatusWithReason(id int64, status string, confirmed bool, reason string) (*model.Job, error) {
 	stage, err := stageFor(status)
 	if err != nil {
 		return nil, err
+	}
+	if !validOutcomeReason(reason) {
+		return nil, fmt.Errorf("unknown outcome reason %q", reason)
+	}
+	if reason != "" && stage != "no" {
+		return nil, fmt.Errorf("an outcome reason is valid only for a negative outcome")
 	}
 	job, err := s.Get(id)
 	if err != nil {
 		return nil, err
 	}
 	id = job.ID
+	if reason != "" && job.Stage != "preselected" {
+		return nil, fmt.Errorf("the role is no longer awaiting an application decision; reload and try again")
+	}
 	if stage == "applied" && job.Stage != "applied" {
 		if job.Stage != "preselected" || !confirmed {
 			return nil, fmt.Errorf("Applied requires a pre-selected role and explicit submission confirmation")
@@ -703,14 +747,30 @@ func (s *Store) Status(id int64, status string, confirmed bool) (*model.Job, err
 	if stage == "applied" {
 		appliedAt = now()
 	}
-	if _, err := tx.Exec(
-		"UPDATE jobs SET status=?, applied_at=? WHERE id=?",
-		statusFor(stage), appliedAt, id); err != nil {
+	var reasonValue any
+	if stage == "no" && reason != "" {
+		reasonValue = reason
+	}
+	res, err := tx.Exec(
+		"UPDATE jobs SET status=?, applied_at=?, outcome_reason=? WHERE id=? AND status=?",
+		statusFor(stage), appliedAt, reasonValue, id, job.Status)
+	if err != nil {
 		return nil, fmt.Errorf("update status: %w", err)
 	}
+	changed, err := res.RowsAffected()
+	if err != nil {
+		return nil, fmt.Errorf("update status: %w", err)
+	}
+	if changed == 0 {
+		return nil, fmt.Errorf("job %d changed while this outcome was being saved; reload and try again", id)
+	}
+	var reasonHistory any
+	if reason != "" {
+		reasonHistory = reason
+	}
 	if _, err := tx.Exec(
-		"INSERT INTO workflow_history(job_id,created,from_stage,to_stage,confirmed) VALUES(?,?,?,?,?)",
-		id, now(), job.Stage, stage, boolInt(confirmed)); err != nil {
+		"INSERT INTO workflow_history(job_id,created,from_stage,to_stage,confirmed,reason) VALUES(?,?,?,?,?,?)",
+		id, now(), job.Stage, stage, boolInt(confirmed), reasonHistory); err != nil {
 		return nil, fmt.Errorf("insert workflow history: %w", err)
 	}
 	if err := tx.Commit(); err != nil {

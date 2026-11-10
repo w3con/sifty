@@ -2,7 +2,7 @@ import React,{useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import type {Job} from './model/core';
 import type {Stage} from './model/workflow';
-import {externalApplyUrl,archiveRetentionMs,validAppliedAt} from './model/workflow';
+import {externalApplyUrl,archiveRetentionMs,validAppliedAt,outcomeReasonLabel,type OutcomeReason} from './model/workflow';
 import {api,blockJob} from './api';
 import {Filters} from './CatalogueFilters';
 import {emptySelection,filterCatalogue,migrateSelection,selectionCount,sortCatalogue,type CatalogueSelection} from './filters';
@@ -82,9 +82,9 @@ function App(){
     if(!job||job.seen)return;setHeldUnread(job.id);writes.current++;epoch.current++;
     api(`jobs/${job.id}/seen`,'POST',{}).then((j:Job)=>setJobs(old=>old.map(x=>x.id===j.id?{...x,seen:j.seen,seenAt:j.seenAt}:x))).catch(e=>setError(e.message)).finally(()=>{writes.current--;epoch.current++;});
   },[job?.id,job?.seen]);
-  async function transition(stage:Stage,confirmed=false,target=job){
+  async function transition(stage:Stage,confirmed=false,target=job,reason?:OutcomeReason){
     if(!target||busy)return false;const id=target.id,next=nextUndecided(filtered,id);setBusy(true);setError('');writes.current++;epoch.current++;
-    try{const result=await api(`jobs/${id}`,'PATCH',{stage,confirmed});replaceJob(result);
+    try{const result=await api(`jobs/${id}`,'PATCH',{stage,confirmed,...(reason?{reason}:{})});replaceJob(result);
       if(view==='triage'&&['preselected','no'].includes(stage)){setSession(s=>new Set([...s,id]));setSelected(next);}
       else if(stage==='triage')setSession(s=>{const n=new Set(s);n.delete(id);return n;});
       return true;
@@ -148,7 +148,7 @@ function App(){
         {error&&<div className="banner error" role="alert">{error}</div>}{notice&&<div className="banner" role="status">{notice}<button aria-label="Dismiss notification" onClick={()=>setNotice('')}>×</button></div>}
         {job?<><div className="detail-top">
           <div className="role-heading"><p className="company">{job.isWeb3&&<span className="web3-chip"><span className="web3-mark">⬡</span> Web3</span>}{job.company}</p><h1>{job.title}</h1><div className="role-meta"><span>{job.location||'Location not stated'}</span>{job.expired&&<span>◷ Listing expired</span>}<a href={job.originalUrl} target="_blank" rel="noreferrer">Original listing ↗</a>{!job.applyUrl&&<span className="warning">Employer apply link not resolved</span>}</div></div>
-          <div className="review-actions">{inDismissed?<><span className="danger">Dismissed</span><button disabled={busy} onClick={()=>restoreDismissed(job)}>Restore to Triage</button></>:view==='triage'&&job.stage==='triage'?<><button disabled={busy} onClick={doBlockCompany}>Block company</button><button className="no-button" disabled={busy} onClick={()=>transition('no')}>✕ Dismiss <kbd>N</kbd></button><button className="primary" disabled={busy} onClick={()=>transition('preselected')}>✓ Select <kbd>Y</kbd></button></>:view==='preselected'?<><button disabled={busy} onClick={()=>transition('triage')}>Back to triage</button><button className="primary" disabled={busy} onClick={apply}>Apply ↗ <kbd>A</kbd></button><button className="confirm-later" disabled={busy} onClick={()=>setConfirmation(job)}>Confirm application…</button></>:<><span className={job.stage==='no'?'danger':'muted'}>{job.stage==='no'?'Dismissed — hidden after this session':job.stage==='applied'?`Applied ${dateLabel(job.appliedAt)}`:'Moved to Preparation'}</span><button disabled={busy} onClick={()=>transition(job.stage==='applied'?'preselected':'triage')}>Undo</button></>}</div>
+          <div className="review-actions">{inDismissed?<><span className="danger">Dismissed{job.outcomeReason?` — ${outcomeReasonLabel(job.outcomeReason)}`:''}</span><button disabled={busy} onClick={()=>restoreDismissed(job)}>Restore to Triage</button></>:view==='triage'&&job.stage==='triage'?<><button disabled={busy} onClick={doBlockCompany}>Block company</button><button className="no-button" disabled={busy} onClick={()=>transition('no')}>✕ Dismiss <kbd>N</kbd></button><button className="primary" disabled={busy} onClick={()=>transition('preselected')}>✓ Select <kbd>Y</kbd></button></>:view==='preselected'?<><button disabled={busy} onClick={()=>transition('triage')}>Back to triage</button><button className="primary" disabled={busy} onClick={apply}>Apply ↗ <kbd>A</kbd></button><button className="confirm-later" disabled={busy} onClick={()=>setConfirmation(job)}>Confirm application…</button></>:<><span className={job.stage==='no'?'danger':'muted'}>{job.stage==='no'?'Dismissed — hidden after this session':job.stage==='applied'?`Applied ${dateLabel(job.appliedAt)}`:'Moved to Preparation'}</span><button disabled={busy} onClick={()=>transition(job.stage==='applied'?'preselected':'triage')}>Undo</button></>}</div>
         </div>
           {(view!=='triage')&&<div className="archive-actions">{job.stage==='applied'&&<p className="muted">{validAppliedAt(job.appliedAt)&&Date.parse(job.appliedAt)<=Date.now()?`Confirmed ${dateLabel(job.appliedAt)}. Permanent removal after ${new Date(Date.parse(job.appliedAt)+archiveRetentionMs).toLocaleString()}.`:'No valid past confirmed application date; automatic deletion is disabled.'}</p>}<button disabled={busy} onClick={()=>setDeleting(job)}>Delete role…</button></div>}
           <RoleContent key={job.id} job={job} queue={queue} onQueue={setQueue} refresh={refresh} onError={setError} onNotice={setNotice}/>
@@ -156,7 +156,7 @@ function App(){
       </div></main>
     </div>}</>}
     {settings&&<Settings panel={settings} setPanel={setSettings} queue={queue} assessmentOn={assessmentOn} savingAssessment={savingAssessment} assessmentError={assessmentError} toggleAssessment={toggleAssessment} onError={setError} onRulesChanged={()=>{epoch.current++;void refresh().catch(e=>setError(e.message));}}/>}
-    {confirmation&&<ApplicationConfirmation job={confirmation} onClose={()=>setConfirmation(null)} onConfirm={()=>transition('applied',true,confirmation)}/>}
+    {confirmation&&<ApplicationConfirmation job={confirmation} onClose={()=>setConfirmation(null)} onConfirm={()=>transition('applied',true,confirmation)} onDismiss={(reason)=>transition('no',false,confirmation,reason)}/>}
     {deleting&&<DeleteRole job={deleting} onClose={()=>setDeleting(null)} onDeleted={(id,cleanupIncomplete)=>{epoch.current++;setJobs(old=>old.filter(j=>j.id!==id));setDismissedJobs(old=>old.filter(j=>j.id!==id));setDeleting(null);setNotice(cleanupIncomplete?'Role deleted, but a local technical log could not be removed. See server logs.':'Role and application history permanently deleted.');}}/>}
   </div>;
 }

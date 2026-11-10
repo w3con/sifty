@@ -34,3 +34,9 @@
 .review-actions:has(.confirm-later) {
   max-width: 300px;
 }
+.application-confirmation .confirmation-actions {
+  flex-wrap: wrap;
+}
+.application-confirmation .confirmation-actions button {
+  flex: 1 1 calc(50% - 5px);
+}

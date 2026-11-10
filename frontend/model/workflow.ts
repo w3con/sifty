@@ -1,4 +1,11 @@
 export type Stage = 'triage' | 'preselected' | 'no' | 'applied';
+export type OutcomeReason = 'stale' | 'closed' | 'not_suitable';
+export function outcomeReasonLabel(reason: string | null | undefined): string {
+  if (reason === 'stale') return 'Vacancy is stale';
+  if (reason === 'closed') return 'Vacancy is closed';
+  if (reason === 'not_suitable') return 'Not suitable';
+  return '';
+}
 export const archiveRetentionMs=30*24*60*60*1000;
 export function validAppliedAt(value:unknown):value is string {if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value))return false;const time=Date.parse(value);return Number.isFinite(time)&&new Date(time).toISOString()===value;}
 const aliases: Record<string, Stage> = {new:'triage',saved:'preselected',rejected:'no',shortlist:'preselected',triage:'triage',preselected:'preselected',no:'no',applied:'applied'};

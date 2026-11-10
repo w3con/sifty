@@ -236,11 +236,11 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 
 **Status:** planned.
 
-**User outcome.** Colours, spacing, radii and typography live in role-named tokens so a later design pass edits one layer instead of scattered values.
+**User outcome.** Presentation components and styles can be edited without reading application requests, persistence and workflow logic. Colours, spacing, radii and typography are separately planned as role-named tokens.
 
-**Implementation.** [frontend CSS](../frontend/style.css) and component styles; no token layer yet.
+**Implementation.** [frontend CSS](../frontend/style.css) and mixed presentation/behavior in [main.tsx](../frontend/main.tsx), Collection, Settings, RoleContent and application components; presentation/logic separation is planned, not implemented. No token layer yet.
 
-**Tasks.** `DESIGN-1`; it depends on the frontend move (`GO-11`, done) and now targets the current `frontend/` location.
+**Tasks.** `DESIGN-1` owns the token layer and depends on the frontend move (`GO-11`, done). `DESIGN-2` owns the separately requested readability and presentation/logic separation across all current frontend TSX; its complete four-stage plan and estimate were approved on 2026-11-07. Preserve the independent token worktree and reconcile future overlapping work deliberately.
 
 <a id="epics"></a>
 ## Epics and outcomes

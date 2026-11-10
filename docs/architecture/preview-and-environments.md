@@ -73,6 +73,50 @@ reason to kill whatever holds it.
   one. `WORK_PREVIEW_CMD` remains an unused adapter seam; the generic lifecycle
   commands do not embed sifty policy.
 
+## Design review mode (current)
+
+Vite owns `http://localhost:8081` and serves the root main-checkout frontend at
+`frontend/` with React Fast Refresh. The configuration, npm entrypoint and
+plugin dependency are installed in that main frontend, so no task worktree is
+needed to start or update the loop:
+
+```sh
+cd frontend
+npm ci
+npm run dev
+```
+
+The staging API side runs from the same root checkout; restart it with the
+following commands, run from that root:
+
+```sh
+python3 bin/sift-preview start --worktree "$PWD" \
+  --label DESIGN-2-api-main-8082 --port 8082 \
+  --data-dir "$PWD/data-staging" \
+  --state-dir "$PWD/.local/preview-api-main"
+python3 bin/sift-preview status --state-dir "$PWD/.local/preview-api-main"
+python3 bin/sift-preview stop   --state-dir "$PWD/.local/preview-api-main"
+```
+
+No environment variables are needed.
+
+If `npm run dev` reports that 8081 is already in use, the persistent server is
+already running; `strictPort` intentionally refuses a duplicate. Verify the
+recorded process and stop that server before starting another.
+
+`frontend/vite.config.ts` keeps the production build (`BUILD_OUTDIR`, default
+`dist`, emptying the output directory) and adds the dev server: loopback 8081
+with `strictPort`, React Fast Refresh, and `/api` proxied to the stable internal
+staging address `http://127.0.0.1:8082` while presenting that preview's public
+Host/Origin. The proxy key is the regex `^/api/`, so Vite still serves its own
+`/api.ts` module; a plain `/api` prefix would proxy that file to the backend. The API preview is the normal staging supervisor with the main
+checkout as its worktree, label `DESIGN-2-api-main-8082`, state
+`.local/preview-api-main` and data `data-staging`; its private backend port is
+internal and not part of the startup command. The same `npm run dev` works in
+any checkout and serves that checkout's own `frontend/`. This mode is local
+design review only and does not integrate the refactored frontend or touch
+production.
+
 ## Isolated environments
 
 Production and staging own separate binaries, frontend bundles, worker trees,
@@ -84,19 +128,23 @@ artifacts built from `.worktrees/<id>` survive that worktree's removal.
 `bin/sift-deploy` resolves symlinks and refuses overlapping production/staging
 paths, including after a refresh `--from` override.
 
-The current live layout predates these defaults: production runs the old binary
-on 8080 with `legacy/app/dist` and the shared `backend/workers`, and the live
-preview owns 8081 with `data-staging`. Migration is explicit. The new commands
-refuse a busy port, an unverified pid, or a live preview on the same port/data;
-they do not kill an unknown occupant. For the first production transition,
-`bin/sift-promote --source <sha> --approve <sha> --adopt-legacy` is the one
-explicit adoption operation: it requires a single listener, verifies that the
-process runs the configured production binary and data directory, reads the
-actual `--dist` and `--workers-dir` from that process, captures those exact
-assets plus a consistent SQLite snapshot for rollback, and records its pid.
-It refuses an ambiguous owner, a different binary, or a missing bundle/worker
-tree, and refuses to adopt again after a completed migration. No live adoption
-is performed merely by implementing or documenting it.
+The ASM-6 production release on 2026-11-10 records production running on these
+defaults: pinned source `157fe9f`, binary `<main>/bin/sifty`, data
+`<main>/data`, dist `<main>/frontend/dist`, workers
+`<main>/backend/workers-prod`, and port 8080, with `/api/version` and
+`/api/health` verified. The release used the normal adapter, not
+`--adopt-legacy`. The design loop owns 8081 through Vite, and the staging API
+preview supervisor owns 8082 with `data-staging`. Migration is explicit. The new
+commands refuse a busy port, an unverified pid, or a live preview on the same
+port/data; they do not kill an unknown occupant. For any runtime still on the
+pre-isolation layout, `bin/sift-promote --source <sha> --approve <sha>
+--adopt-legacy` is the one explicit adoption operation: it requires a single
+listener, verifies that the process runs the configured production binary and
+data directory, reads the actual `--dist` and `--workers-dir` from that process,
+captures those exact assets plus a consistent SQLite snapshot for rollback, and
+records its pid. It refuses an ambiguous owner, a different binary, or a missing
+bundle/worker tree, and refuses to adopt again after a completed migration. No
+live adoption is performed merely by implementing or documenting it.
 
 ## Approved-source release
 

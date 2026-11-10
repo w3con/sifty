@@ -2,15 +2,13 @@ import React,{useEffect,useState} from 'react';
 import {CELLS} from './Logo';
 import {api} from './api';
 
-// Sifty brand: the cell mark plus the Tiny5 wordmark. Letters keep one height and
-// narrow left to right like the mark's cells ("sifting"), under one left-to-right
-// gradient in the mark's colours. While a collection run is active a light wave
+// Sifty brand: the cell mark plus the Tiny5 wordmark at its natural width, under one
+// left-to-right gradient in the mark's colours. While a collection run is active a light wave
 // passes over mark and word, with a pause between passes.
 const CAP=18;                         // cap height = mark height
 const MARK_W=CAP*97/47, GAP=10;
 const SIZE=CAP*1024/640;              // Tiny5: cap 640 / 1024 units
 const ADV=[640,256,640,512,512];      // S I F T Y advances (units)
-const SCALE=[1,.93,.86,.79,.72];
 const SWEEP=1.8, PAUSE=1.4;           // seconds
 
 function useCollectionRunning(){
@@ -24,11 +22,11 @@ function useCollectionRunning(){
 
 export function Brand(){
   const running=useCollectionRunning();
-  let x=0;const letters='SIFTY'.split('').map((ch,i)=>{const at=x;x+=ADV[i]*SIZE/1024*SCALE[i];return {ch,sx:SCALE[i],at};});
-  const wordW=Math.ceil(x-128*SIZE/1024*SCALE[4])+1;
+  let x=0;const letters='SIFTY'.split('').map((ch,i)=>{const at=x;x+=ADV[i]*SIZE/1024;return {ch,at};});
+  const wordW=Math.ceil(x-128*SIZE/1024)+1;
   const W=Math.ceil(MARK_W+GAP+wordW), H=CAP+1, wx=MARK_W+GAP, end=W+70, dur=SWEEP+PAUSE;
   const cells=(white:boolean)=><g transform={`scale(${CAP/47})`}>{CELLS.map(([cx,cy,w,c])=><rect key={`${cx}-${cy}`} x={cx} y={cy} width={w} height={7} rx={0.6} fill={white?'#fff':c}/>)}</g>;
-  const word=<g transform={`translate(${wx},0)`}>{letters.map(l=><text key={l.ch} x={0} y={CAP} fontFamily="Tiny5" fontSize={SIZE} fill="#fff" transform={`translate(${l.at},0) scale(${l.sx},1)`}>{l.ch}</text>)}</g>;
+  const word=<g transform={`translate(${wx},0)`}>{letters.map(l=><text key={l.ch} x={0} y={CAP} fontFamily="Tiny5" fontSize={SIZE} fill="#fff" transform={`translate(${l.at},0)`}>{l.ch}</text>)}</g>;
   return <div className={`brand${running?' working':''}`} role="img" aria-label={running?'Sifty, collecting jobs':'Sifty'} title={running?'Collecting jobs…':undefined}>
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`} aria-hidden="true" style={{display:'block',overflow:'visible'}}>
       <defs>

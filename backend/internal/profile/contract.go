@@ -1,7 +1,8 @@
 // Package profile defines the typed local user-profile contract and the application service
 // that reads and saves it. The profile is the authoritative, user-confirmed record of the
-// candidate; legacy search preferences and candidate-context snapshots are imported once by
-// the bootstrap path and preserved rather than re-read as a second master.
+// candidate; legacy search preferences and candidate-context snapshots are retained once as
+// provenance by the bootstrap path rather than imported as confirmed typed fields or re-read
+// as a second master.
 //
 // Persistence lives in internal/store (SQLite tables user_profiles, profile_documents,
 // profile_facts and profile_revisions). HTTP wiring lives in internal/server. This package never
@@ -267,10 +268,10 @@ func (p *ProfileData) Validate() error {
 	seenKeys := map[string]bool{}
 	for i, s := range p.Skills {
 		if strings.TrimSpace(s.Key) == "" {
-			return fmt.Errorf("skills[%d]: key is required", i)
+			return fmt.Errorf("Skill %d: enter a name", i+1)
 		}
 		if strings.TrimSpace(s.Name) == "" {
-			return fmt.Errorf("skills[%d]: name is required", i)
+			return fmt.Errorf("Skill %d: enter a name", i+1)
 		}
 		if s.Level != "" && !validSkillLevels[s.Level] {
 			return fmt.Errorf("skills[%d]: level %q must be Production, Familiar, Learning or empty (unknown)", i, s.Level)

@@ -1,13 +1,27 @@
 import {api} from '../api';
-import type {Capabilities, Fact, FactDecision, Profile, ProfileData, ProfileDocument} from './contract';
+import type {Capabilities, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
 
 // Typed wrappers over the existing api() transport. Nothing here starts model work; only
 // analyzeDocument is an explicit user action that reaches the extraction provider.
 
 export const getProfile = (): Promise<Profile> => api('profile');
-export const putProfile = (expectedRevision: number, data: ProfileData): Promise<Profile> =>
-  api('profile', 'PUT', {expectedRevision, data});
+export interface SectionSaveResult {
+  profile: Profile;
+  changed: boolean;
+}
+// A section save sends only the editor's section; the server atomically merges it into the
+// current stored profile. The client never submits a full profile from a section editor.
+export const putProfileSection = <K extends SectionKey>(section: K, value: SectionValues[K]): Promise<SectionSaveResult> =>
+  api(`profile/sections/${encodeURIComponent(section)}`, 'PUT', {value});
 export const getProfileCapabilities = (): Promise<Capabilities> => api('profile/capabilities');
+// Recomputes the local derived context/ranking from the already-saved profile. It starts no
+// extraction, remote fetch, model call or assessment.
+export interface DerivedRefreshResult {
+  profile: Profile;
+  refreshed: boolean;
+}
+export const refreshProfileDerivedContext = (): Promise<DerivedRefreshResult> =>
+  api('profile/derived/refresh', 'POST', {});
 
 export const listProfileDocuments = (): Promise<ProfileDocument[]> => api('profile/documents');
 export const uploadProfileDocument = (filename: string, contentBase64: string): Promise<ProfileDocument> =>

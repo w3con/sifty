@@ -14,13 +14,14 @@ import {
   WORK_MODES,
   currentValue,
   draftFor,
+  emptyExperience,
+  emptySkill,
   factValueText,
   hasAny,
   listText,
   numberOrNull,
   numberText,
   provenanceText,
-  sectionSummary,
   textList,
   triStateText,
   triStateValue,
@@ -35,10 +36,10 @@ import {
   type Language,
   type Profile,
   type SectionKey,
-  type SummaryLine,
   type Skill,
   type WorkSection,
 } from './contract';
+import {documentSummary} from './documentPresentation';
 import type {ProfileDocuments, ProfileEditor, ProfileFacts} from './useProfile';
 
 export type ProfileViewProps = {
@@ -46,15 +47,23 @@ export type ProfileViewProps = {
   documents: ProfileDocuments;
   facts: ProfileFacts;
   onClose: () => void;
+  onOpenSettings: () => void;
 };
 
-function Unknown({children = 'Unknown'}: {children?: string}) {
-  return <span className="profile-unknown">{children}</span>;
+function NotSet() {
+  return <span className="profile-not-set">Not set</span>;
+}
+
+// A number without currency is not a usable amount; show the missing currency explicitly
+// instead of implying one.
+function Money({amount, currency}: {amount: number | null; currency: string}) {
+  if (amount === null) return <NotSet/>;
+  return currency ? <>{currency} {amount}</> : <>{amount} · <NotSet/></>;
 }
 
 function Tags({items, labels = {}}: {items: string[]; labels?: Record<string, string>}) {
   const visible = items.filter((item) => item.trim() !== '');
-  if (!visible.length) return <Unknown/>;
+  if (!visible.length) return <NotSet/>;
   return <div className="profile-tags">{visible.map((item) => <span key={item}>{labels[item] ?? item}</span>)}</div>;
 }
 
@@ -79,11 +88,10 @@ function replaceAt<T>(items: T[], index: number, value: T): T[] {
 }
 
 function SectionShell({
-  title, description, editing, saving, stale, error, latest, latestRevision, onEdit, onCancel, onSave, onRebase, onDiscard, children,
+  title, description, editing, saving, error, onEdit, onCancel, onSave, children,
 }: {
-  title: string; description?: string; editing: boolean; saving: boolean; stale: boolean; error: string;
-  latest: SummaryLine[]; latestRevision: number | null;
-  onEdit: () => void; onCancel: () => void; onSave: () => void; onRebase: () => void; onDiscard: () => void; children: React.ReactNode;
+  title: string; description?: string; editing: boolean; saving: boolean; error: string;
+  onEdit: () => void; onCancel: () => void; onSave: () => void; children: React.ReactNode;
 }) {
   return (
     <section className="profile-card">
@@ -92,58 +100,31 @@ function SectionShell({
         <div className="profile-card-actions">
           {editing ? <>
             <button type="button" onClick={onCancel} disabled={saving}>Cancel</button>
-            <button type="button" className="primary" onClick={onSave} disabled={saving || stale}>{saving ? 'Saving…' : 'Save'}</button>
+            <button type="button" className="primary" onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
           </> : <button type="button" onClick={onEdit}>Edit</button>}
         </div>
       </header>
-      {stale ? <div className="profile-stale" role="status">
-        <p><strong>The profile changed to revision {latestRevision ?? 'unknown'}.</strong> Your draft is kept below; nothing was overwritten. Compare this section, then choose explicitly.</p>
-        <div className="profile-rebase">
-          <div>
-            <strong>Latest stored section</strong>
-            {latest.length ? <dl>{latest.map((line, index) => <React.Fragment key={`${line.label}-${index}`}><dt>{line.label}</dt><dd>{line.value}</dd></React.Fragment>)}</dl> : <p className="muted">Fetch the latest profile to compare this section.</p>}
-          </div>
-          <div>
-            <strong>Your kept draft</strong>
-            <p className="muted">The form below still contains your draft and any validation error. Rebasing replaces this section on the next Save.</p>
-          </div>
-        </div>
-        <div className="profile-stale-actions">
-          <button type="button" onClick={onRebase} disabled={latestRevision === null}>Rebase kept draft (replaces this section)</button>
-          <button type="button" onClick={onDiscard}>Discard draft and use latest</button>
-        </div>
-      </div> : null}
       {error ? <div className="banner error" role="alert">{error}</div> : null}
       <div className="profile-card-body">{children}</div>
     </section>
   );
 }
 
-function latestProps(editor: ProfileEditor, key: SectionKey) {
-  const latest = editor.latestProfile;
-  return {
-    latest: latest ? sectionSummary(key, latest.data) : ([] as SummaryLine[]),
-    latestRevision: latest?.revision ?? null,
-    onRebase: () => editor.rebaseDraft(key),
-    onDiscard: () => editor.discardDraft(key),
-  };
-}
-
 function Field({label, children, hint}: {label: string; children: React.ReactNode; hint?: string}) {
   return <label className="profile-field"><span>{label}</span>{children}{hint ? <small>{hint}</small> : null}</label>;
 }
 
-function TriState({value, onChange, yes = 'Yes', no = 'No', unknown = 'Unknown'}: {value: boolean | null; onChange: (value: boolean | null) => void; yes?: string; no?: string; unknown?: string}) {
+function TriState({value, onChange, yes = 'Yes', no = 'No', emptyLabel = 'Not set'}: {value: boolean | null; onChange: (value: boolean | null) => void; yes?: string; no?: string; emptyLabel?: string}) {
   return <select value={triStateText(value)} onChange={(event) => onChange(triStateValue(event.target.value))}>
-    <option value="">{unknown}</option>
+    <option value="">{emptyLabel}</option>
     <option value="true">{yes}</option>
     <option value="false">{no}</option>
   </select>;
 }
 
-function EnumSelect({value, options, labels, unknown = 'Unknown', onChange}: {value: string; options: readonly string[]; labels: Record<string, string>; unknown?: string; onChange: (value: string) => void}) {
+function EnumSelect({value, options, labels, emptyLabel = 'Not set', onChange}: {value: string; options: readonly string[]; labels: Record<string, string>; emptyLabel?: string; onChange: (value: string) => void}) {
   return <select value={value} onChange={(event) => onChange(event.target.value)}>
-    <option value="">{unknown}</option>
+    <option value="">{emptyLabel}</option>
     {options.map((option) => <option key={option} value={option}>{labels[option] ?? option}</option>)}
   </select>;
 }
@@ -158,7 +139,7 @@ function MapTextField({label, value, onChange}: {label: string; value: string; o
   return <Field label={label} hint="One value per line."><textarea rows={3} value={value} onChange={(event) => onChange(event.target.value)}/></Field>;
 }
 
-export function ProfileView({editor, documents, facts, onClose}: ProfileViewProps) {
+export function ProfileView({editor, documents, facts, onClose, onOpenSettings}: ProfileViewProps) {
   const {profile, capabilities, loading, error, notice, drafts} = editor;
   return <section className="profile-screen" aria-label="Candidate profile">
     <div className="profile-inner">
@@ -166,32 +147,41 @@ export function ProfileView({editor, documents, facts, onClose}: ProfileViewProp
         <div>
           <p className="company">Profile</p>
           <h1>Candidate profile</h1>
-          <p className="muted">Only confirmed data is shown. Empty values remain unknown; legacy configuration is retained on the server and is not edited here.</p>
+          <p className="muted">Only confirmed data is shown. Empty values are not set; legacy configuration is retained on the server and is not edited here.</p>
         </div>
         <div className="profile-head-actions">
-          {profile ? <span className="profile-revision">Revision {profile.revision}</span> : null}
           <button type="button" onClick={onClose}>Close profile</button>
         </div>
       </header>
 
-      {profile ? <p className={`profile-hint ${profile.derivedCurrent ? '' : 'warning'}`}>
+      {profile ? <div className={`profile-derived ${profile.derivedCurrent ? '' : 'warning'}`}>
         {profile.derivedCurrent
-          ? `Quick ranking uses confirmed profile revision ${profile.revision}.`
-          : `Derived context/ranking is not confirmed current (${[profile.contextError, profile.fastRankingError].filter(Boolean).join('; ') || 'projection unavailable'}). The saved profile is intact; refresh context before relying on scores.`}
-      </p> : null}
-      <p className="profile-hint">Quick match uses target roles and skill names as search signals. An unknown skill level is not production experience, and free-text dealbreakers are checked only in the detailed LLM assessment.</p>
-
-      {editor.revisionConflict !== null ? <div className="banner error" role="alert">
-        The profile changed on the server to revision {editor.revisionConflict}. Open section drafts are kept. Fetch the latest profile to compare each stale section; nothing rebases automatically. <button type="button" onClick={() => void editor.reloadLatest()}>Fetch latest profile</button>
+          ? <p className="profile-hint">Quick ranking reflects the saved profile.</p>
+          : <>
+            <p className="profile-hint">Quick ranking is not current for the saved profile. Your profile is saved; refresh scoring to update it.</p>
+            {editor.derivedError ? <p className="profile-hint warning">Scoring refresh failed; the saved profile is unchanged. Try again.</p> : null}
+            <div className="profile-document-actions">
+              <button type="button" disabled={editor.derivedRefreshing} onClick={() => void editor.refreshDerived()}>
+                {editor.derivedRefreshing ? 'Refreshing…' : 'Refresh scoring'}
+              </button>
+            </div>
+            {(profile.contextError || profile.fastRankingError || editor.derivedError) ? <details>
+              <summary>Technical details</summary>
+              <code>{editor.derivedError || profile.contextError || profile.fastRankingError}</code>
+            </details> : null}
+          </>}
       </div> : null}
+      <p className="profile-hint">Quick match uses target roles and skill names as search signals. A skill without a level is not production experience, and free-text dealbreakers are checked only in the detailed LLM assessment.</p>
+
       {error ? <div className="banner error" role="alert">{error}</div> : null}
       {notice ? <div className="banner" role="status">{notice}</div> : null}
-      {documents.error ? <div className="banner error" role="alert">Documents: {documents.error}</div> : null}
+      {documents.error ? <div className="banner error" role="alert">
+        Documents: {documents.error}{documents.errorAction ? ` ${documents.errorAction}` : ''}
+        {documents.errorOpenSettings ? <button type="button" onClick={onOpenSettings}>Open Settings</button> : null}
+        {documents.errorTechnical ? <details><summary>Technical details</summary><code>{documents.errorTechnical}</code></details> : null}
+      </div> : null}
       {documents.notice ? <div className="banner" role="status">{documents.notice}</div> : null}
       {facts.error ? <div className="banner error" role="alert">Facts: {facts.error}</div> : null}
-      {facts.revisionConflict !== null ? <div className="banner error" role="alert">
-        A fact action conflicted with profile revision {facts.revisionConflict}. <button type="button" onClick={() => void editor.reloadLatest()}>Fetch latest profile</button>
-      </div> : null}
 
       {loading ? <p>Loading profile…</p> : !profile ? <p>Profile unavailable. Reload the page after the server is available.</p> : <div className="profile-columns">
         <div className="profile-sections">
@@ -207,7 +197,7 @@ export function ProfileView({editor, documents, facts, onClose}: ProfileViewProp
           <DealbreakersSection profile={profile} editor={editor}/>
         </div>
         <aside className="profile-side">
-          <DocumentsPanel documents={documents} capabilities={capabilities} facts={facts}/>
+          <DocumentsPanel documents={documents} capabilities={capabilities} facts={facts} onOpenSettings={onOpenSettings}/>
           <FactsPanel facts={facts} profile={profile} onEditCompensation={() => editor.beginEdit('compensation')}/>
         </aside>
       </div>}
@@ -217,14 +207,14 @@ export function ProfileView({editor, documents, facts, onClose}: ProfileViewProp
 
 function IdentitySection({profile, editor}: {profile: Profile; capabilities: Capabilities | null; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'identity');
-  return <SectionShell {...latestProps(editor, 'identity')} title="Identity" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Identity" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('identity')} onCancel={() => editor.cancelEdit('identity')} onSave={() => void editor.saveSection('identity')}>
     {draft ? <div className="profile-fields">
       <Field label="Display name"><input value={draft.value.displayName} onChange={(event) => editor.changeDraft('identity', {...draft.value, displayName: event.target.value})}/></Field>
       <Field label="Headline"><input value={draft.value.headline} onChange={(event) => editor.changeDraft('identity', {...draft.value, headline: event.target.value})}/></Field>
     </div> : <div className="profile-read">
-      <p className="profile-lead">{profile.data.identity.displayName || <Unknown>Name unknown</Unknown>}</p>
-      <p>{profile.data.identity.headline || <Unknown>Headline unknown</Unknown>}</p>
+      <p className="profile-lead">{profile.data.identity.displayName || <NotSet/>}</p>
+      <p>{profile.data.identity.headline || <NotSet/>}</p>
     </div>}
   </SectionShell>;
 }
@@ -232,29 +222,29 @@ function IdentitySection({profile, editor}: {profile: Profile; capabilities: Cap
 function SkillsSection({profile, capabilities, editor}: {profile: Profile; capabilities: Capabilities | null; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'skills');
   const levels = capabilities?.skillLevels?.length ? capabilities.skillLevels : [];
-  return <SectionShell {...latestProps(editor, 'skills')} title="Skills" description="A mentioned skill is not production experience. An empty level stays unknown." editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Skills" description="A mentioned skill is not production experience." editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('skills')} onCancel={() => editor.cancelEdit('skills')} onSave={() => void editor.saveSection('skills')}>
     {draft ? <div className="profile-rows">
       {draft.value.map((skill, index) => <div className="profile-row" key={`${skill.key}-${index}`}>
         <Field label="Name"><input value={skill.name} onChange={(event) => editor.changeDraft('skills', replaceAt(draft.value, index, {...skill, name: event.target.value}))}/></Field>
         <Field label="Level"><select value={skill.level} onChange={(event) => editor.changeDraft('skills', replaceAt(draft.value, index, {...skill, level: event.target.value}))}>
-          <option value="">Unknown</option>
+          <option value="">Not set</option>
           {levels.map((level) => <option key={level} value={level}>{level}</option>)}
         </select></Field>
         <Field label="Context"><input value={skill.context ?? ''} onChange={(event) => editor.changeDraft('skills', replaceAt(draft.value, index, {...skill, context: event.target.value}))}/></Field>
         <button type="button" onClick={() => editor.changeDraft('skills', draft.value.filter((_, current) => current !== index))}>Remove</button>
       </div>)}
-      <button type="button" onClick={() => editor.changeDraft('skills', [...draft.value, {key: '', name: '', level: '', context: ''}])}>Add skill</button>
+      <button type="button" onClick={() => editor.changeDraft('skills', [...draft.value, emptySkill()])}>Add skill</button>
     </div> : profile.data.skills.length ? <ul className="profile-list">{profile.data.skills.map((skill) => <li key={skill.key}>
-      <strong>{skill.name}</strong> <span className="profile-level">{skill.level || 'Unknown level'}</span>
+      <strong>{skill.name}</strong> <span className="profile-level">{skill.level || <NotSet/>}</span>
       {skill.context ? <p>{skill.context}</p> : null}<Provenance value={skill.provenance}/>
-    </li>)}</ul> : <Unknown>No skills recorded</Unknown>}
+    </li>)}</ul> : <NotSet/>}
   </SectionShell>;
 }
 
 function ExperienceSection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'experience');
-  return <SectionShell {...latestProps(editor, 'experience')} title="Experience" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Experience" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('experience')} onCancel={() => editor.cancelEdit('experience')} onSave={() => void editor.saveSection('experience')}>
     {draft ? <div className="profile-rows">
       {draft.value.map((row, index) => <div className="profile-row profile-row-wide" key={index}>
@@ -266,19 +256,19 @@ function ExperienceSection({profile, editor}: {profile: Profile; editor: Profile
         <Field label="Skills" hint="One value per line."><textarea rows={2} value={listText(row.skills)} onChange={(event) => editor.changeDraft('experience', replaceAt(draft.value, index, {...row, skills: textList(event.target.value)}))}/></Field>
         <button type="button" onClick={() => editor.changeDraft('experience', draft.value.filter((_, current) => current !== index))}>Remove</button>
       </div>)}
-      <button type="button" onClick={() => editor.changeDraft('experience', [...draft.value, {company: '', title: '', start: '', end: '', summary: '', skills: []}])}>Add experience</button>
+      <button type="button" onClick={() => editor.changeDraft('experience', [...draft.value, emptyExperience()])}>Add experience</button>
     </div> : profile.data.experience.length ? <ul className="profile-list">{profile.data.experience.map((row, index) => <li key={`${row.company}-${index}`}>
-      <strong>{row.title || 'Title unknown'}</strong> · {row.company || 'Company unknown'}
-      <p className="muted">{row.start || 'Start unknown'} – {row.end || 'End unknown'}</p>
+      <strong>{row.title || <NotSet/>}</strong> · {row.company || <NotSet/>}
+      <p className="muted">{row.start || <NotSet/>} – {row.end || <NotSet/>}</p>
       {row.summary ? <p>{row.summary}</p> : null}<Tags items={row.skills}/>
-    </li>)}</ul> : <Unknown>No experience recorded</Unknown>}
+    </li>)}</ul> : <NotSet/>}
   </SectionShell>;
 }
 
 function GoalsSection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'goals');
   const current: Goals = {targetRoles: profile.data.targetRoles, targetIndustries: profile.data.targetIndustries};
-  return <SectionShell {...latestProps(editor, 'goals')} title="Target roles and industries" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Target roles and industries" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('goals')} onCancel={() => editor.cancelEdit('goals')} onSave={() => void editor.saveSection('goals')}>
     {draft ? <div className="profile-fields">
       <MapTextField label="Target roles" value={listText(draft.value.targetRoles)} onChange={(value) => editor.changeDraft('goals', {...draft.value, targetRoles: textList(value)})}/>
@@ -293,24 +283,24 @@ function GoalsSection({profile, editor}: {profile: Profile; editor: ProfileEdito
 function CompensationSection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'compensation');
   const value: Compensation = profile.data.compensation;
-  return <SectionShell {...latestProps(editor, 'compensation')} title="Compensation" description="A cash or day amount needs its currency. Gross/net, period and equity are never assumed." editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Compensation" description="A cash or day amount needs its currency. Gross/net, period and equity are never assumed." editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('compensation')} onCancel={() => editor.cancelEdit('compensation')} onSave={() => void editor.saveSection('compensation')}>
     {draft ? <div className="profile-fields profile-fields-grid">
       <Field label="Cash minimum"><input type="number" min="0" value={numberText(draft.value.cashMin)} onChange={(event) => editor.changeDraft('compensation', {...draft.value, cashMin: numberOrNull(event.target.value)})}/></Field>
       <Field label="Cash target"><input type="number" min="0" value={numberText(draft.value.cashTarget)} onChange={(event) => editor.changeDraft('compensation', {...draft.value, cashTarget: numberOrNull(event.target.value)})}/></Field>
-      <Field label="Currency"><input value={draft.value.currency} placeholder="Unknown" onChange={(event) => editor.changeDraft('compensation', {...draft.value, currency: event.target.value})}/></Field>
+      <Field label="Currency"><input value={draft.value.currency} placeholder="Not set" onChange={(event) => editor.changeDraft('compensation', {...draft.value, currency: event.target.value})}/></Field>
       <Field label="Gross / net"><EnumSelect value={draft.value.grossNet} options={GROSS_NET} labels={GROSS_NET_LABELS} onChange={(value) => editor.changeDraft('compensation', {...draft.value, grossNet: value})}/></Field>
       <Field label="Cash period"><EnumSelect value={draft.value.period} options={PERIODS} labels={PERIOD_LABELS} onChange={(value) => editor.changeDraft('compensation', {...draft.value, period: value})}/></Field>
       <Field label="Day-rate minimum"><input type="number" min="0" value={numberText(draft.value.dayRates.min)} onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, min: numberOrNull(event.target.value)}})}/></Field>
       <Field label="Day-rate target"><input type="number" min="0" value={numberText(draft.value.dayRates.target)} onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, target: numberOrNull(event.target.value)}})}/></Field>
-      <Field label="Day-rate currency"><input value={draft.value.dayRates.currency} placeholder="Unknown" onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, currency: event.target.value}})}/></Field>
-      <Field label="Day-rate period"><select value={draft.value.dayRates.period} onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, period: event.target.value}})}><option value="">Unknown</option><option value="day">Per day</option></select></Field>
+      <Field label="Day-rate currency"><input value={draft.value.dayRates.currency} placeholder="Not set" onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, currency: event.target.value}})}/></Field>
+      <Field label="Day-rate period"><select value={draft.value.dayRates.period} onChange={(event) => editor.changeDraft('compensation', {...draft.value, dayRates: {...draft.value.dayRates, period: event.target.value}})}><option value="">Not set</option><option value="day">Per day</option></select></Field>
       <Field label="Equity / tokens on top"><TriState value={draft.value.equityOnTop} onChange={(value) => editor.changeDraft('compensation', {...draft.value, equityOnTop: value})}/></Field>
     </div> : <div className="profile-read">
-      <p><strong>Cash:</strong> {value.cashMin === null && value.cashTarget === null ? <Unknown>Unknown</Unknown> : <>{value.cashMin === null ? 'Unknown minimum' : `${value.currency || 'Currency unknown'} ${value.cashMin}`} → {value.cashTarget === null ? 'Unknown target' : `${value.currency || 'Currency unknown'} ${value.cashTarget}`}</>}</p>
-      <p><strong>Qualifiers:</strong> {[value.grossNet ? GROSS_NET_LABELS[value.grossNet] : '', value.period ? PERIOD_LABELS[value.period] : ''].filter(Boolean).join(' · ') || <Unknown>Unknown</Unknown>}</p>
-      <p><strong>Day rates:</strong> {value.dayRates.min === null && value.dayRates.target === null ? <Unknown>Unknown</Unknown> : <>{value.dayRates.min === null ? 'Unknown minimum' : `${value.dayRates.currency || 'Currency unknown'} ${value.dayRates.min}`} → {value.dayRates.target === null ? 'Unknown target' : `${value.dayRates.currency || 'Currency unknown'} ${value.dayRates.target}`}</>}</p>
-      <p><strong>Equity/tokens on top:</strong> {value.equityOnTop === null ? <Unknown>Unknown</Unknown> : value.equityOnTop ? 'Yes' : 'No'}</p>
+      <p><strong>Cash:</strong> {value.cashMin === null && value.cashTarget === null ? <NotSet/> : <><Money amount={value.cashMin} currency={value.currency}/> → <Money amount={value.cashTarget} currency={value.currency}/></>}</p>
+      <p><strong>Qualifiers:</strong> {[value.grossNet ? GROSS_NET_LABELS[value.grossNet] : '', value.period ? PERIOD_LABELS[value.period] : ''].filter(Boolean).join(' · ') || <NotSet/>}</p>
+      <p><strong>Day rates:</strong> {value.dayRates.min === null && value.dayRates.target === null ? <NotSet/> : <><Money amount={value.dayRates.min} currency={value.dayRates.currency}/> → <Money amount={value.dayRates.target} currency={value.dayRates.currency}/></>}</p>
+      <p><strong>Equity/tokens on top:</strong> {value.equityOnTop === null ? <NotSet/> : value.equityOnTop ? 'Yes' : 'No'}</p>
     </div>}
   </SectionShell>;
 }
@@ -318,7 +308,7 @@ function CompensationSection({profile, editor}: {profile: Profile; editor: Profi
 function WorkSectionView({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'work');
   const value: WorkSection = {engagement: profile.data.engagement, hours: profile.data.hours, workModes: profile.data.workModes};
-  return <SectionShell {...latestProps(editor, 'work')} title="Engagement, hours and work modes" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Engagement, hours and work modes" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('work')} onCancel={() => editor.cancelEdit('work')} onSave={() => void editor.saveSection('work')}>
     {draft ? <div className="profile-fields">
       <div><h3>Engagement</h3><CheckGroup values={draft.value.engagement.types} options={ENGAGEMENT_TYPES} labels={ENGAGEMENT_LABELS} onChange={(values) => editor.changeDraft('work', {...draft.value, engagement: {types: values}})}/></div>
@@ -330,7 +320,7 @@ function WorkSectionView({profile, editor}: {profile: Profile; editor: ProfileEd
       <MapTextField label="Work limits" value={listText(draft.value.workModes.limits)} onChange={(value) => editor.changeDraft('work', {...draft.value, workModes: {...draft.value.workModes, limits: textList(value)}})}/>
     </div> : <div className="profile-read">
       <p><strong>Engagement:</strong> <Tags items={value.engagement.types} labels={ENGAGEMENT_LABELS}/></p>
-      <p><strong>Hours:</strong> {value.hours.mode ? HOURS_LABELS[value.hours.mode] ?? value.hours.mode : <Unknown>Unknown</Unknown>}{value.hours.weekly !== null ? ` · ${value.hours.weekly} per week` : ''}</p>
+      <p><strong>Hours:</strong> {value.hours.mode ? HOURS_LABELS[value.hours.mode] ?? value.hours.mode : <NotSet/>}{value.hours.weekly !== null ? ` · ${value.hours.weekly} per week` : ''}</p>
       <p><strong>Work modes:</strong> <Tags items={value.workModes.modes} labels={WORK_MODE_LABELS}/></p>
       <p><strong>Limits:</strong> <Tags items={value.workModes.limits}/></p>
     </div>}
@@ -340,10 +330,10 @@ function WorkSectionView({profile, editor}: {profile: Profile; editor: ProfileEd
 function GeographySection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'geography');
   const value: Geography = profile.data.geography;
-  return <SectionShell {...latestProps(editor, 'geography')} title="Geography and authorization" description="Unknown eligibility is not ineligibility." editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Geography and authorization" description="No stated eligibility is not ineligibility." editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('geography')} onCancel={() => editor.cancelEdit('geography')} onSave={() => void editor.saveSection('geography')}>
     {draft ? <div className="profile-fields">
-      <Field label="Current location"><input value={draft.value.current} placeholder="Unknown" onChange={(event) => editor.changeDraft('geography', {...draft.value, current: event.target.value})}/></Field>
+      <Field label="Current location"><input value={draft.value.current} placeholder="Not set" onChange={(event) => editor.changeDraft('geography', {...draft.value, current: event.target.value})}/></Field>
       <MapTextField label="Desired locations" value={listText(draft.value.desired)} onChange={(value) => editor.changeDraft('geography', {...draft.value, desired: textList(value)})}/>
       <MapTextField label="Work eligibility" value={listText(draft.value.eligibility)} onChange={(value) => editor.changeDraft('geography', {...draft.value, eligibility: textList(value)})}/>
       <MapTextField label="Would relocate to" value={listText(draft.value.relocation)} onChange={(value) => editor.changeDraft('geography', {...draft.value, relocation: textList(value)})}/>
@@ -353,12 +343,12 @@ function GeographySection({profile, editor}: {profile: Profile; editor: ProfileE
         <Field label="Sponsorship"><EnumSelect value={draft.value.sponsorship} options={SPONSORSHIP} labels={SPONSORSHIP_LABELS} onChange={(value) => editor.changeDraft('geography', {...draft.value, sponsorship: value})}/></Field>
       </div>
     </div> : <div className="profile-read">
-      <p><strong>Current:</strong> {value.current || <Unknown/>}</p>
+      <p><strong>Current:</strong> {value.current || <NotSet/>}</p>
       <p><strong>Desired:</strong> <Tags items={value.desired}/></p>
       <p><strong>Eligibility:</strong> <Tags items={value.eligibility}/></p>
       <p><strong>Relocation:</strong> <Tags items={value.relocation}/></p>
-      <p><strong>Willing to relocate:</strong> {value.willingToRelocate === null ? <Unknown/> : value.willingToRelocate ? 'Yes' : 'No'}</p>
-      <p><strong>Sponsorship:</strong> {value.sponsorship ? SPONSORSHIP_LABELS[value.sponsorship] ?? value.sponsorship : <Unknown/>}</p>
+      <p><strong>Willing to relocate:</strong> {value.willingToRelocate === null ? <NotSet/> : value.willingToRelocate ? 'Yes' : 'No'}</p>
+      <p><strong>Sponsorship:</strong> {value.sponsorship ? SPONSORSHIP_LABELS[value.sponsorship] ?? value.sponsorship : <NotSet/>}</p>
       <p><strong>Timezones:</strong> <Tags items={value.timezones}/></p>
     </div>}
   </SectionShell>;
@@ -366,46 +356,46 @@ function GeographySection({profile, editor}: {profile: Profile; editor: ProfileE
 
 function LanguagesSection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'languages');
-  return <SectionShell {...latestProps(editor, 'languages')} title="Languages" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Languages" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('languages')} onCancel={() => editor.cancelEdit('languages')} onSave={() => void editor.saveSection('languages')}>
     {draft ? <div className="profile-rows">
       {draft.value.map((row, index) => <div className="profile-row" key={index}>
         <Field label="Language"><input value={row.name} onChange={(event) => editor.changeDraft('languages', replaceAt(draft.value, index, {...row, name: event.target.value}))}/></Field>
-        <Field label="Level"><input value={row.level} placeholder="Unknown" onChange={(event) => editor.changeDraft('languages', replaceAt(draft.value, index, {...row, level: event.target.value}))}/></Field>
+        <Field label="Level"><input value={row.level} placeholder="Not set" onChange={(event) => editor.changeDraft('languages', replaceAt(draft.value, index, {...row, level: event.target.value}))}/></Field>
         <button type="button" onClick={() => editor.changeDraft('languages', draft.value.filter((_, current) => current !== index))}>Remove</button>
       </div>)}
       <button type="button" onClick={() => editor.changeDraft('languages', [...draft.value, {name: '', level: ''}])}>Add language</button>
-    </div> : profile.data.languages.length ? <ul className="profile-list">{profile.data.languages.map((row, index) => <li key={`${row.name}-${index}`}><strong>{row.name}</strong> <span className="profile-level">{row.level || 'Unknown level'}</span></li>)}</ul> : <Unknown>No languages recorded</Unknown>}
+    </div> : profile.data.languages.length ? <ul className="profile-list">{profile.data.languages.map((row, index) => <li key={`${row.name}-${index}`}><strong>{row.name}</strong> <span className="profile-level">{row.level || <NotSet/>}</span></li>)}</ul> : <NotSet/>}
   </SectionShell>;
 }
 
 function AvailabilitySection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'availability');
   const value: Availability = profile.data.availability;
-  return <SectionShell {...latestProps(editor, 'availability')} title="Availability" editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Availability" editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('availability')} onCancel={() => editor.cancelEdit('availability')} onSave={() => void editor.saveSection('availability')}>
     {draft ? <div className="profile-fields">
-      <Field label="Notice period"><input value={draft.value.noticePeriod} placeholder="Unknown" onChange={(event) => editor.changeDraft('availability', {...draft.value, noticePeriod: event.target.value})}/></Field>
-      <Field label="Start date"><input value={draft.value.startDate} placeholder="Unknown" onChange={(event) => editor.changeDraft('availability', {...draft.value, startDate: event.target.value})}/></Field>
-      <Field label="Timezone"><input value={draft.value.timezone} placeholder="Unknown" onChange={(event) => editor.changeDraft('availability', {...draft.value, timezone: event.target.value})}/></Field>
+      <Field label="Notice period"><input value={draft.value.noticePeriod} placeholder="Not set" onChange={(event) => editor.changeDraft('availability', {...draft.value, noticePeriod: event.target.value})}/></Field>
+      <Field label="Start date"><input value={draft.value.startDate} placeholder="Not set" onChange={(event) => editor.changeDraft('availability', {...draft.value, startDate: event.target.value})}/></Field>
+      <Field label="Timezone"><input value={draft.value.timezone} placeholder="Not set" onChange={(event) => editor.changeDraft('availability', {...draft.value, timezone: event.target.value})}/></Field>
     </div> : <div className="profile-read">
-      <p><strong>Notice period:</strong> {value.noticePeriod || <Unknown/>}</p>
-      <p><strong>Start date:</strong> {value.startDate || <Unknown/>}</p>
-      <p><strong>Timezone:</strong> {value.timezone || <Unknown/>}</p>
+      <p><strong>Notice period:</strong> {value.noticePeriod || <NotSet/>}</p>
+      <p><strong>Start date:</strong> {value.startDate || <NotSet/>}</p>
+      <p><strong>Timezone:</strong> {value.timezone || <NotSet/>}</p>
     </div>}
   </SectionShell>;
 }
 
 function DealbreakersSection({profile, editor}: {profile: Profile; editor: ProfileEditor}) {
   const draft = draftFor(editor.drafts, 'dealbreakers');
-  return <SectionShell {...latestProps(editor, 'dealbreakers')} title="Dealbreakers" description="Free-form conditions. This screen stores them; it does not claim the fast ranking already interprets them." editing={!!draft} saving={draft?.saving ?? false} stale={draft?.stale ?? false} error={draft?.error ?? ''}
+  return <SectionShell title="Dealbreakers" description="Free-form conditions. This screen stores them; it does not claim the fast ranking already interprets them." editing={!!draft} saving={draft?.saving ?? false} error={draft?.error ?? ''}
     onEdit={() => editor.beginEdit('dealbreakers')} onCancel={() => editor.cancelEdit('dealbreakers')} onSave={() => void editor.saveSection('dealbreakers')}>
     {draft ? <Field label="Dealbreakers" hint="One condition per line."><textarea rows={5} value={listText(draft.value)} onChange={(event) => editor.changeDraft('dealbreakers', textList(event.target.value))}/></Field>
-      : hasAny(profile.data.dealbreakers) ? <Tags items={profile.data.dealbreakers}/> : <Unknown>No dealbreakers recorded</Unknown>}
+      : hasAny(profile.data.dealbreakers) ? <Tags items={profile.data.dealbreakers}/> : <NotSet/>}
   </SectionShell>;
 }
 
-function DocumentsPanel({documents, capabilities, facts}: {documents: ProfileDocuments; capabilities: Capabilities | null; facts: ProfileFacts}) {
+function DocumentsPanel({documents, capabilities, facts, onOpenSettings}: {documents: ProfileDocuments; capabilities: Capabilities | null; facts: ProfileFacts; onOpenSettings: () => void}) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [textName, setTextName] = useState('');
   const [text, setText] = useState('');
@@ -437,21 +427,22 @@ function DocumentsPanel({documents, capabilities, facts}: {documents: ProfileDoc
       {documents.loading ? <p>Loading documents…</p> : documents.documents.length ? <div className="profile-document-list">
         {documents.documents.map((document) => {
           const busy = documents.busy === document.documentId;
-          const analyzing = document.processingState === 'analyzing';
-          // Availability comes from the actual source, not the imported/missing label alone: an
-          // imported legacy PDF with its original or cached text can still be analyzed explicitly.
-          const hasSource = document.hasOriginal || document.hasText;
-          const retryable = ['error', 'no_text', 'cancelled'].includes(document.processingState);
+          const summary = documentSummary(document);
           const textState = documents.texts[document.documentId];
           return <article className="profile-document" key={document.documentId}>
-            <div className="profile-document-head"><strong>{document.originalName}</strong><span className={`profile-state state-${document.processingState}`}>{document.processingState}</span></div>
-            <p className="muted">{document.kind} · {document.textChars.toLocaleString()} text characters · {Object.values(document.factCounts).reduce((sum, count) => sum + count, 0)} facts</p>
-            {document.error ? <p className="error">{document.error}</p> : null}
+            <div className="profile-document-head"><strong>{document.originalName}</strong><span className={`profile-state state-${document.processingState}`}>{summary.label}</span></div>
+            <p className="muted">{document.kind} · {document.textChars.toLocaleString()} text characters{summary.factsText ? ` · ${summary.factsText}` : ''}</p>
+            {document.sourceUrl ? <p className="muted">Source: <a href={document.sourceUrl} target="_blank" rel="noreferrer">{document.sourceUrl}</a></p> : null}
+            {summary.error ? null : <p className="profile-document-detail">{summary.detail}</p>}
+            {summary.error ? <div className="profile-document-error">
+              <p><strong>{summary.error.cause}</strong> {summary.error.action}{summary.error.openSettings ? <button type="button" onClick={onOpenSettings}>Open Settings</button> : null}</p>
+              {summary.technical ? <details><summary>Technical details</summary><code>{summary.technical}</code></details> : null}
+            </div> : null}
             <div className="profile-document-actions">
-              {analyzing ? <button type="button" disabled={busy} onClick={() => void documents.cancel(document.documentId)}>Cancel analysis</button> : hasSource ? <>
-                <button type="button" disabled={busy} onClick={() => void documents.analyze(document.documentId)}>Analyze</button>
-                {retryable ? <button type="button" disabled={busy} onClick={() => void documents.retry(document.documentId)}>Retry</button> : null}
-              </> : <span className="muted">No local original or cached text is available for this source.</span>}
+              {summary.action === 'cancel' ? <button type="button" disabled={busy} onClick={() => void documents.cancel(document.documentId)}>Cancel analysis</button> : null}
+              {summary.action === 'retry' ? <button type="button" disabled={busy} onClick={() => void documents.retry(document.documentId)}>Retry analysis</button> : null}
+              {summary.action === 'analyze' ? <button type="button" disabled={busy} onClick={() => void documents.analyze(document.documentId)}>{summary.actionLabel}</button> : null}
+              {summary.needsUpload ? <span className="muted">Upload a usable file above; retrying this source would have nothing to read.</span> : null}
               {document.hasText ? <button type="button" onClick={() => {
                 const next = !openText[document.documentId];
                 setOpenText((current) => ({...current, [document.documentId]: next}));
@@ -465,7 +456,7 @@ function DocumentsPanel({documents, capabilities, facts}: {documents: ProfileDoc
           </article>;
         })}
       </div> : <p className="muted">No documents yet. Upload a CV or add text; nothing is analyzed automatically.</p>}
-      <p className="profile-hint">Facts are proposals with their source. Accepting one changes the profile revision; rejected proposals never change it. Manual correction belongs in the section editors above.</p>
+      <p className="profile-hint">Facts are proposals with their source. Accepting one can update the profile; rejected proposals never change it. Manual correction belongs in the section editors above.</p>
       <button type="button" onClick={() => void facts.refresh()}>Refresh fact proposals</button>
     </div>
   </section>;

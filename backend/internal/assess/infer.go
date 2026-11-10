@@ -222,6 +222,9 @@ func inferHTTP(ctx context.Context, p Provider, requestText string, schema any) 
 		}
 		payload["options"] = map[string]any{"num_ctx": numCtx}
 		payload["format"] = schema
+		if p.Think != nil {
+			payload["think"] = *p.Think
+		}
 	} else {
 		payload["response_format"] = map[string]any{
 			"type":        "json_schema",

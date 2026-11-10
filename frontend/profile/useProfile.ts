@@ -10,25 +10,25 @@ import {
   getProfileCapabilities,
   listProfileDocuments,
   listProfileFacts,
-  putProfile,
+  putProfileSection,
+  refreshProfileDerivedContext,
   rejectProfileFact,
   resolveProfileFact,
   retryDocument,
   uploadProfileDocument,
   uploadProfileText,
 } from './api';
+import {actionErrorHelp, type DocumentErrorHelp} from './documentPresentation';
 import {
-  cloneData,
   DOCUMENT_ACTIVE_STATES,
-  mergeSection,
-  sectionValues,
+  cleanSection,
+  draftValues,
   type Capabilities,
   type ConflictPayload,
   type Drafts,
   type Fact,
   type FactConflict,
   type Profile,
-  type ProfileData,
   type ProfileDocument,
   type SectionDraft,
   type SectionKey,
@@ -48,6 +48,10 @@ function conflictPayload(error: unknown): ConflictPayload | null {
   return null;
 }
 
+function sameSectionValue<T>(left: T, right: T): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 function setDraftAt(drafts: Drafts, key: SectionKey, value: SectionDraft<any>) {
   (drafts as Record<SectionKey, SectionDraft<any>>)[key] = value;
 }
@@ -59,35 +63,36 @@ export function useProfileEditor() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [drafts, setDrafts] = useState<Drafts>({});
-  const [revisionConflict, setRevisionConflict] = useState<number | null>(null);
-  const [latestProfile, setLatestProfile] = useState<Profile | null>(null);
+  const [derivedRefreshing, setDerivedRefreshing] = useState(false);
+  const [derivedError, setDerivedError] = useState('');
   const profileRef = useRef<Profile | null>(null);
-  const latestProfileRef = useRef<Profile | null>(null);
 
   useEffect(() => {
     profileRef.current = profile;
   }, [profile]);
 
-  useEffect(() => {
-    latestProfileRef.current = latestProfile;
-  }, [latestProfile]);
+  // Responses can arrive out of order when two sections save at once. A lower revision is a
+  // snapshot the client already superseded; applying it would roll back the latest known profile.
+  const applyNewerProfile = useCallback((next: Profile) => {
+    const current = profileRef.current;
+    if (current && next.revision < current.revision) return;
+    setProfile(next);
+    profileRef.current = next;
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const [nextProfile, nextCapabilities] = await Promise.all([getProfile(), getProfileCapabilities()]);
-      setProfile(nextProfile);
-      profileRef.current = nextProfile;
-      setLatestProfile(nextProfile);
-      latestProfileRef.current = nextProfile;
+      applyNewerProfile(nextProfile);
       setCapabilities(nextCapabilities);
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [applyNewerProfile]);
 
   useEffect(() => {
     void load();
@@ -109,10 +114,8 @@ export function useProfileEditor() {
       return {
         ...drafts,
         [key]: {
-          value: sectionValues(current.data, key),
-          baseRevision: current.revision,
+          value: draftValues(current.data, key),
           dirty: false,
-          stale: false,
           saving: false,
           error: '',
         },
@@ -120,6 +123,7 @@ export function useProfileEditor() {
     });
   }, []);
 
+  // Cancel closes only the chosen editor. No other section draft or stored value changes.
   const cancelEdit = useCallback((key: SectionKey) => {
     setDrafts((drafts) => {
       const next = {...drafts};
@@ -136,156 +140,64 @@ export function useProfileEditor() {
     });
   }, []);
 
-  // A save sends the revision captured when the section draft began. The server is the authority:
-  // a stale revision returns 409 and the draft is kept, never replaced by another editor's values.
+  // The server merges only this section into the current stored profile. Other open drafts stay
+  // exactly as they are, and a later edit made while this request was in flight is kept.
   const saveSection = useCallback(async (key: SectionKey): Promise<boolean> => {
-    const current = profileRef.current;
     const draft = drafts[key];
-    if (!current || !draft) return false;
-    if (draft.stale) {
-      patchDraft(key, {error: 'This draft is based on an older profile revision. Reload latest before saving.'});
-      return false;
-    }
+    if (!draft) return false;
+    const submitted = draft.value;
     patchDraft(key, {saving: true, error: ''});
     setNotice('');
     try {
-      const merged: ProfileData = mergeSection(current.data, key, draft.value as never);
-      const saved = await putProfile(draft.baseRevision, merged);
-      setProfile(saved);
-      profileRef.current = saved;
-      setLatestProfile(saved);
-      latestProfileRef.current = saved;
-      setRevisionConflict(null);
-      setNotice(`Saved ${key} at profile revision ${saved.revision}.`);
+      const result = await putProfileSection(key, cleanSection(key, submitted as never));
+      applyNewerProfile(result.profile);
       setDrafts((existing) => {
         const next: Drafts = {...existing};
-        delete next[key];
-        for (const other of Object.keys(next) as SectionKey[]) {
-          const otherDraft = next[other];
-          if (otherDraft && otherDraft.baseRevision !== saved.revision) {
-            setDraftAt(next, other, {...otherDraft, stale: true, saving: false});
-          }
+        const currentDraft = next[key];
+        if (currentDraft && sameSectionValue(currentDraft.value, submitted)) {
+          delete next[key];
+        } else if (currentDraft) {
+          setDraftAt(next, key, {...currentDraft, saving: false, error: ''});
         }
         return next;
       });
+      setNotice(result.changed ? 'Saved.' : 'No changes to save.');
       return true;
     } catch (cause) {
-      if (cause instanceof ApiError && cause.status === 409) {
-        const data = cause.data as ConflictPayload;
-        setRevisionConflict(data.currentRevision ?? null);
-        if (data.current) {
-          // Keep the newest stored profile available for side-by-side section comparison.
-          setProfile(data.current);
-          profileRef.current = data.current;
-          setLatestProfile(data.current);
-          latestProfileRef.current = data.current;
-        }
-        patchDraft(key, {
-          saving: false,
-          stale: true,
-          error: `Profile changed to revision ${data.currentRevision ?? 'unknown'}. Your draft is kept; compare this section and choose rebase or discard.`,
-        });
-        setDrafts((existing) => {
-          const next: Drafts = {...existing};
-          for (const other of Object.keys(next) as SectionKey[]) {
-            const otherDraft = next[other];
-            if (otherDraft && otherDraft.baseRevision !== (data.currentRevision ?? -1)) {
-              setDraftAt(next, other, {...otherDraft, stale: true});
-            }
-          }
-          return next;
-        });
-      } else {
-        patchDraft(key, {saving: false, error: messageOf(cause)});
-      }
+      patchDraft(key, {saving: false, error: messageOf(cause)});
       return false;
     }
-  }, [drafts]);
+  }, [drafts, applyNewerProfile]);
 
-  // Fetching the latest profile never rebases a draft by itself. Each stale section must be
-  // compared and then explicitly rebased or discarded, so a same-section external edit cannot be
-  // overwritten by an ambiguous global refresh.
-  const reloadLatest = useCallback(async () => {
-    setError('');
-    setNotice('');
-    try {
-      const next = await getProfile();
-      setProfile(next);
-      profileRef.current = next;
-      setLatestProfile(next);
-      latestProfileRef.current = next;
-      setRevisionConflict(null);
-      setDrafts((existing) => {
-        const updated: Drafts = {};
-        for (const key of Object.keys(existing) as SectionKey[]) {
-          const draft = existing[key];
-          if (draft) {
-            setDraftAt(updated, key, draft.baseRevision === next.revision
-              ? draft
-              : {...draft, stale: true});
-          }
-        }
-        return updated;
-      });
-      setNotice(`Loaded profile revision ${next.revision}. Section drafts were kept; compare each stale section before saving.`);
-    } catch (cause) {
-      setError(messageOf(cause));
-    }
-  }, []);
-
-  // Explicit per-section choice after comparison. Rebasing keeps the draft values; the next Save
-  // deliberately replaces this section on the newest revision.
-  const rebaseDraft = useCallback((key: SectionKey) => {
-    const latest = latestProfileRef.current ?? profileRef.current;
-    if (!latest) return;
-    setDrafts((existing) => {
-      const draft = existing[key];
-      if (!draft) return existing;
-      const next: Drafts = {...existing};
-      setDraftAt(next, key, {...draft, baseRevision: latest.revision, stale: false, error: ''});
-      return next;
-    });
-  }, []);
-
-  // The other explicit choice: drop the draft and continue from the latest stored section.
-  const discardDraft = useCallback((key: SectionKey) => {
-    const latest = latestProfileRef.current;
-    if (latest && latest.revision !== profileRef.current?.revision) {
-      setProfile(latest);
-      profileRef.current = latest;
-    }
-    setDrafts((existing) => {
-      const next = {...existing};
-      delete next[key];
-      return next;
-    });
-  }, []);
-
-  // A profile-changing explicit action outside a section editor (for example accepting a fact)
-  // makes every open section draft stale until the user reloads the latest revision.
+  // A fact action can update the stored profile while section drafts are open. The drafts are
+  // deliberately not marked stale: version comparison is not part of the editing workflow.
   const applyExternalProfile = useCallback((next: Profile) => {
-    setProfile(next);
-    profileRef.current = next;
-    setLatestProfile(next);
-    latestProfileRef.current = next;
-    setDrafts((existing) => {
-      const updated: Drafts = {};
-      for (const key of Object.keys(existing) as SectionKey[]) {
-        const draft = existing[key];
-        if (draft) {
-          setDraftAt(updated, key, draft.baseRevision === next.revision
-            ? draft
-            : {...draft, stale: true, error: 'The profile changed after this draft began. Compare this section and choose rebase or discard.'});
-        }
+    applyNewerProfile(next);
+  }, [applyNewerProfile]);
+
+  // Explicit retry of the local derived context/ranking projection. This is the same local-only
+  // path used after a save; it starts no extraction, remote fetch, model call or assessment.
+  const refreshDerived = useCallback(async () => {
+    setDerivedRefreshing(true);
+    setDerivedError('');
+    try {
+      const result = await refreshProfileDerivedContext();
+      applyNewerProfile(result.profile);
+      if (!result.refreshed) {
+        setDerivedError(result.profile.contextError || result.profile.fastRankingError
+          || 'Scoring could not be refreshed; the saved profile is unchanged.');
       }
-      return updated;
-    });
-  }, []);
+    } catch (cause) {
+      setDerivedError(messageOf(cause));
+    } finally {
+      setDerivedRefreshing(false);
+    }
+  }, [applyNewerProfile]);
 
   return {
-    profile, latestProfile, capabilities, loading, error, notice, drafts, revisionConflict,
-    load, reloadLatest, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile,
-    rebaseDraft, discardDraft, setError, setNotice,
+    profile, capabilities, loading, error, notice, drafts, derivedRefreshing, derivedError,
+    load, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile, refreshDerived,
+    setError, setNotice,
   };
 }
 
@@ -309,21 +221,68 @@ function fileExtension(name: string): string {
   return index >= 0 ? name.slice(index + 1).toLowerCase() : '';
 }
 
+function describeActionError(cause: unknown): DocumentErrorHelp {
+  if (cause instanceof ApiError) {
+    return actionErrorHelp(String(cause.data?.code ?? ''), messageOf(cause), cause.status === 503);
+  }
+  return {cause: messageOf(cause), action: '', openSettings: false};
+}
+
 export function useProfileDocuments(capabilities: Capabilities | null) {
   const [documents, setDocuments] = useState<ProfileDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [errorAction, setErrorAction] = useState('');
+  const [errorTechnical, setErrorTechnical] = useState('');
+  const [errorOpenSettings, setErrorOpenSettings] = useState(false);
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState('');
   const [texts, setTexts] = useState<Record<string, {loading: boolean; text: string; error: string}>>({});
+  // Names the document whose explicit action produced the current transient notice, so a later
+  // poll can replace "started" with the real outcome instead of leaving a stale success message.
+  const pendingNotice = useRef<{id: string; name: string} | null>(null);
+
+  function clearActionError() {
+    setError('');
+    setErrorAction('');
+    setErrorTechnical('');
+    setErrorOpenSettings(false);
+  }
+
+  function showActionError(cause: unknown) {
+    const help = describeActionError(cause);
+    setError(help.cause);
+    setErrorAction(help.action);
+    setErrorTechnical(help.technical ?? '');
+    setErrorOpenSettings(help.openSettings);
+  }
 
   const refresh = useCallback(async () => {
     try {
       const list = await listProfileDocuments();
       setDocuments(list);
-      setError('');
+      clearActionError();
+      const pending = pendingNotice.current;
+      if (pending) {
+        const document = list.find((item) => item.documentId === pending.id);
+        if (document && !(DOCUMENT_ACTIVE_STATES as readonly string[]).includes(document.processingState)) {
+          pendingNotice.current = null;
+          if (document.processingState === 'analyzed') {
+            const facts = Object.values(document.factCounts ?? {}).reduce((sum, count) => sum + count, 0);
+            setNotice(facts > 0
+              ? `Analysis completed for ${pending.name}: ${facts} proposed ${facts === 1 ? 'fact' : 'facts'}.`
+              : `Analysis completed for ${pending.name}: no facts were found.`);
+          } else if (document.processingState === 'error') {
+            setNotice(`Analysis failed for ${pending.name}. See the reason and next step below.`);
+          } else if (document.processingState === 'cancelled') {
+            setNotice(`Analysis cancelled for ${pending.name}.`);
+          } else if (document.processingState === 'no_text') {
+            setNotice(`No text could be read for ${pending.name}. Upload a searchable export.`);
+          }
+        }
+      }
     } catch (cause) {
-      setError(messageOf(cause));
+      showActionError(cause);
     } finally {
       setLoading(false);
     }
@@ -354,7 +313,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
 
   const uploadFile = useCallback(async (file: File): Promise<boolean> => {
     setBusy('upload');
-    setError('');
+    clearActionError();
     setNotice('');
     try {
       const invalid = validate(file.name, file.size);
@@ -368,7 +327,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
       setNotice(`Uploaded ${uploaded.originalName}. Review its status; analysis is explicit.`);
       return true;
     } catch (cause) {
-      setError(messageOf(cause));
+      showActionError(cause);
       return false;
     } finally {
       setBusy('');
@@ -377,7 +336,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
 
   const uploadText = useCallback(async (filename: string, text: string): Promise<boolean> => {
     setBusy('upload');
-    setError('');
+    clearActionError();
     setNotice('');
     try {
       const name = filename.trim() || 'profile.txt';
@@ -396,7 +355,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
       setNotice(`Uploaded ${uploaded.originalName}. Review its status; analysis is explicit.`);
       return true;
     } catch (cause) {
-      setError(messageOf(cause));
+      showActionError(cause);
       return false;
     } finally {
       setBusy('');
@@ -409,7 +368,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
 
   async function act(action: 'analyze' | 'cancel' | 'retry', id: string) {
     setBusy(id);
-    setError('');
+    clearActionError();
     setNotice('');
     try {
       const updated = action === 'analyze'
@@ -418,14 +377,18 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
           ? await cancelDocumentAnalysis(id)
           : await retryDocument(id);
       replaceDocument(updated);
-      setNotice(action === 'analyze'
-        ? `Analysis started for ${updated.originalName}.`
-        : action === 'cancel'
-          ? `Analysis cancelled for ${updated.originalName}.`
+      if (action === 'cancel') {
+        pendingNotice.current = null;
+        setNotice(`Analysis cancelled for ${updated.originalName}.`);
+      } else {
+        pendingNotice.current = {id, name: updated.originalName};
+        setNotice(action === 'analyze'
+          ? `Analysis started for ${updated.originalName}.`
           : `Retry started for ${updated.originalName}.`);
+      }
       return true;
     } catch (cause) {
-      setError(messageOf(cause));
+      showActionError(cause);
       return false;
     } finally {
       setBusy('');
@@ -443,7 +406,7 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
   }, []);
 
   return {
-    documents, loading, error, notice, busy, active, texts,
+    documents, loading, error, errorAction, errorTechnical, errorOpenSettings, notice, busy, active, texts,
     refresh, uploadFile, uploadText, analyze: (id: string) => act('analyze', id),
     cancel: (id: string) => act('cancel', id), retry: (id: string) => act('retry', id), loadText,
     fileUrl: documentFileUrl, setError, setNotice,
@@ -459,7 +422,6 @@ export function useProfileFacts(profile: Profile | null, documentsActive: boolea
   const [actionError, setActionError] = useState<Record<string, string>>({});
   const [conflicts, setConflicts] = useState<Record<string, FactConflict>>({});
   const [busy, setBusy] = useState<Record<string, string>>({});
-  const [revisionConflict, setRevisionConflict] = useState<number | null>(null);
   const wasActive = useRef(false);
 
   const refresh = useCallback(async () => {
@@ -502,8 +464,19 @@ export function useProfileFacts(profile: Profile | null, documentsActive: boolea
 
   function handleError(id: string, cause: unknown) {
     const payload = conflictPayload(cause);
-    if (payload?.conflict) setConflicts((current) => ({...current, [id]: payload.conflict as FactConflict}));
-    if (payload?.currentRevision !== undefined) setRevisionConflict(payload.currentRevision);
+    if (payload?.conflict) {
+      setConflicts((current) => ({...current, [id]: payload.conflict as FactConflict}));
+      setActionError((current) => ({...current, [id]: messageOf(cause)}));
+      return;
+    }
+    if (payload?.currentRevision !== undefined) {
+      if (payload.current) onProfileChanged(payload.current);
+      setActionError((current) => ({
+        ...current,
+        [id]: 'The profile changed while this proposal was being applied. Review the current profile and try again.',
+      }));
+      return;
+    }
     setActionError((current) => ({...current, [id]: messageOf(cause)}));
   }
 
@@ -562,7 +535,7 @@ export function useProfileFacts(profile: Profile | null, documentsActive: boolea
     }
   }
 
-  return {facts, loading, error, actionError, conflicts, busy, revisionConflict, refresh, accept, reject, resolve, setError};
+  return {facts, loading, error, actionError, conflicts, busy, refresh, accept, reject, resolve, setError};
 }
 
 export type ProfileFacts = ReturnType<typeof useProfileFacts>;

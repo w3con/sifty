@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"mime"
 	"net/http"
@@ -61,6 +62,47 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			return
 		}
 		writeJSON(w, http.StatusOK, saved)
+	})
+
+	// Section saves send only the editor's own section. The server merges it into the current
+	// stored profile inside one transaction, so two editors never replace each other's data and
+	// the client never needs to submit or understand a profile revision.
+	mux.HandleFunc("PUT /api/profile/sections/{section}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Value json.RawMessage `json:"value"`
+		}
+		if err := readBody(r, &body); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if len(body.Value) == 0 {
+			writeError(w, http.StatusBadRequest, "value is required")
+			return
+		}
+		saved, changed, err := d.profileService().UpdateSection(r.PathValue("section"), body.Value)
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
+	})
+
+	// Explicit local recomputation of the derived candidate context and fast ranking from the
+	// current stored profile. It reuses the same local-only path as a save, never fetches remote
+	// sources, never starts extraction and never calls a model provider.
+	mux.HandleFunc("POST /api/profile/derived/refresh", func(w http.ResponseWriter, r *http.Request) {
+		updated, err := d.profileService().SyncDerivedContext()
+		if updated == nil {
+			if err == nil {
+				writeError(w, http.StatusNotFound, "profile not found")
+				return
+			}
+			writeProfileError(w, err)
+			return
+		}
+		// A projection failure still leaves the saved profile intact and returns the honest
+		// derived status (contextCurrent/contextError) for the client to render.
+		writeJSON(w, http.StatusOK, map[string]any{"profile": updated, "refreshed": err == nil})
 	})
 
 	// ------------------------------------------------------------------

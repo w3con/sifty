@@ -259,9 +259,7 @@ export interface SectionValues {
 
 export interface SectionDraft<T> {
   value: T;
-  baseRevision: number;
   dirty: boolean;
-  stale: boolean;
   saving: boolean;
   error: string;
 }
@@ -310,6 +308,23 @@ export function cloneData<T>(value: T): T {
   return structuredClone(value);
 }
 
+export function emptySkill(): Skill {
+  return {key: '', name: '', level: '', context: ''};
+}
+
+export function emptyExperience(): Experience {
+  return {company: '', title: '', start: '', end: '', summary: '', skills: []};
+}
+
+// Editor drafts may start with one blank row when the stored section has none. The row exists
+// only in the draft: it is never persisted, and cleaning before Save removes it when untouched.
+export function draftValues<K extends SectionKey>(data: ProfileData, key: K): SectionValues[K] {
+  const value = sectionValues(data, key);
+  if (key === 'skills' && (value as Skill[]).length === 0) return [emptySkill()] as SectionValues[K];
+  if (key === 'experience' && (value as Experience[]).length === 0) return [emptyExperience()] as SectionValues[K];
+  return value;
+}
+
 export function sectionValues<K extends SectionKey>(data: ProfileData, key: K): SectionValues[K] {
   switch (key) {
     case 'identity': return cloneData(data.identity) as SectionValues[K];
@@ -326,34 +341,36 @@ export function sectionValues<K extends SectionKey>(data: ProfileData, key: K): 
   throw new Error(`unknown profile section ${key}`);
 }
 
-// mergeSection replaces exactly one logical section of the latest profile. Each section draft is
-// therefore a deliberate section-level merge, never a whole-profile overwrite of another editor.
-export function mergeSection<K extends SectionKey>(data: ProfileData, key: K, value: SectionValues[K]): ProfileData {
-  const next = cloneData(data);
+// cleanSection prepares one section value for the server-side atomic merge. The server stays
+// authoritative and applies the final normalization and validation; this keeps the editor from
+// sending clearly empty rows or untrimmed user text.
+export function cleanSection<K extends SectionKey>(key: K, value: SectionValues[K]): SectionValues[K] {
   switch (key) {
-    case 'identity': next.identity = value as Identity; break;
-    case 'skills': next.skills = cleanSkills(value as Skill[]); break;
-    case 'experience': next.experience = cleanExperience(value as Experience[]); break;
+    case 'identity': {
+      const identity = value as Identity;
+      return {displayName: identity.displayName.trim(), headline: identity.headline.trim()} as SectionValues[K];
+    }
+    case 'skills': return cleanSkills(value as Skill[]) as SectionValues[K];
+    case 'experience': return cleanExperience(value as Experience[]) as SectionValues[K];
     case 'goals': {
       const goals = value as Goals;
-      next.targetRoles = cleanList(goals.targetRoles);
-      next.targetIndustries = cleanList(goals.targetIndustries);
-      break;
+      return {targetRoles: cleanList(goals.targetRoles), targetIndustries: cleanList(goals.targetIndustries)} as SectionValues[K];
     }
-    case 'compensation': next.compensation = cleanCompensation(value as Compensation); break;
+    case 'compensation': return cleanCompensation(value as Compensation) as SectionValues[K];
     case 'work': {
       const work = value as WorkSection;
-      next.engagement = {types: cleanList(work.engagement.types)};
-      next.hours = {mode: work.hours.mode, weekly: work.hours.weekly};
-      next.workModes = {modes: cleanList(work.workModes.modes), limits: cleanList(work.workModes.limits)};
-      break;
+      return {
+        engagement: {types: cleanList(work.engagement.types)},
+        hours: {mode: work.hours.mode, weekly: work.hours.weekly},
+        workModes: {modes: cleanList(work.workModes.modes), limits: cleanList(work.workModes.limits)},
+      } as SectionValues[K];
     }
-    case 'geography': next.geography = cleanGeography(value as Geography); break;
-    case 'languages': next.languages = cleanLanguages(value as Language[]); break;
-    case 'availability': next.availability = cleanAvailability(value as Availability); break;
-    case 'dealbreakers': next.dealbreakers = cleanList(value as string[]); break;
+    case 'geography': return cleanGeography(value as Geography) as SectionValues[K];
+    case 'languages': return cleanLanguages(value as Language[]) as SectionValues[K];
+    case 'availability': return cleanAvailability(value as Availability) as SectionValues[K];
+    case 'dealbreakers': return cleanList(value as string[]) as SectionValues[K];
   }
-  return next;
+  throw new Error(`unknown profile section ${key}`);
 }
 
 function cleanList(items: string[]): string[] {
@@ -489,7 +506,7 @@ export function provenanceText(provenance?: Provenance | null): string {
 }
 
 export function factValueText(value: unknown): string {
-  if (value === null || value === undefined) return 'Unknown';
+  if (value === null || value === undefined) return 'Not set';
   if (typeof value === 'string') return value;
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return value.map(factValueText).join(', ');
@@ -516,92 +533,4 @@ export function currentValue(data: ProfileData, fieldKey: string): unknown {
     current = (current as Record<string, unknown>)[part];
   }
   return current;
-}
-
-export interface SummaryLine {
-  label: string;
-  value: string;
-}
-
-function summaryList(items: string[]): string {
-  const visible = items.map((item) => item.trim()).filter(Boolean);
-  return visible.length ? visible.join(', ') : 'Unknown';
-}
-
-function summaryBool(value: boolean | null): string {
-  return value === null ? 'Unknown' : value ? 'Yes' : 'No';
-}
-
-function summaryAmount(value: number | null, currency: string): string {
-  if (value === null) return 'Unknown';
-  return currency ? `${currency} ${value}` : String(value);
-}
-
-// sectionSummary renders the latest stored section for the explicit draft-rebase comparison.
-// It is presentation-neutral data: no request, no invented default.
-export function sectionSummary(key: SectionKey, data: ProfileData): SummaryLine[] {
-  switch (key) {
-    case 'identity':
-      return [
-        {label: 'Display name', value: data.identity.displayName.trim() || 'Unknown'},
-        {label: 'Headline', value: data.identity.headline.trim() || 'Unknown'},
-      ];
-    case 'skills':
-      return data.skills.length ? data.skills.map((skill, index) => ({
-        label: `Skill ${index + 1}`,
-        value: `${skill.name || 'Unknown name'} · ${skill.level || 'Unknown level'}${skill.context ? ` · ${skill.context}` : ''}`,
-      })) : [{label: 'Skills', value: 'Unknown'}];
-    case 'experience':
-      return data.experience.length ? data.experience.map((row, index) => ({
-        label: `Experience ${index + 1}`,
-        value: `${row.title || 'Unknown title'} · ${row.company || 'Unknown company'} (${row.start || 'start unknown'} – ${row.end || 'end unknown'})${row.summary ? ` · ${row.summary}` : ''}`,
-      })) : [{label: 'Experience', value: 'Unknown'}];
-    case 'goals':
-      return [
-        {label: 'Target roles', value: summaryList(data.targetRoles)},
-        {label: 'Target industries', value: summaryList(data.targetIndustries)},
-      ];
-    case 'compensation':
-      return [
-        {label: 'Cash minimum', value: summaryAmount(data.compensation.cashMin, data.compensation.currency)},
-        {label: 'Cash target', value: summaryAmount(data.compensation.cashTarget, data.compensation.currency)},
-        {label: 'Currency', value: data.compensation.currency || 'Unknown'},
-        {label: 'Gross / net', value: data.compensation.grossNet ? GROSS_NET_LABELS[data.compensation.grossNet] ?? data.compensation.grossNet : 'Unknown'},
-        {label: 'Cash period', value: data.compensation.period ? PERIOD_LABELS[data.compensation.period] ?? data.compensation.period : 'Unknown'},
-        {label: 'Day-rate minimum', value: summaryAmount(data.compensation.dayRates.min, data.compensation.dayRates.currency)},
-        {label: 'Day-rate target', value: summaryAmount(data.compensation.dayRates.target, data.compensation.dayRates.currency)},
-        {label: 'Equity / tokens on top', value: summaryBool(data.compensation.equityOnTop)},
-      ];
-    case 'work':
-      return [
-        {label: 'Engagement', value: summaryList(data.engagement.types.map((value) => ENGAGEMENT_LABELS[value] ?? value))},
-        {label: 'Hours', value: data.hours.mode ? HOURS_LABELS[data.hours.mode] ?? data.hours.mode : 'Unknown'},
-        {label: 'Weekly hours', value: data.hours.weekly === null ? 'Unknown' : String(data.hours.weekly)},
-        {label: 'Work modes', value: summaryList(data.workModes.modes.map((value) => WORK_MODE_LABELS[value] ?? value))},
-        {label: 'Limits', value: summaryList(data.workModes.limits)},
-      ];
-    case 'geography':
-      return [
-        {label: 'Current location', value: data.geography.current || 'Unknown'},
-        {label: 'Desired locations', value: summaryList(data.geography.desired)},
-        {label: 'Work eligibility', value: summaryList(data.geography.eligibility)},
-        {label: 'Would relocate to', value: summaryList(data.geography.relocation)},
-        {label: 'Willing to relocate', value: summaryBool(data.geography.willingToRelocate)},
-        {label: 'Sponsorship', value: data.geography.sponsorship ? SPONSORSHIP_LABELS[data.geography.sponsorship] ?? data.geography.sponsorship : 'Unknown'},
-        {label: 'Timezones', value: summaryList(data.geography.timezones)},
-      ];
-    case 'languages':
-      return data.languages.length ? data.languages.map((row, index) => ({
-        label: `Language ${index + 1}`,
-        value: `${row.name || 'Unknown name'} · ${row.level || 'Unknown level'}`,
-      })) : [{label: 'Languages', value: 'Unknown'}];
-    case 'availability':
-      return [
-        {label: 'Notice period', value: data.availability.noticePeriod || 'Unknown'},
-        {label: 'Start date', value: data.availability.startDate || 'Unknown'},
-        {label: 'Timezone', value: data.availability.timezone || 'Unknown'},
-      ];
-    case 'dealbreakers':
-      return [{label: 'Dealbreakers', value: summaryList(data.dealbreakers)}];
-  }
 }

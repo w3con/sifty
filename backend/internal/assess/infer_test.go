@@ -73,6 +73,43 @@ func TestInferHTTPOllamaNumCtx(t *testing.T) {
 	}
 }
 
+// TestInferHTTPOllamaThinkingOption verifies that an explicit Think value reaches the ollama
+// payload, and that leaving Think nil does not invent a thinking preference. This is the request
+// option that keeps a reasoning model from consuming the whole extraction budget.
+func TestInferHTTPOllamaThinkingOption(t *testing.T) {
+	noThinking := false
+
+	srv, captured := captureServer(t, ollamaStubResponse())
+	defer srv.Close()
+
+	p := Provider{
+		Type: "ollama", Model: "llama3", Endpoint: srv.URL,
+		TimeoutMS: 5000, ContextChars: 32000, Think: &noThinking,
+	}
+	if _, err := inferHTTP(context.Background(), p, "test prompt", map[string]any{"type": "object"}); err != nil {
+		t.Fatalf("inferHTTP: %v", err)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(*captured, &body); err != nil {
+		t.Fatalf("parse captured request body: %v", err)
+	}
+	if think, ok := body["think"].(bool); !ok || think {
+		t.Fatalf("ollama think = %v (present %v), want explicit false; body: %s", body["think"], ok, *captured)
+	}
+
+	p.Think = nil
+	if _, err := inferHTTP(context.Background(), p, "test prompt", map[string]any{"type": "object"}); err != nil {
+		t.Fatalf("inferHTTP without Think: %v", err)
+	}
+	var plain map[string]any
+	if err := json.Unmarshal(*captured, &plain); err != nil {
+		t.Fatalf("parse captured request body: %v", err)
+	}
+	if _, present := plain["think"]; present {
+		t.Fatalf("unset Think must not add a think field; body: %s", *captured)
+	}
+}
+
 // TestInferHTTPOllamaNumCtxUpperBound verifies that a very large context budget is capped
 // at the safe upper bound (131072 tokens) rather than passed through verbatim.
 func TestInferHTTPOllamaNumCtxUpperBound(t *testing.T) {

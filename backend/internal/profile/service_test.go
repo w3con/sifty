@@ -3,6 +3,7 @@ package profile_test
 import (
 	"errors"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/w3con/sifty/internal/config"
@@ -55,22 +56,39 @@ func TestBootstrapPreservesLegacyWithoutInventing(t *testing.T) {
 	if got.Revision != 1 {
 		t.Errorf("bootstrap revision = %d, want 1", got.Revision)
 	}
-	if len(got.Data.TargetRoles) != 1 || got.Data.TargetRoles[0] != "Backend Engineer" {
-		t.Errorf("target roles = %v, want [Backend Engineer]", got.Data.TargetRoles)
-	}
-	if len(got.Data.Geography.Desired) != 1 || got.Data.Geography.Desired[0] != "Berlin" {
-		t.Errorf("desired geography = %v, want [Berlin]", got.Data.Geography.Desired)
-	}
-	if len(got.Data.Languages) != 1 || got.Data.Languages[0].Name != "English" {
-		t.Errorf("languages = %v, want [English]", got.Data.Languages)
+	// A newly bootstrapped profile must start with empty confirmed typed fields even when
+	// legacy configuration and context carry values; those values are provenance only.
+	empty := profile.ProfileData{}
+	empty.Normalize()
+	typed := got.Data
+	typed.LegacyPreferences = nil
+	typed.LegacyContextVersion = ""
+	if !reflect.DeepEqual(typed, empty) {
+		t.Errorf("initial typed profile = %+v, want all typed fields empty", got.Data)
 	}
 	if got.Data.LegacyContextVersion != "legacy-context-v1" {
 		t.Errorf("legacy context version = %q, want legacy-context-v1", got.Data.LegacyContextVersion)
 	}
-	for _, key := range []string{"roles", "unknown_flag", "context_only"} {
+	for _, key := range []string{"roles", "industries", "locations", "languages", "dealbreakers", "unknown_flag", "context_only"} {
 		if _, ok := got.Data.LegacyPreferences[key]; !ok {
 			t.Errorf("legacyPreferences lost key %q", key)
 		}
+	}
+	if got.Data.LegacyPreferences["unknown_flag"] != true {
+		t.Errorf("legacyPreferences unknown_flag = %v, want true", got.Data.LegacyPreferences["unknown_flag"])
+	}
+	if got.Data.LegacyPreferences["context_only"] != "kept" {
+		t.Errorf("legacyPreferences context_only = %v, want kept", got.Data.LegacyPreferences["context_only"])
+	}
+	if _, ok := cfg.Search.Preferences["roles"]; !ok {
+		t.Error("bootstrap mutated configured search preferences")
+	}
+	ctx, err := s.Context()
+	if err != nil {
+		t.Fatalf("read preserved context: %v", err)
+	}
+	if prefs, ok := ctx["preferences"].(map[string]any); !ok || prefs["context_only"] != "kept" {
+		t.Errorf("bootstrap mutated stored candidate context preferences: %v", ctx["preferences"])
 	}
 	if len(got.Data.Skills) != 0 {
 		t.Errorf("skills = %v, want none invented from free text", got.Data.Skills)
@@ -105,6 +123,25 @@ func TestBootstrapPreservesLegacyWithoutInventing(t *testing.T) {
 	}
 	if _, ok := partial.Data.LegacyPreferences["context_only"]; !ok {
 		t.Error("partial update dropped legacyPreferences")
+	}
+
+	// A normal GET must return the stored content unchanged, not re-bootstrap an empty or
+	// legacy-imported profile over it.
+	current, err := svc.Get()
+	if err != nil {
+		t.Fatalf("get stored profile: %v", err)
+	}
+	if current.Revision != 2 {
+		t.Errorf("stored profile revision after get = %d, want 2", current.Revision)
+	}
+	if current.Data.Identity.DisplayName != "Owner" {
+		t.Errorf("stored profile display name = %q, want Owner", current.Data.Identity.DisplayName)
+	}
+	if current.Data.LegacyContextVersion != "legacy-context-v1" {
+		t.Errorf("stored profile lost legacyContextVersion: %q", current.Data.LegacyContextVersion)
+	}
+	if len(current.Data.TargetRoles) != 0 {
+		t.Errorf("stored profile target roles = %v, want still empty", current.Data.TargetRoles)
 	}
 
 	// A client cannot forge or replace the same fields.

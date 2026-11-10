@@ -423,7 +423,11 @@ func (s *Service) runAnalysis(ctx context.Context, rec *store.ProfileDocumentRec
 			state = DocumentCancelled
 			message = "Analysis cancelled; no facts were published."
 		}
-		meta := map[string]any{"runId": runID, "finishedAt": nowISO(), "phase": "analysis", "error": message}
+		meta := map[string]any{
+			"runId": runID, "finishedAt": nowISO(), "phase": "analysis", "error": message,
+			"errorKind": analysisErrorKind(err), "provider": providerName, "model": provider.Model,
+			"contentHash": rec.ContentHash,
+		}
 		if ctx.Err() != nil {
 			meta["cancelled"] = true
 		}
@@ -440,7 +444,7 @@ func (s *Service) runAnalysis(ctx context.Context, rec *store.ProfileDocumentRec
 		fmt.Fprintf(os.Stderr, "profile analysis %s publication failed: %v\n", rec.ID, err)
 		failureMeta, _ := json.Marshal(map[string]any{
 			"runId": runID, "finishedAt": nowISO(), "phase": "analysis", "error": err.Error(),
-			"contentHash": rec.ContentHash,
+			"errorKind": "publication", "contentHash": rec.ContentHash,
 		})
 		_, _ = s.store.FailProfileDocumentAnalysis(rec.ID, runID, string(failureMeta),
 			"Analysis publication failed: "+err.Error())
@@ -452,6 +456,7 @@ func (s *Service) runAnalysis(ctx context.Context, rec *store.ProfileDocumentRec
 		failureMeta, _ := json.Marshal(map[string]any{
 			"runId": runID, "finishedAt": nowISO(), "phase": "analysis",
 			"contentHash": rec.ContentHash, "error": "stored source changed during analysis",
+			"errorKind": "source_changed",
 		})
 		_, _ = s.store.FailProfileDocumentAnalysis(rec.ID, runID, string(failureMeta),
 			"Analysis result discarded because the stored source changed.")
@@ -467,6 +472,7 @@ type providerConfig struct {
 	APIKeyEnv    string
 	TimeoutMS    int
 	ContextChars int
+	Think        *bool
 }
 
 func extractionProvider(cfg *config.Config) (string, providerConfig, error) {
@@ -482,9 +488,15 @@ func extractionProvider(cfg *config.Config) (string, providerConfig, error) {
 	if limit := cfg.Runtime.EffectiveProfileExtractionTimeoutMS(); limit > 0 && (timeout <= 0 || limit < timeout) {
 		timeout = limit
 	}
+	// Extraction is a schema-constrained JSON task. A reasoning/thinking model spends its
+	// configured token budget on a hidden trace before emitting the answer; measured on
+	// qwen3.5:9b, ~2,300 reasoning tokens took about two minutes and exceeded the 120 s call
+	// timeout. Ask the ollama adapter to skip thinking for extraction while leaving other
+	// stages (assessment/preparation) on the provider's default.
+	noThinking := false
 	return name, providerConfig{
 		Type: cp.Type, Model: cp.Model, Endpoint: cp.Endpoint, APIKeyEnv: cp.APIKeyEnv,
-		TimeoutMS: timeout, ContextChars: cp.ContextChars,
+		TimeoutMS: timeout, ContextChars: cp.ContextChars, Think: &noThinking,
 	}, nil
 }
 

@@ -49,6 +49,11 @@ type Provider struct {
 	APIKeyEnv    string
 	TimeoutMS    int
 	ContextChars int
+	// Think controls the ollama thinking/reasoning mode for this call. Nil keeps the provider's
+	// default. Structured extraction sets false: a reasoning trace is useless for a
+	// schema-constrained JSON answer and, measured on qwen3.5:9b, alone consumed the whole call
+	// budget before any JSON was emitted.
+	Think *bool
 }
 
 // RawEvidence, RawMismatch and RawModel are the model's structured output, referencing evidence

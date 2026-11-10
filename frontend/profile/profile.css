@@ -14,11 +14,12 @@
 .profile-screen .banner{background:var(--card);color:var(--ink);box-shadow:var(--lift)}
 .profile-screen .banner.error{background:#fbeae6;color:#b23a22}
 .profile-screen .banner button{float:none;margin-left:10px;font-size:12px;padding:5px 9px}
+.profile-screen .banner details{margin-top:6px;font-size:11px}
+.profile-screen .banner details code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;background:#eceae4;border-radius:6px;padding:8px;margin-top:4px}
 .profile-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;flex-wrap:wrap;margin-bottom:20px}
 .profile-head h1{margin-bottom:6px;color:#111}
 .profile-head p{max-width:72ch;margin-bottom:0}
 .profile-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.profile-revision{font:12px 'IBM Plex Mono',monospace;color:var(--ink-3);background:var(--well);border-radius:999px;padding:5px 10px}
 .profile-columns{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.85fr);gap:20px;align-items:start}
 .profile-sections,.profile-side{display:grid;gap:16px;min-width:0}
 .profile-card{background:var(--card);border-radius:12px;box-shadow:var(--lift);padding:18px 20px;min-width:0}
@@ -26,7 +27,7 @@
 .profile-card-head h2{margin:0;color:#111;font-size:18px}
 .profile-card-head p{margin:4px 0 0;font-size:12px;max-width:58ch}
 .profile-card-actions{display:flex;gap:8px;flex-wrap:wrap}
-.profile-card-actions button,.profile-document-actions button,.profile-conflict button,.profile-stale button,.profile-card-body>button{background:var(--well);color:var(--ink)}
+.profile-card-actions button,.profile-document-actions button,.profile-conflict button,.profile-card-body>button{background:var(--well);color:var(--ink)}
 .profile-card-actions button:hover:not(:disabled),.profile-document-actions button:hover:not(:disabled),.profile-conflict button:hover:not(:disabled),.profile-card-body>button:hover:not(:disabled){background:var(--well-2)}
 .profile-card-actions .primary,.profile-document-actions .primary,.profile-conflict .primary{background:#141416;color:#f6f5f1}
 .profile-card-body{margin-top:14px;min-width:0}
@@ -45,7 +46,7 @@
 .profile-level{font-size:12px;color:var(--ink-3);background:var(--soft);border-radius:999px;padding:2px 8px}
 .profile-tags{display:flex;flex-wrap:wrap;gap:6px}
 .profile-tags span{background:var(--soft);color:var(--ink-2);border-radius:7px;padding:3px 8px;font-size:12px}
-.profile-unknown{color:var(--ink-4);font-style:italic}
+.profile-not-set{color:var(--ink-4);font-style:italic}
 .profile-provenance{display:block;font-size:11px;color:var(--ink-4);margin-top:4px}
 .profile-provenance q{display:block;margin-top:3px;color:var(--ink-3)}
 .profile-rows{display:grid;gap:12px}
@@ -56,19 +57,6 @@
 .profile-checks{display:flex;flex-wrap:wrap;gap:8px 18px;margin:6px 0 12px}
 .profile-checks label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink-2);cursor:pointer}
 .profile-checks input{width:16px!important;height:16px;flex:none}
-.profile-stale{display:block;background:#fff4d6;color:#7a5200;border-radius:8px;padding:10px 12px;margin-top:12px;font-size:12px}
-.profile-stale>p{margin:0 0 8px;line-height:1.45}
-.profile-rebase{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin:8px 0 10px}
-.profile-rebase>div{min-width:0}
-.profile-rebase strong{display:block;margin-bottom:5px}
-.profile-rebase dl{margin:0;background:#fffaf0;border-radius:7px;padding:8px 10px;max-height:220px;overflow:auto}
-.profile-rebase dt{font-weight:600;color:#8a5b00;margin-top:6px}
-.profile-rebase dt:first-child{margin-top:0}
-.profile-rebase dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
-.profile-rebase .muted{color:#8a6a30}
-.profile-stale-actions{display:flex;gap:8px;flex-wrap:wrap}
-.profile-stale-actions button{font-size:12px;padding:6px 9px}
-@media(max-width:767px){.profile-rebase{grid-template-columns:minmax(0,1fr)}}
 .profile-hint{font-size:12px;color:var(--ink-3);line-height:1.5}
 .profile-upload{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 14px}
 .profile-upload input[type=file]{background:transparent;padding:0;font-size:12px;max-width:100%}
@@ -88,6 +76,14 @@
 .profile-document-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
 .profile-document-actions button{font-size:12px;padding:6px 10px}
 .profile-document-actions a{font-size:12px;font-weight:600;color:var(--accent-ink)}
+.profile-derived{display:grid;gap:6px;margin:12px 0}
+.profile-derived .profile-document-actions{margin-top:0}
+.profile-derived details,.profile-document-error details{margin-top:6px;font-size:11px;color:var(--ink-3)}
+.profile-derived code,.profile-document-error code{display:block;white-space:pre-wrap;overflow-wrap:anywhere;background:#eceae4;border-radius:6px;padding:8px;margin-top:4px}
+.profile-document-detail{margin:6px 0;font-size:12px;color:var(--ink-2)}
+.profile-document-error{background:#fbeae6;border-radius:8px;padding:8px 10px;margin:8px 0}
+.profile-document-error p{margin:0 0 4px;font-size:12px}
+.profile-document-error button{float:none;margin-left:8px;font-size:11px;padding:4px 8px}
 .profile-document-text{margin-top:10px}
 .profile-document-text pre{max-height:260px;overflow:auto;background:#eceae4;color:var(--ink-2);border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px;line-height:1.55}
 .profile-facts .profile-card-body>button{margin-top:14px}

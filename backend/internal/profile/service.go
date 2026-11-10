@@ -77,8 +77,9 @@ func NewService(st *store.Store, cfg *config.Holder, opts ...Option) *Service {
 	return s
 }
 
-// Get returns the current profile, bootstrapping it once from legacy preferences/context when
-// no profile exists. Bootstrap is lazy, additive and does not alter configuration or context.
+// Get returns the current profile, bootstrapping an empty profile once and retaining legacy
+// preferences/context as provenance when no profile exists. Bootstrap is lazy, does not import
+// typed claims, and does not alter configuration or context.
 func (s *Service) Get() (*Profile, error) {
 	rec, err := s.store.CurrentProfile()
 	if err != nil {
@@ -127,7 +128,7 @@ func (s *Service) Update(expected int, data ProfileData) (*Profile, error) {
 	data.LegacyContextVersion = current.Data.LegacyContextVersion
 
 	data.Normalize()
-	markManualSkillProvenance(&data, current.Data.Skills)
+	data.Skills = markManualSkillProvenance(data.Skills, current.Data.Skills)
 	if err := data.Validate(); err != nil {
 		return nil, err
 	}
@@ -152,6 +153,51 @@ func (s *Service) Update(expected int, data ProfileData) (*Profile, error) {
 		return nil, err
 	}
 	return s.syncAfterSave(saved), nil
+}
+
+// UpdateSection atomically merges exactly one editor section into the current stored profile.
+// The read, section merge, validation and history write happen inside one store transaction, so
+// two different sections saved at the same time cannot overwrite each other and the last explicit
+// Save of one section wins only for that section. A normalized no-op returns changed=false and
+// writes no revision, context or ranking. No model call or network fetch happens here.
+func (s *Service) UpdateSection(name string, value json.RawMessage) (*Profile, bool, error) {
+	section, err := ParseSection(name)
+	if err != nil {
+		return nil, false, err
+	}
+	saved, changed, err := s.store.MutateProfile(LocalProfileID, func(current *store.ProfileRecord) (string, bool, string, string, error) {
+		stored, err := decodeProfile(current)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		next := stored.Data
+		changed, err := applySection(&next, section, value)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		if !changed {
+			return "", false, "", "", nil
+		}
+		if err := next.Validate(); err != nil {
+			return "", false, "", "", err
+		}
+		encoded, err := json.Marshal(next)
+		if err != nil {
+			return "", false, "", "", fmt.Errorf("marshal profile section: %w", err)
+		}
+		return string(encoded), true, "profile section update", "manual", nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	savedProfile, err := decodeProfile(saved)
+	if err != nil {
+		return nil, false, err
+	}
+	if !changed {
+		return s.decorate(savedProfile), false, nil
+	}
+	return s.syncAfterSave(savedProfile), true, nil
 }
 
 // syncAfterSave refreshes the derived candidate context and the catalogue fast scores for the
@@ -298,9 +344,9 @@ func intValue(v any) int {
 // markManualSkillProvenance keeps the server-owned provenance for an unchanged skill and marks a
 // changed or new skill as manual. Client-supplied provenance is ignored so an old document quote
 // cannot appear to prove a manually changed level.
-func markManualSkillProvenance(data *ProfileData, current []Skill) {
-	for i := range data.Skills {
-		incoming := data.Skills[i]
+func markManualSkillProvenance(skills []Skill, current []Skill) []Skill {
+	for i := range skills {
+		incoming := skills[i]
 		var provenance *Provenance
 		for _, old := range current {
 			if old.Key == incoming.Key || strings.EqualFold(old.Name, incoming.Name) {
@@ -313,8 +359,9 @@ func markManualSkillProvenance(data *ProfileData, current []Skill) {
 		if provenance == nil {
 			provenance = &Provenance{Kind: "manual"}
 		}
-		data.Skills[i].Provenance = provenance
+		skills[i].Provenance = provenance
 	}
+	return skills
 }
 
 func decodeProfile(rec *store.ProfileRecord) (*Profile, error) {

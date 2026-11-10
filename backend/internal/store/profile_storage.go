@@ -97,6 +97,84 @@ func (s *Store) CreateProfile(id, data string) (*ProfileRecord, error) {
 	return rec, nil
 }
 
+// ProfileMutation reads the current row inside one transaction and returns either new encoded
+// data or a no-op. The callback must not call the store: the single write connection is held by
+// the transaction for the whole merge.
+type ProfileMutation func(current *ProfileRecord) (data string, changed bool, reason, origin string, err error)
+
+// MutateProfile performs one atomic read-merge-write of the current profile. The section merge
+// runs inside the transaction, so concurrent writers compose on the latest stored row instead of
+// overwriting each other with a stale full profile. A no-op writes nothing and keeps the
+// revision. A changed write still uses the revision CAS and writes its immutable history row in
+// the same transaction.
+func (s *Store) MutateProfile(id string, fn ProfileMutation) (*ProfileRecord, bool, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, false, err
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	current := &ProfileRecord{}
+	err = tx.QueryRow(
+		`SELECT id, revision, data, created_at, updated_at FROM user_profiles WHERE id=?`,
+		id).Scan(&current.ID, &current.Revision, &current.Data, &current.CreatedAt, &current.UpdatedAt)
+	if err == sql.ErrNoRows {
+		return nil, false, ErrProfileNotFound
+	}
+	if err != nil {
+		return nil, false, fmt.Errorf("read profile for mutation: %w", err)
+	}
+
+	data, changed, reason, origin, err := fn(current)
+	if err != nil {
+		return nil, false, err
+	}
+	if !changed {
+		if err := tx.Rollback(); err != nil {
+			return nil, false, err
+		}
+		tx = nil
+		return current, false, nil
+	}
+
+	next := current.Revision + 1
+	updated := now()
+	res, err := tx.Exec(
+		`UPDATE user_profiles SET revision=?, data=?, updated_at=? WHERE id=? AND revision=?`,
+		next, data, updated, id, current.Revision)
+	if err != nil {
+		return nil, false, fmt.Errorf("update profile: %w", err)
+	}
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return nil, false, fmt.Errorf("update profile rows: %w", err)
+	}
+	if affected != 1 {
+		return nil, false, &RevisionConflictError{Current: current}
+	}
+	if _, err := tx.Exec(
+		`INSERT INTO profile_revisions(profile_id, revision, data, reason, origin, created_at)
+		 VALUES(?, ?, ?, ?, ?, ?)`,
+		id, next, data, reason, origin, updated); err != nil {
+		return nil, false, fmt.Errorf("write profile revision: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, false, err
+	}
+	tx = nil
+	return &ProfileRecord{
+		ID:        id,
+		Revision:  next,
+		Data:      data,
+		CreatedAt: current.CreatedAt,
+		UpdatedAt: updated,
+	}, true, nil
+}
+
 // SaveProfile applies a compare-and-swap revision write. The new current row and the immutable
 // profile_revisions snapshot are written in one transaction: if the history insert fails, the
 // current row is rolled back too. A stale expected revision returns *RevisionConflictError and

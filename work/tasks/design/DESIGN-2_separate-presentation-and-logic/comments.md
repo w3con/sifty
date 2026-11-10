@@ -1,0 +1,5 @@
+# DESIGN-2 — Evidence and discussion
+
+The coordinator inspected all ten frontend TSX files, workflow/filter/API helpers, the frontend build configuration, current source history and working-copy diff on 2026-11-07. main.tsx combines polling, persistence, workflow actions and layout. Collection, Settings, RoleContent and ApplicationDraft also mix asynchronous operations with compressed JSX; the remaining components require readability and boundary review. The owner's follow-up explicitly expands the requested refactor from main.tsx to every other TSX and identifies separation of design and logic as the outcome.
+
+The main checkout has pre-existing formatting changes in ApplicationConfirmation.tsx and application.css. These must survive. A separate worktree already exists for the design-token card; its base plan does not authorize taking over that work. Existing frontend test sources are preserved under legacy/app/test; suites remain paused by owner instruction. Preparation itself did not run builds, tests, agents or deployment commands.

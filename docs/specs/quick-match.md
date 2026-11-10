@@ -2,6 +2,7 @@
 
 - **Status:** implemented in main (`58af432`) and released to production on 2026-11-10 from pinned main `157fe9f` (build `157fe9f6d0f8-20261110T151309.703877Z`); technical acceptance stands, card review not done. The confirmed staging profile `local@20` was selectively transferred; startup recalculation produced 2777 numeric results while production jobs, 1493 model assessments, workflow/Apply history, config and the disabled queue were preserved. Owner ranking-quality review remains separate.
 - **Numerical policy:** v1 defaults adopted by the owner on 2026-11-10; not externally calibrated or validated against outcomes.
+- **Next direction:** dual fit (owner goals and published employer requirements) and targeted vacancy-fact extraction were agreed on 2026-11-10. The coordinator-written starting policy in section 13.7 is owner-approved for implementation but is not implemented; the released v1 numerical policy and behavior below remain what runs, and no paid call has run.
 - **Implementation:** the shared contract, extractor, retained-fact storage, pure evaluator, versioned result persistence and catalogue/Overview rendering are implemented in main. Normal persisted scored adoption is proven on an isolated snapshot of the owner's actual staging profile (`local@20`): 2271 visible jobs carried numeric results at that profile revision, with 1539 evaluated zero, 732 nonzero and 0 stale. The temporary 8083 review server is stopped. Production now carries that profile and 2777 current persisted results; the earlier empty-test-profile runtime and the labelled synthetic/response-overlay checks remain historical demonstration detail, not the adoption evidence.
 - **Last updated:** 2026-11-10.
 
@@ -10,6 +11,10 @@ This is a persistent behavior specification, not a task plan, implementation che
 ## 1. Purpose and scope
 
 Quick Match gives one vacancy a fast, deterministic, explainable fit score against the owner's saved profile. It is the cheap first ranking used in the catalogue and vacancy Overview before the detailed model-based Fit Assessment used in Preparation. Its beneficiary is the owner deciding which roles deserve attention when the active catalogue is larger than one screen.
+
+### Agreed ranking direction — 2026-11-10 (not yet implemented)
+
+Quick Match should prioritize potential suitability to the owner, not reward the completeness of a source site or the success of our extraction. Missing or unsupported extraction is not evidence of a candidate/vacancy mismatch and must not become an implicit ranking penalty. This direction does not authorize inventing missing facts or presenting title overlap as a complete assessment. The current v1 formula and released behavior described below remain implemented; the revised numerical policy and minimum-information handling are approved for implementation in section 13.7. Dual-direction fit and targeted model-assisted extraction are recorded as the agreed next direction in section 13; they are not implemented, and no paid call has run.
 
 The unit of evaluation is one individual vacancy. The score must not depend on which other vacancies happen to be in the catalogue, on the current search terms, on BM25 keyword frequency, on a model call, or on the order in which jobs are processed.
 
@@ -23,7 +28,7 @@ In scope:
 Out of scope:
 
 - collecting, recrawling or reclassifying the vocabulary of the catalogue;
-- a generic NLP pipeline, a new job taxonomy, or a model-based template learner;
+- a generic NLP pipeline, a new job taxonomy, or a model-based template learner; the targeted vacancy-fact extraction adapter in section 13 is a separate agreed direction, not generic semantic scoring;
 - multiple user profiles, accounts or a shared multi-tenant catalogue;
 - user-editable weights or preference-elicitation UI (deferred to a separate calibration card);
 - using Quick Match as a hard dealbreaker or silently hiding low-scoring roles;
@@ -31,8 +36,8 @@ Out of scope:
 
 ## 2. Non-negotiable behavior
 
-1. **No LLM.** Quick Match makes no model, provider, embedding or inference call.
-2. **No external I/O.** It performs no network fetch, search, collection, source recrawl or queue mutation. It reads saved profile and vacancy records and writes its own result records through the existing persistence layer.
+1. **No LLM in the score path.** The released Quick Match makes no model, provider, embedding or inference call, and the pure evaluator never makes one. The agreed future direction in section 13 adds a separate targeted vacancy-fact extraction adapter before persisted facts; it is not implemented and does not change the evaluator boundary.
+2. **No external I/O in the released score path.** The released Quick Match performs no network fetch, search, collection, source recrawl or queue mutation. It reads saved profile and vacancy records and writes its own result records through the existing persistence layer. The future extraction adapter, when implemented, would use the existing configured provider path; it does not exist now.
 3. **Deterministic.** The same profile revision, vacancy fact revision and rules version produce the same result and the same reasons, independent of catalogue size, search query, processing order, locale-dependent formatting or wall-clock time.
 4. **Individual, not corpus-relative.** Normalization must not use the minimum, maximum, mean or distribution of other vacancies. A score change for one role must not be caused by another role being added or removed.
 5. **Explainable without a model.** The view renders deterministic templates from the result contract in section 6.6; it does not ask a model to explain a number.
@@ -303,7 +308,7 @@ Migration and recomputation must preserve known profile data, dates, workflow st
 The owner requires these modules to be separated from the start so that either side can later be rewritten or replaced independently. The implementation must keep these concerns separate:
 
 - **Shared domain contract** — planned `backend/internal/matchcontract`: DTOs, types and validation only. It performs no I/O and imports no store, provider, parser or evaluator package. It is the only package both the extractor and the evaluator import.
-- **Extraction** — planned `backend/internal/jobextract`: transforms the retained source payload/text plus the source policy into `VacancyFacts`. It imports the shared contract only and must not import the evaluator, store, provider, site-specific parser or UI. It may use deterministic parsing in v1; it makes no model call for Quick Match.
+- **Extraction** — planned `backend/internal/jobextract`: transforms the retained source payload/text plus the source policy into `VacancyFacts`. It imports the shared contract only and must not import the evaluator, store, provider, site-specific parser or UI. It uses deterministic parsing in v1 and makes no model call. The agreed future direction adds a separate targeted model extraction adapter that produces the same persisted facts with validated quotes before evaluation; it is not implemented, and this deterministic extractor remains the current one. No adapter becomes the evaluator or scores the vacancy.
 - **Pure evaluator** — planned `backend/internal/quickmatch`: `Evaluate(ProfileSnapshot, VacancyFacts, Rules) Result`, side-effect-free. It imports the shared contract only and never imports the extractor, site-specific parsers, store, provider, network, clock or filesystem. It has no database, locale or catalogue-global state.
 - **Profile projection** — existing application code builds a demographic-free `ProfileSnapshot` from the existing `backend/internal/profile` module, preserving profile ID, revision and fact provenance. It may depend on the profile store; the evaluator does not.
 - **Persistence/effects** — existing application services handle profile projection, configuration loading, extraction → fact persistence → evaluation → result CAS persistence, staleness and UI. A view owns no requests, persistence or scoring.
@@ -340,9 +345,12 @@ No benchmark may call an external provider, search, collection or model. Quick M
 
 Implemented in main (`58af432`): the versioned shared contract (`matchcontract`), the replaceable extractor and explicit source policy (`jobextract`), the pure evaluator (`quickmatch`), profile projection, retained-source/fact storage, compare-and-swap result persistence, local recalculation, the API envelope and the catalogue/Overview rendering. The old FTS5 BM25 `match_score` path no longer overwrites the current Quick Match result.
 
+The released version does not include dual fit, the agreed readable comparison panel, source-acquisition flags, targeted model extraction or its queue. Those are recorded as the agreed direction in section 13; they are not implemented. The owner-approved plan authorizes bounded implementation, while production release and paid-call scope remain separately constrained.
+
 Honest limitations of this v1:
 
 - Extraction understands narrow explicit headings and labels. Requirements found only in legacy flattened text, or that need inferred years, semantic matching or broad aliases, remain unknown and are not claimed as extracted.
+- Source availability is distinct from parse failure. A saved vacancy whose description is effectively absent can currently display a high score from title alignment and partial coverage; that is a known v1 behavior to be replaced, not an approved ranking of the role. The observed read-only Parity example is recorded in section 13.3.
 - There is no currency or tax inference, no salary estimation, no bonus/equity conversion, and unsupported country names, regions or frontend-only preferred locations remain unknown rather than being guessed.
 - Experience is compared only when both profile and vacancy provide a directly comparable explicit fact; total employment history is never converted into inferred years or seniority.
 - Weights and scales remain uncalibrated, and there is no user weight editor. User calibration, multiple profiles/accounts and a redesigned model queue are excluded.
@@ -352,6 +360,7 @@ Honest limitations of this v1:
 
 ## 10. Deferred and separate work
 
+- **Dual fit and targeted vacancy-fact extraction** — approved for bounded implementation in the [ASSESSMENT-2 plan](../../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md) and section 13.7; not implemented. The extraction queue starts paused, no paid call has run, and production release remains separate. It is logically separate from the existing detailed Fit Assessment/preparation queue.
 - **User calibration of weights** — captured as a separate backlog card. It may use preference elicitation and case comparisons; it is not part of v1 and must not be silently added to this feature.
 - **Application LLM eligibility** — the detailed model Fit Assessment and its gating in Preparation remain separate, unresolved behavior. Quick Match does not decide it.
 - **Multiple profiles/accounts/shared catalogue** — future architecture, not this specification.
@@ -408,3 +417,64 @@ Adopted v1 numerical defaults (owner-approved 2026-11-10; uncalibrated):
 - the batch performance target of 30 s for 300 jobs.
 
 No formula here claims to solve the domain's preference scales, and no weight is externally validated by this document. The v1 defaults are adopted for implementation even where an example is worked; calibration remains deferred to the separate backlog card.
+
+Agreed direction and starting policy recorded on 2026-11-10: dual fit, a readable factual comparison panel, source-availability handling, targeted extraction after concrete gap flags, and a separate extraction queue (section 13). The coordinator-written numerical/runtime policy in section 13.7 was approved for implementation on 2026-11-10 (the owner's exact wording is in the [ASSESSMENT-2 plan](../../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md)); it is not implemented, and the v1 defaults and released behavior above remain current. Items not stated in section 13.7 remain open.
+
+## 13. Agreed next direction — dual fit and targeted extraction (2026-11-10, not implemented)
+
+This section records product direction agreed with the owner. The coordinator-written starting policy in section 13.7 was approved for implementation on 2026-11-10 (the owner's exact wording is in the [ASSESSMENT-2 plan](../../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md)); it is not implemented, and no paid call has run. The released v1 behavior in sections 6 and 9 remains what runs until the approved policy is implemented and verified. Items not stated in section 13.7 remain open. Follow-up work is tracked by [ASSESSMENT-2](../../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/description.md).
+
+### 13.1 Two meanings of fit
+
+Quick Match's primary meaning is **potential suitability to the owner**, not the quality, completeness or coverage of our source extraction. A missing fact is not proof of a mismatch. Evidence coverage must not silently multiply or penalize the score; the v1 conditional mean with its five fixed weights is legacy implemented behavior, not the approved new policy.
+
+The result shows two distinct directions:
+
+- **Fits your goals** — the owner's desired role, content, pay, location and working conditions.
+- **Matches requirements** — the published employer requirements compared with confirmed skills, experience and eligibility.
+
+Neither direction is a hiring probability. A role can show high goal fit while requirements remain unconfirmed. Each direction keeps its own unknown, unscored or stale status according to the evidence actually available.
+
+### 13.2 Readable factual panel
+
+The vacancy panel should show concrete, readable facts. Matches and mismatches must both be visible in the same row format; criterion counts communicate the scale of available evidence, they are not the score formula and do not imply equal importance. Partial matches must be marked partial, not exact. A condition must never be labelled "vacancy did not state" merely because the extractor failed. "Missing from your profile" may name only a published job requirement that is not confirmed in the saved profile, with an edit link; it must not claim a missing fact where no supported comparison exists. A relevant condition whose vacancy value is unknown (salary, contract, work mode) appears as a question-mark row, not as a technical diagnostic dump. Unknowns stay concise and are not presented as mismatches. Empty groups are hidden. Remove the redundant "Strong fit …" reasons paragraph, the Compared/usable labels, duplicate Role/Role Title headings, the Evidence/Weight/Utility/Weighted/Share-of-group math, source-field labels, a separate repetitive "Why this result" block and user-facing result provenance; provenance stays in storage. Conflicts are shown only when one actually exists, with the contradicting statements; the currently detectable case is a board location versus the job text, and no broader conflict classes are promised. Coverage, if shown, is not statistical confidence or a probability. Wording is provisional and this is not a layout specification. The existing "Criterion comparisons + group math" rendering remains the implemented legacy surface until a new one is approved.
+
+### 13.3 Source availability versus extraction failure
+
+A saved vacancy with no meaningful description is a source-acquisition problem, not a high fit. The observed read-only example is Parity tech lead, ID 84, saved description "lead tech lead blockchain +3", displaying 100 with 29.4% coverage; it must not receive an overall 100 from title alignment alone. When text is available but the strict deterministic parser cannot identify the Requirements section, that must not leave most of the catalogue unscored. The approved plan does not impose an arbitrary character minimum or require a Requirements heading; a genuine short description can still be evaluated. Where possible, recover the full text through the existing acquisition adapter, without inventing facts. A new generic crawler or mass recrawl is not approved.
+
+### 13.4 Pipeline
+
+Agreed process, not implemented:
+
+1. collect the vacancy description;
+2. run deterministic fact extraction and persist the facts;
+3. compute preliminary scores for both fit directions;
+4. when concrete gap flags exist, run targeted additional model extraction;
+5. validate the returned facts and persist them with provenance;
+6. recompute both fit directions and refresh the comparison panel.
+
+The deterministic extractor cannot know a true completeness percentage. Gap flags are concrete, per relevant section or fact kind, where evidence text is detected but the information is not extracted or is ambiguous. A section heading is not required; matching text signals can qualify. A flag must not be raised merely because salary is absent. Examples: an unparsed requirements section, an incompletely parsed salary range, unextracted remote or geographic restrictions. Each flag saves why it exists and the supporting source fragment, and distinguishes a short or failed source from a true unknown, and from an actual extraction error. A flag is not a guarantee that a model can recover the fact. Abstract source-quality percentages are not used.
+
+### 13.5 Admission to the targeted extraction queue
+
+Admission requires usable text and at least one actionable, unattempted gap flag; a high preliminary score is not required. Ranking uses preliminary usefulness together with the number and importance of distinct gap flags; the same gap is deduplicated and does not inflate the count. A high preliminary score is a priority signal, not a hard admission gate: at comparable gaps a score-50 role is processed before a score-10 role, while eligible low-scored roles remain queued rather than permanently excluded. The approved starting priority band, gap weights and every-fifth fairness rule are recorded in section 13.7 and the plan; calibration of those defaults remains open. Optional prioritization by user-opened or user-selected roles was discussed as a proposal, not an owner decision, and remains open. A model-facing extraction queue is logically distinct from the existing detailed Fit Assessment/preparation queue and must not enable or consume it.
+
+### 13.6 Extraction adapter and rescoring
+
+The future model is an independent fact-extraction adapter, not a scorer or hiring judge. It processes one vacancy without the candidate profile, must return actual supporting quotes validated against the retained input, and persists fact provenance. The pure deterministic evaluator keeps its no-LLM/no-external-I/O boundary and consumes only persisted facts. The adapter reuses existing configured providers, path resolution, configuration and queue adapters; no model, provider, port or tunable is hardcoded. Current v1 makes no LLM calls. The approved plan reuses the existing `providers.stages.extraction` selection with bounded request caps and allows at most three real staging requests during acceptance; no call has run, and the queue starts paused.
+
+New facts automatically rescore both directions, up or down, and refresh the comparison lists. When an attempt completes with no new facts, scores stay unchanged, the attempt is done even if unknowns remain, and the role is not endlessly requeued on the same inputs. A changed input version may trigger one new attempt under the approved attempt cap. A temporary execution failure gets a limited retry and is distinguished from a completed attempt that found no new data. Storage should retain the input, extractor and model-production identity; this specification does not prescribe new schema fields.
+
+### 13.7 Owner-approved implementation policy — 2026-11-10 (approved, not implemented)
+
+The coordinator presented the complete six-stage policy and cost; the owner approved it on 2026-11-10 (exact wording and approval are in the plan). The approved plan is [ASSESSMENT-2](../../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md). The starting policy is approved for implementation but is not implemented; released v1 behavior remains current, and production release, push and queue enablement remain separately unauthorized.
+
+- **Goal fit:** a 0–100 weighted mean over comparable saved goals using role 25, compensation 20, location preference 15 and conditions 10, normalized over comparable active groups. Coverage stays separate and is never a multiplier. Skills and legal eligibility are not goal preferences.
+- **Requirements fit:** a supported interval, not a third aggregate score. Extracted, deduplicated published requirements keep required/preferred weight 2:1; confirmed matches contribute 1, confirmed incompatibilities 0, and unconfirmed comparisons the [0,1] interval. The lower bound is the confirmed-match share and the upper bound adds unresolved weight; the lower bound is not used for ranking. With no supported comparison show "Requirements not yet verified", not 0–100. Explicit work authorization belongs here; residence is not authorization.
+- **Catalogue order:** current goal-fit raw value descending, then stable job ID. Both directions stay visible; stale and unscored values remain distinguishable and are not zero; coverage and requirement uncertainty do not break ties.
+- **Insufficient source:** no numeric fit for missing, error, pending-detail or metadata-only descriptions; show "Full job description is unavailable" and reuse the existing single-vacancy refresh. Do not impose an arbitrary character minimum or require a Requirements heading; a genuine short description can still be evaluated. No automatic mass recrawl.
+- **Extraction queue:** usable text with actionable, deduplicated, unattempted gap kinds; no score admission threshold. Priority uses a 20-point goal-fit band, then distinct gap impact, raw goal fit, enqueue time and job ID; approved gap weights are 3 for requirements, 3 for hiring/authorization restrictions, 2 for compensation and 1 for work conditions, one flag per kind. Every fifth dispatch selects the oldest eligible job to avoid starvation. The queue starts paused and must not consume the detailed assessment queue. Optional selected/opened boosts are excluded.
+- **Runtime provider:** reuse the existing `providers.stages.extraction` selection and `assess.InferInto` transport with a vacancy-only prompt/schema; do not choose or replace the model, endpoint or credentials. Approved caps are one worker, at most 20 physical requests per UTC day including failures, and at most three attempts per input/producer identity with bounded transient retries; no silent fallback. Acceptance allows at most three real staging requests. Provider price is unknown; request caps are not a monetary budget.
+
+The plan's data/config/logic/presentation separation, existing store/migrations and provider/path/configuration/queue adapters, exclusions and targeted checks apply. No new framework or process change is introduced. Items not stated in this section remain open.

@@ -17,6 +17,14 @@ Status vocabulary:
 
 **Jump to:** [code areas](#code-areas) · [requirements](#requirements) · [epics](#epics) · [canonical task index](#task-index) · [legacy cards](#legacy-cards) · [validation](#validation)
 
+## Persistent behavior specifications
+
+These documents describe enduring product behavior, not task execution plans. Proposed policy, agreed behavior, implementation and release are distinguished inside each specification. New changes start by reading and updating the affected specification after agreement; task cards retain steps, costs and evidence.
+
+| Specification | Requirement | Current state |
+|---|---|---|
+| [Quick Match](specs/quick-match.md) | R-ASM, R-SEARCH, R-SET | Implemented in main (`58af432`) with v1 uncalibrated defaults: contract, extractor, pure evaluator, persistence/API and catalogue/Overview rendering. Normal persisted actual-profile adoption is proven on an isolated snapshot: 2271 visible jobs with numeric results at profile revision20 (1539 evaluated zero, 732 nonzero, 0 stale). The temporary 8083 review server is stopped. Technical acceptance stands; review not done; production not updated. |
+
 <a id="code-areas"></a>
 ## Where the current implementation lives
 
@@ -49,7 +57,7 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Checks.** [config save tests](../backend/internal/config/save_test.go), [live reload tests](../backend/internal/server/config_reload_test.go), [search/site endpoint tests](../backend/internal/server/search_endpoints_test.go), and the frontend build in [package.json](../frontend/package.json).
 
-**Tasks and gaps.** `SET-2`, `SET-3`, `SET-4`, `NAVIGATION-2`, `NAVIGATION-3`, `OPS-7`. The first-time knowledge-base answer setup (`SET-1`) is blocked on owner questions; `APP-3` depends on it.
+**Tasks and gaps.** `SET-2`, `SET-3`, `SET-4`, `NAVIGATION-2`, `NAVIGATION-3`, `OPS-7`. SETTINGS-2 workflow and SETTINGS-3 fields are technically accepted; their source and DESIGN-3 layout/shared blocks/uploads/persistent avatar are in main (`564f334`/`7f80bbf`/`c827cee`/`5bedae3`, final `58af432`), approximately28–30min for the DESIGN-3 technical stage against corrected25–45min. Cards remain review; functional owner acceptance and release remain separate, and production is not updated. Continent-level preferred locations captured but not implemented. SETTINGS-4 URL inputs and ASM-5 shared-term matching remain unapproved. Real profile.pdf/cv.pdf analyses produced4/6facts and owner fact acceptance works, but repeated website timeouts and discarded malformed/ungrounded proposals remain; new evidence is in SETTINGS-2. The first-time knowledge-base answer setup (`SET-1`) is blocked on owner questions; `APP-3` depends on it.
 
 <a id="req-col"></a>
 ### R-COL — Collect vacancies from configured sources
@@ -66,14 +74,16 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Checks.** [collection tests](../backend/internal/background/collect_test.go), [trigger tests](../backend/internal/background/trigger_test.go), [scheduler tests](../backend/internal/background/scheduler_test.go), [source tests](../backend/internal/source/source_test.go) and [fetch tests](../backend/internal/fetch/client_test.go).
 
-**Tasks and gaps.** `COL-1`, `COL-3` and `COL-6` are done. `COL-4` is the known gap: the dispatch does not write per-source `source_runs`/`collection_events`, so `GET /api/collection` reports an empty detail even when a run collected roles. `COL-2` (learned template cache) and `COL-5` (description structure) are planned.
+**Tasks and gaps.** `COL-1`, `COL-3` and `COL-6` are done. `COLLECTION-1` is technically accepted through d92112c (records2b8a1d5), review8083: source publication basis, date/completed age, Newest known/legacy/missing tiers, existing-job date fill/preservation, related-item/date semantics; schema18. Legacy dates without origin remain explicitly unverified rather than retrospectively certified. Owner review/integration/release pending. Automatic age scoring/cutoff and detailed assessment changes deferred. `COL-4` is the known gap: the dispatch does not write per-source `source_runs`/`collection_events`, so `GET /api/collection` reports an empty detail even when a run collected roles. `COL-2` (learned template cache) and `COL-5` (description structure) are planned.
+
+Latest owner scope is the minimal manual review loop (INBOX-1), with negative Apply outcomes (APP-8) and prior-application duplicate recognition (TRIAGE-1). Owner confirmed no incoming stage: all collected jobs go to Triage after filters; retain collection on App load with cooldown. APP-8 product outcomes/button-only modal are implemented in main and remain review. TRIAGE-1 examples expose divergent production/staging application histories for the same canonical Coinbag/Uniswap listings; authority/reconciliation is not decided, no data merged. Freshness supports this loop; no new scoring engine approved.
 
 <a id="req-search"></a>
 ### R-SEARCH — Search, filter and rank roles
 
 **Status:** implemented.
 
-**User outcome.** Roles are filtered and ranked immediately: OR terms, AND terms and exclusions combine in the FTS query, and a BM25 match score orders the catalogue.
+**User outcome.** Roles are filtered immediately: OR terms, AND terms and exclusions combine in the FTS query. FTS/BM25 remains query matching; fit ordering is determined separately by Quick Match (R-ASM), not by the BM25 score.
 
 **Frontend.** [Collection.tsx](../frontend/Collection.tsx) (search editor), [main.tsx](../frontend/main.tsx) and [CatalogueFilters.tsx](../frontend/CatalogueFilters.tsx).
 
@@ -109,7 +119,9 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Checks.** [assessment tests](../backend/internal/assess/assess_test.go), [queue tests](../backend/internal/store/queue_test.go), [worker tests](../backend/internal/background/assessment_test.go), [ranking tests](../backend/internal/store/rescore_test.go).
 
-**Tasks and gaps.** `ASM-2`, `ASM-3` and `ASM-4` are done. `ASM-1` (re-run stubborn failures on a chosen larger model) is deferred; automatic retry on the same model already exists.
+**Tasks and gaps.** `ASM-2`, `ASM-3` and `ASM-4` are done. `ASM-1` (re-run stubborn failures on a chosen larger model) is deferred; automatic retry on the same model already exists. [Publication date and vacancy age](../work/tasks/collection/COLLECTION-1_publication-date-and-age/description.md) records the owner's request to show actual publication separately from discovery and account for age in evaluation; rule/source coverage remain to be prepared.
+
+**Current behavior:** [Quick Match specification](specs/quick-match.md) separates normalized vacancy facts, replaceable extraction and pure scoring modules. ASM-6 is implemented in main (`58af432`) and replaces corpus-relative BM25 fit ordering with a deterministic no-LLM score; FTS search remains separate. Review is not done and production is not updated. Missing salary does not become a zero, partial scores carry evidence coverage, and zero is distinct from unscored. The v1 numerical defaults were approved on 2026-11-10 and remain uncalibrated; user calibration is a separate deferred card, ASSESSMENT-1, with no weight-editing UI in v1. Implemented v1 limitations include narrow explicit headings, no inferred years or semantic matching, no currency/tax inference, and unsupported regions staying unknown. The existing model queue is not selected-only and is not changed by this specification.
 
 <a id="req-app"></a>
 ### R-APP — Prepare application answers and apply manually
@@ -122,7 +134,7 @@ Each requirement names its user outcome, the current implementation, the checks 
 
 **Known broken.** The roadmap records the Playwright form-inspection worker crashing on startup with a Node module-loader error, surfaced as `worker inspectForm: exit status 1`. Treat preparation as not working end to end until that is repaired and verified. The worker code and its tests live in [backend/workers/playwright](../backend/workers/playwright/index.mjs).
 
-**Known partial parity.** Remembered answers are not injected into the preparation context (`APP-6`), and `PATCH /api/jobs/{id}/application` merges without an optimistic revision check (`APP-7`). `APP-3` (knowledge-base answers with a think modal) is blocked on `SET-1`; `APP-8` (negative confirmation outcomes) is backlog.
+**Known partial parity.** Remembered answers are not injected into the preparation context (`APP-6`), and `PATCH /api/jobs/{id}/application` merges without an optimistic revision check (`APP-7`). `APP-3` (knowledge-base answers with a think modal) is blocked on `SET-1`; `APP-8` (negative confirmation outcomes) is in main and remains review, not backlog.
 
 **Checks.** [preparation tests](../backend/internal/background/preparation_test.go), [inspection tests](../backend/internal/background/preparation_inspect_test.go), [inspect tests](../backend/internal/inspect/inspect_test.go), [prepare tests](../backend/internal/prepare/prepare_test.go), [application store tests](../backend/internal/store/application_test.go), [worker tests](../backend/workers/playwright/automation.test.mjs).
 
@@ -252,6 +264,13 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 
 | Card | Requirement | State | Depends on |
 |---|---|---|---|
+| [SETTINGS-1](../work/tasks/settings/SETTINGS-1_user-profile/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `564f334` (final `58af432`); owner usability findings continued in SETTINGS-2 | owner acceptance/release separate; production not updated |
+| [SETTINGS-2](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `7f80bbf` (final `58af432`); owner review pending ([workflow plan](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/plan.md)) | real-document yield and release remain separate; production not updated |
+| [SETTINGS-3](../work/tasks/settings/SETTINGS-3_profile-fields/description.md) | R-SET, R-ASM | review; original fields technically accepted; source in main `c827cee` (final `58af432`); continent-level preference captured, unimplemented (+30–50min provisional) | owner acceptance/release separate; production not updated |
+| [SETTINGS-5](../work/tasks/settings/SETTINGS-5_user-data-and-role-profiles/description.md) | R-SET, R-TRI, R-ASM, R-APP | full User/role-profile design saved, explicitly deferred; separate profile pipelines/shared actual submissions agreed | no implementation/auth now; re-estimate and split before approval; canonical design in plan.md |
+| [SETTINGS-4](../work/tasks/settings/SETTINGS-4_profile-url-sources/description.md) | R-SET | backlog ([URL plan](../work/tasks/settings/SETTINGS-4_profile-url-sources/plan.md); not approved) | SETTINGS-2; existing guarded fetch/provider |
+| [ASM-5](../work/tasks/assessment/ASM-5_shared-term-matching/description.md) | R-SET, R-SEARCH, R-ASM | backlog ([shared matching plan](../work/tasks/assessment/ASM-5_shared-term-matching/plan.md); not approved) | SETTINGS-3; preserved SETTINGS-1 ranking; refines INBOX-1 |
+| [INBOX-1](../work/tasks/inbox/INBOX-1_search-catalogue-overview-quick-match/description.md) | R-COL, R-SEARCH, R-ASM, R-SET, R-TRI | backlog ([proposed sequence](../work/tasks/inbox/INBOX-1_search-catalogue-overview-quick-match/plan.md); not approved) | SETTINGS-1 first; search → scoring → Overview |
 | [APP-1](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/done.md) | GO-2 |
 | [APP-2](../work/tasks/application-preparation/APP-2_application-tab-states/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-2_application-tab-states/done.md) | APP-1 |
 | [APP-3](../work/tasks/application-preparation/APP-3_answers-from-kb-and-think-modal/description.md) | R-APP | backlog (blocked: SET-1) | SET-1, APP-1, APP-2 |
@@ -259,18 +278,25 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [APP-5](../work/tasks/application-preparation/APP-5_respectful-browser-automation/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-5_respectful-browser-automation/done.md) | APP-4 |
 | [APP-6](../work/tasks/application-preparation/APP-6_answer-memories-in-prepare/description.md) | R-APP | backlog | APP-1, APP-4 |
 | [APP-7](../work/tasks/application-preparation/APP-7_draft-revision-check/description.md) | R-APP | backlog | APP-1 |
-| [APP-8](../work/tasks/application-preparation/APP-8_expired-application-outcome/description.md) | R-APP | backlog (idea) | APP-2 |
+| [APP-8](../work/tasks/application-preparation/APP-8_expired-application-outcome/description.md) | R-APP, R-TRI | review; owner/technical acceptance; source in main `a3ead8b` (final `58af432`); five outcomes/button-only modal; free-text explanation pending | release separate; production not updated; v16 migration gate corrected |
 | [ASM-1](../work/tasks/assessment/ASM-1_rerun-failed-with-model/description.md) | R-ASM | backlog (deferred) | ASM-4 |
 | [ASM-2](../work/tasks/assessment/ASM-2_ollama-num-ctx/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-2_ollama-num-ctx/done.md) | GO-2 |
 | [ASM-3](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/done.md) | COL-6, ASM-4 |
 | [ASM-4](../work/tasks/assessment/ASM-4_fast-weighted-ranking/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-4_fast-weighted-ranking/done.md) | COL-1 |
+| [ASM-6](../work/tasks/assessment/ASM-6_deterministic-quick-match/description.md) | R-ASM, R-SEARCH, R-SET, R-APP | review; Q.1–Q.5 technically accepted and source in main `58af432`; normal persisted actual-profile adoption proven; review not done, production not updated | replaceable extraction/contract/evaluator; SETTINGS-5, calibration and LLM queue changes excluded; release separate |
+| [ASSESSMENT-1](../work/tasks/assessment/ASSESSMENT-1_user-calibration-of-quick-match-weights/description.md) | R-ASM, R-SET | backlog; user weight calibration with method reference, provisional55–100min, not approved | working Quick Match and explicit scales; no v1 calibration UI |
 | [COL-1](../work/tasks/collection/COL-1_source-abstraction/description.md) | R-COL | [done](../work/tasks/collection/COL-1_source-abstraction/done.md) | GO-2 |
 | [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog (reserved) | COL-1 |
 | [COL-3](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/description.md) | R-COL | [done](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/done.md) | COL-1 |
 | [COL-4](../work/tasks/collection/COL-4_collection-progress-events/description.md) | R-COL | backlog | COL-1, COL-3 |
 | [COL-5](../work/tasks/collection/COL-5_description-structure/description.md) | R-COL | backlog | COL-1 |
 | [COL-6](../work/tasks/collection/COL-6_stop-word-collection-filter/description.md) | R-COL | [done](../work/tasks/collection/COL-6_stop-word-collection-filter/done.md) | COL-1 |
+| [COL-7](../work/tasks/collection/COL-7_production-refresh-and-assess/description.md) | R-COL, R-ASM | backlog (owner-requested existing production operation) | preserve old pending queue; no Profile execution or deploy |
+| [COLLECTION-1](../work/tasks/collection/COLLECTION-1_publication-date-and-age/description.md) | R-COL, R-TRI, R-ASM | review; technically accepted; source in main `3ee6260` (final `58af432`); approx35min vs20–35; source dates/basis and Newest, automatic scoring deferred | legacy origin unverified; release separate; production not updated |
+| [TRIAGE-1](../work/tasks/triage/TRIAGE-1_recognize-previously-applied-vacancy-duplicates/description.md) | R-COL, R-TRI, R-APP | backlog bug; Coinbag/Uniswap examples expose same-ID divergent application histories across environments;25–45min provisional | choose authoritative real history before reconciliation; no automatic merge or execution approved |
 | [DESIGN-1](../work/tasks/design/DESIGN-1_design-token-layer/description.md) | R-DESIGN | backlog | GO-11 |
+| [DESIGN-2](../work/tasks/design/DESIGN-2_separate-presentation-and-logic/description.md) | R-DESIGN, R-SEARCH, R-TRI, R-SET, R-APP | backlog (approved; preparing worktree) | GO-11 |
+| [DESIGN-3](../work/tasks/design/DESIGN-3_reusable-design-blocks/description.md) | R-DESIGN, R-SET | review; owner confirmed design finished; technical acceptance stands; source in main `5bedae3` (final `58af432`) | corrected25–45min, approximately28–30min technical stage; functional owner acceptance/release separate; production not updated |
 | [GO-1](../work/tasks/go-migration/GO-1_backend-and-public-repo/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-1_backend-and-public-repo/done.md) | — |
 | [GO-2](../work/tasks/go-migration/GO-2_runnable-backend-parity/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-2_runnable-backend-parity/done.md) | GO-1 |
 | [GO-3](../work/tasks/go-migration/GO-3_public-rules-hooks/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-3_public-rules-hooks/done.md) | GO-1 |

@@ -2,8 +2,10 @@
 
 **Epic:** settings
 **Created:** 2026-11-08
-**Status:** backlog
+**Status:** review
 **Kind:** idea
+
+**Integration status,2026-11-10:** technical implementation accepted; source published to main in commit `564f334`, final application source `58af432`. Card remains review, not done; production is not updated. Owner acceptance/release is separate.
 
 **Execution approval:** owner «запускай.» — Profile plan only,3–5AI hours, no production release. Recorded2026-11-08 20:35CET. Plan.md is the active approved execution scope; earlier discussion-not-approved statements below are historical.
 

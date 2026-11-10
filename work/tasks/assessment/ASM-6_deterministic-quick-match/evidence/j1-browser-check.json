@@ -1,0 +1,69 @@
+{
+  "context": "J.1 isolated read-only data-staging snapshot; merged DESIGN-3 + ASM-6; non-GET requests inert 200 stubs",
+  "checks": [
+    {
+      "name": "Inbox navigation present",
+      "pass": true
+    },
+    {
+      "name": "brand header present",
+      "pass": true
+    },
+    {
+      "name": "catalogue shows numeric Quick Match scores",
+      "pass": true
+    },
+    {
+      "name": "evaluated zero is rendered as 0, not a dash",
+      "pass": true
+    },
+    {
+      "name": "nonzero scores coexist with zero",
+      "pass": true
+    },
+    {
+      "name": "Quick Match panel renders current stored result",
+      "pass": true
+    },
+    {
+      "name": "panel shows evidence coverage",
+      "pass": true
+    },
+    {
+      "name": "fact strip is on the tabs row",
+      "pass": true
+    },
+    {
+      "name": "fact strip not duplicated in listing area",
+      "pass": true
+    },
+    {
+      "name": "per-criterion groups/comparisons are available",
+      "pass": true
+    },
+    {
+      "name": "expandable evidence/unknowns present",
+      "pass": true
+    },
+    {
+      "name": "merged Profile screen renders sections",
+      "pass": true
+    },
+    {
+      "name": "Settings page with sources/search navigation renders",
+      "pass": true
+    },
+    {
+      "name": "no console errors",
+      "pass": true
+    }
+  ],
+  "failures": [],
+  "console_errors": [],
+  "stubbed_non_get": [
+    "POST /api/search",
+    "POST /api/jobs/84/seen"
+  ],
+  "api_summary": "2271 visible jobs; 2271 numeric persisted results at profile_revision 20; 1539 evaluated zero; 732 nonzero; 0 stale; 0 unscored/missing envelopes",
+  "privacy": "Profile text and owner identifiers removed; only generic screenshot retained."
+}

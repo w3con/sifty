@@ -1,8 +1,8 @@
 # Quick Match behavior specification
 
-- **Status:** implemented on the ASM-6 review branch; not merged to main, not released to production.
+- **Status:** implemented in main (`58af432`); technical acceptance stands, card review not done, not released to production.
 - **Numerical policy:** v1 defaults adopted by the owner on 2026-11-10; not externally calibrated or validated against outcomes.
-- **Implementation:** the shared contract, extractor, retained-fact storage, pure evaluator, versioned result persistence and catalogue/Overview rendering are implemented and were measured on the isolated 8083 review runtime. That runtime still holds an old empty test profile (`local@1`), while the owner's current staging profile (`local@20`) was evaluated read-only and produces scores. Normal persisted scored adoption in the review catalogue remains unproven; scored rendering was verified only with a labelled synthetic fixture and a labelled real-profile response overlay.
+- **Implementation:** the shared contract, extractor, retained-fact storage, pure evaluator, versioned result persistence and catalogue/Overview rendering are implemented in main. Normal persisted scored adoption is proven on an isolated snapshot of the owner's actual staging profile (`local@20`): 2271 visible jobs carried numeric results at that profile revision, with 1539 evaluated zero, 732 nonzero and 0 stale. The temporary 8083 review server is stopped. The earlier empty-test-profile runtime and the labelled synthetic/response-overlay checks remain historical demonstration detail, not the adoption evidence.
 - **Last updated:** 2026-11-10.
 
 This is a persistent behavior specification, not a task plan, implementation checklist or estimate journal. It describes what Quick Match must mean and how its result must be produced and explained. The implementation plan, step estimates and acceptance record live in [the ASM-6 task card plan](../../work/tasks/assessment/ASM-6_deterministic-quick-match/plan.md). [docs/MAP.md](../MAP.md) indexes this specification alongside the requirements and code it constrains; user weight calibration is [ASSESSMENT-1](../../work/tasks/assessment/ASSESSMENT-1_user-calibration-of-quick-match-weights/description.md).
@@ -338,7 +338,7 @@ No benchmark may call an external provider, search, collection or model. Quick M
 
 ## 9. Implemented behavior and honest v1 limitations
 
-Implemented on the review branch: the versioned shared contract (`matchcontract`), the replaceable extractor and explicit source policy (`jobextract`), the pure evaluator (`quickmatch`), profile projection, retained-source/fact storage, compare-and-swap result persistence, local recalculation, the API envelope and the catalogue/Overview rendering. The old FTS5 BM25 `match_score` path no longer overwrites the current Quick Match result.
+Implemented in main (`58af432`): the versioned shared contract (`matchcontract`), the replaceable extractor and explicit source policy (`jobextract`), the pure evaluator (`quickmatch`), profile projection, retained-source/fact storage, compare-and-swap result persistence, local recalculation, the API envelope and the catalogue/Overview rendering. The old FTS5 BM25 `match_score` path no longer overwrites the current Quick Match result.
 
 Honest limitations of this v1:
 
@@ -347,7 +347,7 @@ Honest limitations of this v1:
 - Experience is compared only when both profile and vacancy provide a directly comparable explicit fact; total employment history is never converted into inferred years or seniority.
 - Weights and scales remain uncalibrated, and there is no user weight editor. User calibration, multiple profiles/accounts and a redesigned model queue are excluded.
 - The model assessment queue is not changed by this specification. Its existing background behavior and pending rows remain as they were; this document does not claim the queue is now selected-only or backend-gated, and Quick Match does not activate, retry or delete it.
-- The isolated review runtime's persisted profile is an old empty test copy, not the owner's current profile. The owner's actual staging profile has typed role, skill and compensation facts and was evaluated read-only; that calculation path works, but the review catalogue was not re-pointed at the real profile. The synthetic-profile fixture and the real-profile response overlay are labelled demonstrations, not evidence of normal persisted adoption.
+- The earlier isolated review runtime held an old empty test copy, not the owner's current profile. A new isolated snapshot of the actual staging profile (typed role, skill and compensation facts) was used for the persisted-adoption demonstration: 2271 visible jobs carried numeric results at profile revision20, with 0 stale. The old runtime was not re-pointed and the temporary 8083 server is now stopped. The labelled synthetic-profile fixture and real-profile response overlay are historical labelled demonstrations, not the adoption evidence.
 - The profile status now reports the existing compatibility revision independently from candidate-context status, so a missing candidate context no longer makes Quick ranking look stale. Retained ambiguities carry an explicit kind: only genuine board/text disagreement becomes a source conflict, while missing structure stays a generic ambiguity/unknown.
 
 ## 10. Deferred and separate work

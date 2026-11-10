@@ -1,54 +1,43 @@
-# ASM-6 — Deterministic Quick Match from profile facts
+# ASM-6 — Deterministic Quick Match from confirmed profile facts
 
 **Epic:** assessment
 **Created:** 2026-11-09
-**Status:** backlog
+**Status:** review
 **Kind:** task
-**Planning:** design preparation only; complete implementation steps/costs and scoring semantics require approval before execution.
 
-## Why this work exists
+**Integration status,2026-11-10:** technical implementation accepted; source published to main in commit `58af432` as the final application source. Normal persisted actual-profile adoption is proven on an isolated snapshot (2271 visible jobs with numeric results at profile revision20: 1539 zero, 732 nonzero, 0 stale). The temporary 8083 review server is stopped. Card remains review, not done; production is not updated. Owner acceptance of ranking quality/release is separate.
+**Planning:** owner «запускай» (2026-11-10) approves the full Q.1–Q.5 plan and presented v1 numerical defaults; bounded execution starts11:39Z, whole remaining upper stop13:44Z. Main publication/production release not included.
 
-**Resume checkpoint:** owner «с твоей работой - согласен. сейчас сделаем /compact и приступай» accepts the proposed no-LLM direction and wants resumption after compact. Exact source/runtime/ownership findings and next actions are in log.md/attention.md. No scorer implementation or integration has started; full concrete rules/steps/cost plan still required. Designer stays in DESIGN-3 for now and must supply a fixed checkpoint before integration; never overwrite its active worktree.
+## Outcome and actual use
 
-Owner's exact request is in comments.md. The owner wants instant, deterministic vacancy prioritization using weights and confirmed current-profile facts, with no LLM. The practical use is manual Inbox/Triage review: see a score and the concrete reasons, keep/reject/shortlist a vacancy. This is distinct from ASM-4 BM25 and ASM-5 aliases; do not implement an unused generic scoring framework.
+The owner reviews an actual catalogue ranked by a deterministic no-LLM Quick Match, opens Overview, sees criterion scores/evidence/unknowns and can identify a missing profile fact. The result is an aid to prioritization, not a hiring probability or an automatic rejection. Acceptance uses the existing isolated review catalogue and a confirmed test profile; production data and the separate model queue remain untouched.
 
-## Provisional estimate
+Persistent behavior lives in [docs/specs/quick-match.md](../../../../docs/specs/quick-match.md). This card owns the change plan, cost, checkpoints and evidence, not a competing behavior definition. Exact original request is in comments.md; later decisions and research are in log.md.
 
-- **Complexity:**8 — fact meaning, criterion/unknown semantics, persistent versioned results, existing ranking and explanation UI are coupled. Keep the working scoring outcome together, with independently reviewable parts; separate broad vacancy-section extraction/multi-profile changes rather than hide them inside it.
-- **AI preparation:**10–20min; **AI implementation:**40–70min; **AI acceptance:**15–25min; **total65–115min**, explicitly provisional until the input contract/rules and integrated baseline are agreed. Existing subscription, attributable monetary cost unknown; no runtime model/provider costs. Owner waiting/external delays excluded. This is not an execution approval/stop clock.
-- The minimum useful version must actually rank the current catalogue from the current confirmed profile and expose explanations, not just return scores in self-tests. Broader salary/location extraction or corpus-wide reparsing is separate if the agreed inputs are not available.
+## Authorization and existing work
 
-## Initial design and objections
+Owner: «с остальным согласен. Обновляй specs, и заводит карточку. ну и планируй работу». This authorizes the specification, backlog capture and planning; not the application's implementation. Owner further requires extraction and scoring to be separate replaceable modules. Sources/types/contracts must allow replacing one without rewriting the other. Python or other implementations may inform a Go port; no assumption that only Go libraries are relevant.
 
-Separate persisted/source facts/configuration, calculation logic and rendering. Proposed pure evaluator: current job facts + explicit current-profile projection + one authoritative weights/rules configuration → score/status/coverage/matched criteria/confirmed conflicts/unknowns/evidence. Reuse existing config, path/provider adapters and profile revision mechanisms. Future User/multiple role Profiles are SETTINGS-5 and deferred; consume today's confirmed profile through an explicit input adapter, not a new User/accounts system.
+The integration prerequisite is already technically accepted: application source adfdadd4c362fbc183199c04cea9ce0b689a6064 combines DESIGN-3/APP-8/COLLECTION-1 and Profile. Records through72cc92c and later documentation commits are in .worktrees/ASM-6. Designer independently fast-forwarded DESIGN-3 toadfdadd and owns subsequent Overview work. Main application is not integrated/released. Preserve root dirty material and all original branches/data.
 
-Deterministic means identical inputs and rule version produce identical results independent of other jobs being added or text keyword repetition. Do not retain corpus min-max BM25 normalization as a supposed absolute fit score. Existing FTS can remain search support; the new output must be honestly labelled and versioned.
+## Scope and exclusions
 
-Each criterion distinguishes match, mismatch, unknown and not-applicable. Missing a profile skill does not prove lack of knowledge; a mention in company boilerplate does not prove a required skill. Known aliases and word boundaries matter (e.g. Go as a language vs the verb); no LLM/semantic-learning/ESCO expansion hidden in the task. One repeated word must not accumulate unlimited points. Typed skill levels may affect only explicitly defined compatible criteria; do not invent required proficiency/years from a bare mention.
+Deliver normalized evidence-bearing vacancy facts, a pure evaluator, safe versioned persistence/API and minimal rendering through the existing catalogue/Overview. The existing typed saved Profile is authoritative; do not build a new profile store. Separate the shared domain contract, extractor/source adapters, evaluator, effects/storage and views. Reuse existing config/Dirs/services; adjustable defaults in one configuration location. No user/mockup data, provider choices, addresses or weights in views.
 
-Structured source salary, employment/work mode/location/requirements are preferred. Preserve source field/quote and unknown status; remote is not automatically worldwide, and 'not remote' must not become a positive remote fact. Salary comparisons require comparable currency/period/tax basis; do not compare incompatible values or include equity as guaranteed cash. No general regex-guessed fact may silently become a hard penalty. Free-text Other requirements must remain unexecuted/unknown unless a deterministic supported rule is explicitly defined.
+No user weight-calibration UI (ASSESSMENT-1), hard-dealbreaker UI, User/multiple Profiles/accounts, broad NLP/taxonomy, daily LLM source learner, recrawl/new collection, currency/tax inference, source-admin UI, automatic age penalty, model queue redesign, application submission, main publication or production release. Unknown inputs stay visible and are not invented to make all five groups score.
 
-Propose separate coverage/completeness plus the score explanation: a single known positive should not masquerade as a reliable100% while everything else is unknown. The exact formula/unknown treatment/category weights require owner-facing examples and approval. Weights live in one explicit existing configuration location, not magic values in views. Score0 and not-scored are separate states; current DESIGN-3's score<=0→unscored bucket is not a sound new-score contract.
+## Estimate for approval
 
-No automatic age penalty/hiding from COLLECTION-1; date/age and Newest remain their own approved behavior until an age scoring rule is separately agreed. No automatic Profile preference editing or changing confirmed facts from a rejection comment. Store result provenance: profile/revision, job/input hash, rule/weight version and computation time, with current/stale/not-scored/error status.
+- **Complexity:**13 — evidence extraction, explicit contracts, evaluator rules, migration/stale-write protection and actual catalogue integration are coupled. Keep one outcome because an unconsumed extractor or isolated calculator would not deliver prioritization; implement bounded independently reviewed stages rather than create standalone infrastructure cards.
+- **AI preparation:**15–25min for this specification/research/plan; **AI implementation:**70–105min; **AI acceptance:**10–20min. **Total95–150min**, owner waiting excluded; approximately80–125min remaining after preparation. Existing subscription, attributable monetary cost unknown; no runtime LLM/API charges introduced.
+- Earlier65–115min was explicitly provisional before input audit. Revised range adds30–35min for prepared facts/source reliability, replaceable contracts and lifecycle integration rather than assuming structured vacancy inputs already existed. Scope/cost must be approved before Q.1. Calibration remains separate provisional55–100min, not part of this total.
+- Specification preparation approximate actual20–25min; no application execution clock started. Record final actual stage times in log. At approved upper bound stop and preserve progress before any further work.
 
-## Design/UI coordination and current baseline
+## Acceptance
 
-Claude Design owns the Overview/layout/Profile/filter work. Agree the Quick Match response before it renders numerical contributions: score, status, coverage, matched/conflicting/unknown criteria and source evidence. No fake '+20 Go' or made-up salary/contract values. Input/data parsing and score effects remain backend logic; Overview renders API data/callbacks.
-
-First integrate accepted SETTINGS/Profile/APP-8/COLLECTION-1 and current DESIGN-3 checkpoint into a coherent base. DESIGN-3 is still based on fe31cc3 and has uncommitted Profile/filter/navigation/resize changes overlapping main.tsx/ApplicationConfirmation; do not overwrite source wholesale and lose five Apply outcomes/date basis/schema18. Preserve dirty main and the other live writer. This card has no worktree/executor until a complete plan is approved.
-
-## LLM boundary requiring a decision
-
-Moving Fit Assessment into Application is presentation only. Current background/assessment.go periodically calls EnqueueAll, and store.EnqueueAll scans all jobs rather than only selected roles. With the queue enabled this does not enforce selected-only inference. Do not claim the no-LLM Inbox boundary based on a hidden tab. Propose explicit LLM action in Application after Select; owner must decide automatic-on-Select versus explicit action. Existing pending queue must be preserved and execution eligibility rechecked rather than bulk-deleted/enabled during this work. Quick Match itself never calls a model.
-
-## Acceptance criteria
-
-- Actual current catalogue is ranked using the agreed deterministic rules and saved confirmed profile. Explanation cites the exact criterion/profile value/vacancy evidence; missing facts are not false mismatches and zero is not 'not scored'.
-- Same inputs/rule version produce the same score; adding unrelated jobs or repeating a keyword cannot change it. Rule changes and profile/job changes invalidate results honestly.
-- Real running-app demonstration on representative copied vacancies plus a few critical hidden invariants (determinism, unknown handling, no model calls, version/preservation). Broad suites/test infrastructure are not implied.
-- Complete step/results/time/known costs and actual input availability must be shown and approved before implementation. Current notes are not executable checkpoints.
-
-## Must not touch
-
-No User/multiple-profile/account/logout implementation (SETTINGS-5 deferred), application auto-submit, new provider/model, general-purpose NLP/extraction framework, speculative dictionary import, broad source scrape, automatic age penalty or unapproved hiding. Do not interfere with Claude Design's active worktree/preview or release an entire cumulative branch as a scorer-only change.
+- A real confirmed profile ranks the existing isolated catalogue and yields criterion contributions, exact evidence and actionable unknowns in the running app, not only self-tests.
+- Same inputs/rule version → same result, independent of corpus/search/repeated terms. Missing salary is not scored zero; ambiguous source location is not a false confirmed conflict; zero differs from unscored.
+- Extractor and evaluator compile against the shared versioned contract, not each other; changing weights/profile reuses persisted facts without fetching/extracting again. Incompatible fact schema is refused honestly.
+- Profile/job/rule changes invalidate results; stale in-flight writes cannot mark old scores current. Migration preserves schema18 data, known publication dates/basis, profile revisions, workflow history and Apply reasons.
+- Affected builds, few critical hidden invariant checks and real browser review; broad suites skipped. Benchmark pure processing and storage separately on300saved jobs without network/model calls, report actual measurements against proposed targets.
+- Complete plan and numeric proposals in plan.md are approved before executor application work. No claim that this spec already describes released functionality.

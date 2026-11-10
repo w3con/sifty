@@ -1,5 +1,7 @@
 # ASM-6 coordination / compact checkpoint
 
+Release acceptance PASSED — 2026-11-10: live build `157fe9f6d0f8-20261110T151309.703877Z`, PID71548; profile `local@20`, 2281 visible API jobs with current Quick Match (0 stale); coordinator approved the record-only handback.
+
 ## Production release executed — 2026-11-10T15:20Z
 
 R.1–R.3 completed by assigned executor. Live production <http://localhost:8080> runs pinned approved main `157fe9f6d0f86e91b9101150087ea2aa19fecaf4`, build `157fe9f6d0f8-20261110T151309.703877Z`, recorded PID71548. Schema 14→20; selective staging profile import local@20 (20 revisions, 8 documents, 22 facts, referenced PDFs byte-identical, avatar added); 2777 numeric Quick Match results; 2777 jobs/1493 assessments/336 workflow/117+109 Apply/2497 queue rows and disabled queue/config preserved by hash. Browser checks: Sifty brand, 100 and real 0 current with 29% coverage, 8 documents, no console errors, search and auto-seen writes intercepted. Detail/timing/limitations in `production-release.md` and `evidence/`. Card remains review; no merge/push/done. Coordinator acceptance of the release operation and owner ranking-quality review remain separate.

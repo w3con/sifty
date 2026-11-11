@@ -31,3 +31,7 @@ The Overview › Original shows the listing with its headings, bulleted and numb
 ## Estimate
 
 Complexity 8. Required L.1–L.4 + L.6: about 3–4.5 h of AI time. Optional L.5: +45–75 min. Total with L.5: 4–5.5 h. No paid model or service; L.1 and L.2 fetch a few pages from job boards.
+
+## Approval
+
+2026-11-11, owner: «с ней, утверждаю.» — the plan with the optional L.5 (By section) is approved. Start after ASSESSMENT-3 is merged into main.

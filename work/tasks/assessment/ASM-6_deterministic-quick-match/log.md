@@ -897,3 +897,7 @@ Exit: 0
 ```
 release OK 157fe9f6d0f8 157fe9f6d0f8-20261110T151309.703877Z recovery /Volumes/SSD/Dev/tknff/sifty/.local/deploy/prod/recovery/prod-20261110T151309.703931Z-157fe9f6 oldScores 2777
 ```
+
+## 2026-11-11 — Coordinator note: superseded, not finished through work-finish
+
+Released to production on 2026-11-10 (production-release.md); its deterministic scoring lives on as Fits you in ASSESSMENT-3 (released 2026-11-11, 0bc8af6). The owner agreed to close it. `work-finish` would squash and release again, and only `work-finish` may write done.md, so it stays in review until the process gets a path for recording an already released card (OPS card proposed to the owner).

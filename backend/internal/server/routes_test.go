@@ -49,6 +49,7 @@ func minimalTestCfg() *config.Config {
 				Assessment  string `yaml:"assessment"`
 				Extraction  string `yaml:"extraction"`
 				Preparation string `yaml:"preparation"`
+				Matching    string `yaml:"matching,omitempty"`
 			}{Assessment: "p", Extraction: "p", Preparation: "p"},
 			Providers: map[string]config.Provider{
 				"p": {Type: "ollama", Model: "llama3", Endpoint: "http://127.0.0.1:11434"},

@@ -1,7 +1,6 @@
 package quickmatch_test
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 	"testing"
@@ -12,11 +11,13 @@ import (
 
 func defaultRules() matchcontract.Rules {
 	return matchcontract.Rules{
-		SchemaVersion:   matchcontract.SchemaVersion,
-		RulesVersion:    matchcontract.RulesVersion,
-		Weights:         map[matchcontract.Group]float64{matchcontract.GroupRole: 0.25, matchcontract.GroupProfessional: 0.30, matchcontract.GroupCompensation: 0.20, matchcontract.GroupGeography: 0.15, matchcontract.GroupConditions: 0.10},
-		RequiredWeight:  2,
-		PreferredWeight: 1,
+		SchemaVersion:      matchcontract.SchemaVersion,
+		RulesVersion:       matchcontract.RulesVersion,
+		Weights:            map[matchcontract.Group]float64{matchcontract.GroupRole: 0.25, matchcontract.GroupCompensation: 0.20, matchcontract.GroupGeography: 0.15, matchcontract.GroupConditions: 0.10},
+		RequiredWeight:     2,
+		PreferredWeight:    1,
+		UnknownGoalUtility: matchcontract.DefaultUnknownGoalUtility,
+		VerdictUtility:     matchcontract.DefaultVerdictUtilities(),
 	}
 }
 
@@ -108,61 +109,14 @@ func TestEvaluateDeterministicAndCorpusIndependent(t *testing.T) {
 	if !ok || !role.Comparable || role.Utility == nil || math.Abs(*role.Utility-1) > 1e-12 {
 		t.Fatalf("repeated title tokens should not lower role F1: %+v", role)
 	}
-	if got := first.Coverage.Groups[matchcontract.GroupProfessional]; math.Abs(got-2.0/3.0) > 1e-12 {
-		t.Fatalf("professional coverage = %v, want 2/3 (duplicate Rust must not inflate)", got)
-	}
-	professionalCount := 0
 	for _, c := range first.Comparisons {
 		if c.Group == matchcontract.GroupProfessional {
-			professionalCount++
+			t.Fatalf("vacancy requirements are judged by You fit, not by the goal score: %+v", c)
 		}
 	}
-	if professionalCount != 2 {
-		t.Fatalf("professional comparisons = %d, want 2 unique requirements", professionalCount)
+	if _, ok := first.Applicability[matchcontract.GroupProfessional]; ok {
+		t.Fatalf("the professional group is not part of the goal score: %+v", first.Applicability)
 	}
-	if !hasUnknownKind(first, matchcontract.ReasonSkillRequirementCompound) {
-		t.Fatalf("compound requirement should stay unknown: %+v", first.Unknowns)
-	}
-
-	t.Run("constraints remain unknown", func(t *testing.T) {
-		profile := matchcontract.ProfileSnapshot{ProfileID: "local", Skills: []matchcontract.ProfileSkill{{Name: "Rust"}, {Name: "Go"}}}
-		facts := mustFacts(t, matchcontract.VacancyFacts{Professional: matchcontract.ProfessionalFacts{Requirements: []matchcontract.RequirementFact{
-			{Label: "5 years of Rust", Importance: matchcontract.ImportanceRequired, Evidence: evidence("", "- 5 years of Rust", matchcontract.SectionRequired, matchcontract.ReliabilityUsable)},
-			{Label: "expert Rust", Importance: matchcontract.ImportanceRequired, Evidence: evidence("", "- expert Rust", matchcontract.SectionRequired, matchcontract.ReliabilityUsable)},
-			{Label: "Rust and Go", Importance: matchcontract.ImportanceRequired, Evidence: evidence("", "- Rust and Go", matchcontract.SectionRequired, matchcontract.ReliabilityUsable)},
-		}}})
-		res, err := quickmatch.Evaluate(profile, facts, defaultRules())
-		if err != nil {
-			t.Fatalf("evaluate: %v", err)
-		}
-		seen := map[string]bool{}
-		for _, c := range res.Comparisons {
-			if c.Group != matchcontract.GroupProfessional {
-				continue
-			}
-			seen[c.Reason] = true
-			if c.Reason == matchcontract.ReasonSkillYearsUnsupported || c.Reason == matchcontract.ReasonSkillLevelUnsupported {
-				if c.Comparable || c.Utility != nil {
-					t.Errorf("%s must stay unknown, got %+v", c.Reason, c)
-				}
-			}
-		}
-		for _, want := range []string{matchcontract.ReasonSkillYearsUnsupported, matchcontract.ReasonSkillLevelUnsupported} {
-			if !seen[want] {
-				t.Errorf("missing unknown reason %q in %+v", want, res.Comparisons)
-			}
-		}
-		var compound matchcontract.Comparison
-		for _, c := range res.Comparisons {
-			if c.JobFact == "Rust and Go" {
-				compound = c
-			}
-		}
-		if compound.Criterion != matchcontract.CriterionProfessionalRequirement || !compound.Comparable ||
-			compound.Utility == nil || *compound.Utility != 1 {
-			t.Fatalf("Rust and Go should be fully supported when both skills are saved: %+v", compound)
-		}
-	})
 }
 
 func TestEvaluateSalaryCoverageAndZeroVsUnscored(t *testing.T) {
@@ -203,11 +157,12 @@ func TestEvaluateSalaryCoverageAndZeroVsUnscored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("evaluate full: %v", err)
 	}
-	if res.Status != matchcontract.StatusScored || res.Score == nil || *res.Score != 98 {
-		t.Fatalf("known example score = %v/%v, want 98", res.Score, res.Status)
+	// (25*1 + 20*8/9 + 15*1 + 10*1) / 70: role, compensation, geography, conditions only.
+	if res.Status != matchcontract.StatusScored || res.Score == nil || *res.Score != 97 {
+		t.Fatalf("known example score = %v/%v, want 97", res.Score, res.Status)
 	}
-	if res.RawScore == nil || math.Abs(*res.RawScore-0.9777777777777777) > 1e-9 {
-		t.Fatalf("raw score = %v, want 0.97778", res.RawScore)
+	if res.RawScore == nil || math.Abs(*res.RawScore-0.9682539682539683) > 1e-9 {
+		t.Fatalf("raw score = %v, want 0.96825", res.RawScore)
 	}
 	comp, ok := findComparison(res, matchcontract.CriterionCompensationCash)
 	if !ok || !comp.Comparable || comp.Utility == nil || math.Abs(*comp.Utility-0.8888888888888888) > 1e-9 {
@@ -225,66 +180,36 @@ func TestEvaluateSalaryCoverageAndZeroVsUnscored(t *testing.T) {
 		missing.Coverage.Groups[matchcontract.GroupCompensation] != 0 {
 		t.Fatalf("missing salary must stay applicable with zero coverage: %+v", missing.Coverage.Groups)
 	}
-	for _, c := range missing.Contributions {
+	var assumed *matchcontract.Contribution
+	for i, c := range missing.Contributions {
 		if c.Group == matchcontract.GroupCompensation {
-			t.Fatalf("missing salary must not contribute a zero: %+v", c)
+			assumed = &missing.Contributions[i]
 		}
 	}
-	if missing.Score == nil || *missing.Score != 100 {
-		t.Fatalf("missing salary score = %v, want 100 from comparable groups", missing.Score)
+	if assumed == nil || !assumed.Assumed || assumed.Utility != matchcontract.DefaultUnknownGoalUtility {
+		t.Fatalf("missing salary must count as the midpoint and say so: %+v", missing.Contributions)
 	}
-	if math.Abs(missing.Coverage.Weighted-0.8) > 1e-12 {
-		t.Fatalf("missing salary coverage = %v, want 0.8", missing.Coverage.Weighted)
+	// (25*1 + 20*0.5 + 15*1 + 10*1) / 70 = 60/70: unknown pay is neither dropped nor a zero.
+	if missing.Score == nil || *missing.Score != 86 {
+		t.Fatalf("missing salary score = %v, want 86", missing.Score)
+	}
+	if math.Abs(missing.Coverage.Weighted-0.5/0.7) > 1e-12 {
+		t.Fatalf("missing salary coverage = %v, want 5/7", missing.Coverage.Weighted)
 	}
 	if !hasUnknownKind(missing, matchcontract.ReasonCompensationMissing) {
 		t.Fatalf("missing salary should be an explicit unknown")
 	}
 
-	partialProfile := matchcontract.ProfileSnapshot{ProfileID: "local", Skills: []matchcontract.ProfileSkill{{Name: "Rust"}, {Name: "Go"}}}
-	partialFacts := mustFacts(t, matchcontract.VacancyFacts{Professional: matchcontract.ProfessionalFacts{Requirements: []matchcontract.RequirementFact{
+	skillsOnly := matchcontract.ProfileSnapshot{ProfileID: "local", Skills: []matchcontract.ProfileSkill{{Name: "Rust"}, {Name: "Go"}}}
+	requirementsOnly := mustFacts(t, matchcontract.VacancyFacts{Professional: matchcontract.ProfessionalFacts{Requirements: []matchcontract.RequirementFact{
 		{Label: "Rust", Importance: matchcontract.ImportanceRequired, Evidence: evidence("", "- Rust", matchcontract.SectionRequired, matchcontract.ReliabilityUsable)},
-		{Label: "Kubernetes", Importance: matchcontract.ImportancePreferred, Evidence: evidence("", "- Kubernetes", matchcontract.SectionPreferred, matchcontract.ReliabilityUsable)},
 	}}})
-	partial, err := quickmatch.Evaluate(partialProfile, partialFacts, defaultRules())
+	notGoals, err := quickmatch.Evaluate(skillsOnly, requirementsOnly, defaultRules())
 	if err != nil {
-		t.Fatalf("evaluate partial: %v", err)
+		t.Fatalf("evaluate skills only: %v", err)
 	}
-	if math.Abs(partial.Coverage.Groups[matchcontract.GroupProfessional]-2.0/3.0) > 1e-12 {
-		t.Fatalf("partial professional coverage = %v, want 2/3", partial.Coverage.Groups[matchcontract.GroupProfessional])
-	}
-	if partial.Score == nil || *partial.Score != 100 {
-		t.Fatalf("partial coverage score = %v, want 100", partial.Score)
-	}
-	if !hasUnknownKind(partial, matchcontract.ReasonSkillNotEvidenced) {
-		t.Fatalf("missing saved skill must remain unknown, not zero")
-	}
-
-	reqs := []matchcontract.RequirementFact{{
-		Label: "Rust", Importance: matchcontract.ImportancePreferred,
-		Evidence: evidence("", "- Rust", matchcontract.SectionPreferred, matchcontract.ReliabilityUsable),
-	}, {
-		Label: "Rust", Importance: matchcontract.ImportanceRequired,
-		Evidence: evidence("", "- Rust", matchcontract.SectionRequired, matchcontract.ReliabilityUsable),
-	}}
-	for i := 0; i < 19; i++ {
-		label := "Unconfirmed " + fmt.Sprint(i)
-		reqs = append(reqs, matchcontract.RequirementFact{
-			Label: label, Importance: matchcontract.ImportanceRequired,
-			Evidence: evidence("", "- "+label, matchcontract.SectionRequired, matchcontract.ReliabilityNeedsCorroboration),
-		})
-	}
-	coverageFacts := mustFacts(t, matchcontract.VacancyFacts{Professional: matchcontract.ProfessionalFacts{Requirements: reqs}})
-	coverage, err := quickmatch.Evaluate(matchcontract.ProfileSnapshot{ProfileID: "local", Skills: []matchcontract.ProfileSkill{{Name: "Rust"}}}, coverageFacts, defaultRules())
-	if err != nil {
-		t.Fatalf("evaluate coverage: %v", err)
-	}
-	if got := coverage.Coverage.Groups[matchcontract.GroupProfessional]; math.Abs(got-0.05) > 1e-12 {
-		t.Fatalf("one known plus nineteen unreliable requirements coverage = %v, want 0.05", got)
-	}
-	for _, c := range coverage.Comparisons {
-		if c.JobFact == "Rust" && c.Weight != 2 {
-			t.Fatalf("duplicate Required must win over Preferred: %+v", c)
-		}
+	if notGoals.Status != matchcontract.StatusUnscored || notGoals.Score != nil {
+		t.Fatalf("skills and requirements are not goals, so they cannot produce Fits you: %+v", notGoals)
 	}
 
 	zeroProfile := matchcontract.ProfileSnapshot{ProfileID: "local", TargetRoles: []string{"Designer"}}
@@ -384,67 +309,22 @@ func TestEvaluateGeographyAndConditionsHonesty(t *testing.T) {
 		}
 	})
 
-	t.Run("authorization eligible and need visa", func(t *testing.T) {
-		authFacts := func(rel matchcontract.Reliability) matchcontract.VacancyFacts {
-			return mustFacts(t, matchcontract.VacancyFacts{Geography: matchcontract.GeographyFacts{WorkAuthorization: &matchcontract.AuthorizationFact{
-				Country: "DE", Requirement: matchcontract.AuthorizationRequired,
-				Evidence: evidence("", "must be authorized in Germany", matchcontract.SectionUnknown, rel),
-			}}})
-		}
-		profile := matchcontract.ProfileSnapshot{ProfileID: "local", Authorizations: []matchcontract.ProfileAuthorization{{Country: "DE", Status: "eligible"}}}
-		res, err := quickmatch.Evaluate(profile, authFacts(matchcontract.ReliabilityUsable), defaultRules())
-		if err != nil {
-			t.Fatalf("evaluate auth: %v", err)
-		}
-		c, ok := findComparison(res, matchcontract.CriterionGeographyAuthorization)
-		if !ok || !c.Comparable || c.Utility == nil || *c.Utility != 1 {
-			t.Fatalf("eligible authorization = %+v", c)
-		}
-		profile.Authorizations[0].Status = "need_visa"
-		res, err = quickmatch.Evaluate(profile, authFacts(matchcontract.ReliabilityUsable), defaultRules())
-		if err != nil {
-			t.Fatalf("evaluate need visa: %v", err)
-		}
-		c, _ = findComparison(res, matchcontract.CriterionGeographyAuthorization)
-		if !c.Comparable || c.Utility == nil || *c.Utility != 0 || c.Reason != matchcontract.ReasonAuthorizationDisjoint {
-			t.Fatalf("need visa authorization = %+v", c)
-		}
-	})
-
-	t.Run("authorization missing country stays unknown", func(t *testing.T) {
+	t.Run("work authorization is not a goal", func(t *testing.T) {
 		facts := mustFacts(t, matchcontract.VacancyFacts{Geography: matchcontract.GeographyFacts{WorkAuthorization: &matchcontract.AuthorizationFact{
-			Requirement: matchcontract.AuthorizationRequired,
-			Evidence:    evidence("", "must be authorized", matchcontract.SectionUnknown, matchcontract.ReliabilityUsable),
+			Country: "DE", Requirement: matchcontract.AuthorizationRequired,
+			Evidence: evidence("", "must be authorized in Germany", matchcontract.SectionUnknown, matchcontract.ReliabilityUsable),
 		}}})
-		res, err := quickmatch.Evaluate(matchcontract.ProfileSnapshot{ProfileID: "local", Authorizations: []matchcontract.ProfileAuthorization{{Country: "DE", Status: "eligible"}}}, facts, defaultRules())
-		if err != nil {
-			t.Fatalf("evaluate auth: %v", err)
-		}
-		c, _ := findComparison(res, matchcontract.CriterionGeographyAuthorization)
-		if c.Comparable || c.Utility != nil || c.Reason != matchcontract.ReasonAuthorizationCountryMissing {
-			t.Fatalf("missing country = %+v", c)
-		}
-	})
-
-	t.Run("profile authorization without job requirement is not a conflict", func(t *testing.T) {
-		facts := mustFacts(t, matchcontract.VacancyFacts{})
-		res, err := quickmatch.Evaluate(matchcontract.ProfileSnapshot{ProfileID: "local", Authorizations: []matchcontract.ProfileAuthorization{{Country: "DE", Status: "eligible"}}}, facts, defaultRules())
-		if err != nil {
-			t.Fatalf("evaluate auth: %v", err)
-		}
-		c, _ := findComparison(res, matchcontract.CriterionGeographyAuthorization)
-		if c.Applicability != matchcontract.NotApplicable || c.Reason != matchcontract.ReasonAuthorizationJobMissing || c.Comparable {
-			t.Fatalf("job without auth requirement = %+v", c)
-		}
-		if len(res.Conflicts) != 0 {
-			t.Fatalf("missing job requirement must not fabricate a conflict: %+v", res.Conflicts)
-		}
-		if hasUnknownKind(res, matchcontract.ReasonAuthorizationJobMissing) {
-			t.Fatalf("not-applicable explanation must not become a profile-gap unknown: %+v", res.Unknowns)
-		}
-		for _, reason := range res.Reasons {
-			if reason == matchcontract.ReasonAuthorizationJobMissing {
-				t.Fatalf("not-applicable reason must not enter the result reasons: %+v", res.Reasons)
+		for _, status := range []string{"eligible", "need_visa"} {
+			profile := matchcontract.ProfileSnapshot{ProfileID: "local", Authorizations: []matchcontract.ProfileAuthorization{{Country: "DE", Status: status}}}
+			res, err := quickmatch.Evaluate(profile, facts, defaultRules())
+			if err != nil {
+				t.Fatalf("evaluate auth %s: %v", status, err)
+			}
+			if _, ok := findComparison(res, matchcontract.CriterionGeographyAuthorization); ok {
+				t.Fatalf("%s: authorization must not be compared as a goal: %+v", status, res.Comparisons)
+			}
+			if res.Status != matchcontract.StatusUnscored || res.Applicability[matchcontract.GroupGeography] == matchcontract.Applicable {
+				t.Fatalf("%s: authorization alone must not make a goal applicable: %+v", status, res)
 			}
 		}
 	})

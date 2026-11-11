@@ -456,6 +456,12 @@ function SkillsSection({profile, capabilities, editor}: {profile: Profile; capab
         title={[skillLevelText(skill.level, capabilities), skill.provenance ? provenanceText(skill.provenance) : ''].filter(Boolean).join(' · ')}>{skill.name}</span>)}</div>
       <div className="profile-skill-legend">{currentLevels.map((level) => <span key={level} className={`profile-skill level-${level.toLowerCase()}`}>{skillLevelText(level, capabilities)}</span>)}</div>
     </> : <NotSet/>}
+    {!draft && (profile.data.absentSkills ?? []).length > 0 && <div className="profile-absent-skills">
+      <h4>Skills you do not have</h4>
+      <p className="profile-absent-note">Marked from vacancies with the cross. A requirement for one of these counts as not met, and it is not offered again.</p>
+      <div className="profile-skill-chips">{(profile.data.absentSkills ?? []).map((skill) => <span key={skill.key} className="profile-skill absent">{skill.name}
+        <button type="button" className="profile-skill-remove" aria-label={`Remove ${skill.name} from the skills you do not have`} title="Remove from this list" onClick={() => void editor.removeAbsentSkill(skill.key)}>×</button></span>)}</div>
+    </div>}
   </SectionShell>;
 }
 

@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"github.com/w3con/sifty/internal/candidate"
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
+	"github.com/w3con/sifty/internal/modellock"
 	"github.com/w3con/sifty/internal/prompts"
 	"github.com/w3con/sifty/internal/store"
 )
@@ -126,12 +128,15 @@ func (w *AssessmentWorker) runOnce() error {
 		w.lastEnqueueAll = ms
 	}
 
-	// Acquire the inference lock to prevent parallel runs (across processes/goroutines).
-	pid := os.Getpid()
-	if err := w.store.AcquireLock("inference", pid); err != nil {
-		return nil // another process holds the lock
+	// Take the machine-wide model lock to prevent parallel model use (across processes/goroutines).
+	lock, err := modellock.TryAcquire()
+	if err != nil {
+		if errors.Is(err, modellock.ErrBusy) {
+			return nil // another run holds the lock
+		}
+		return err
 	}
-	defer func() { _ = w.store.ReleaseLock("inference", pid) }()
+	defer lock.Release()
 
 	// Check queue enabled and find the next row while holding the lock.
 	state, err = w.store.GetQueueState()
@@ -152,6 +157,7 @@ func (w *AssessmentWorker) runOnce() error {
 	}
 
 	// Mark running.
+	pid := os.Getpid()
 	if err := w.store.MarkQueueRunning(row.JobID, pid, ms); err != nil {
 		return fmt.Errorf("mark running: %w", err)
 	}

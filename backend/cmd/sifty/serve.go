@@ -129,10 +129,22 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	discipline := background.NewBrowserDiscipline(cfgHolder, background.SystemClock{})
 	inspectFn := discipline.Wrap(rawInspectFn)
 
-	// Fresh startup recomputes Quick Match locally from retained facts. It performs no fetch,
-	// model or queue work; a failure is logged and leaves saved data/results unchanged.
+	// The model-pass worker extracts each vacancy's requirements and compares them with the profile
+	// in the background. It starts once the startup rescoring below has given every vacancy a
+	// Fits you, so its first order of work is the real one.
+	fitW := background.NewFitWorker(s, cfgHolder, quickMatches)
+	matchsvc.SetModelWorkNotifier(fitW.Nudge)
+	matchsvc.SetModelWorkPriority(fitW.Prioritize)
+	deps.FitStatus = func() any { return fitW.Status() }
+	fitReady := make(chan struct{})
+	fitW.Ready = fitReady
+
+	// Fresh startup recomputes Quick Match locally from retained facts and rescores both scores
+	// from what is stored. It performs no fetch or model call; a failure is logged and leaves
+	// saved data/results unchanged.
 	go func() {
-		if _, err := quickMatches.Recompute(context.Background()); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
+		defer close(fitReady)
+		if err := quickMatches.Recalculate(context.Background()); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
 			log.Printf("startup quick match: %v", err)
 		}
 	}()
@@ -147,7 +159,9 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	assessW.Start()
 	prepW.Start()
 	sched.Start()
+	fitW.Start()
 	defer func() {
+		fitW.Stop()
 		assessW.Stop()
 		prepW.Stop()
 		sched.Stop()

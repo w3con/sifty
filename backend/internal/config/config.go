@@ -80,6 +80,9 @@ type Runtime struct {
 	BrowserConcurrency   int  `yaml:"browser_concurrency"`
 	BrowserCooldownMS    int  `yaml:"browser_cooldown_ms"`
 	CollectionCooldownMS int  `yaml:"collection_cooldown_ms"`
+	// CollectionDisabled stops every vacancy collection run of this process, manual and daily.
+	// Review copies of the data use it so that they never fetch from the internet.
+	CollectionDisabled bool `yaml:"collection_disabled"`
 
 	// Profile document handling. Zero values select the documented defaults in the
 	// Effective methods below; they are the single configuration location for the
@@ -102,19 +105,19 @@ type Runtime struct {
 	QuickMatch QuickMatch `yaml:"quick_match"`
 }
 
-// QuickMatchWeights are the fixed v1 group weights. They sum to 1 and are versioned with the
-// rule set; no corpus-relative normalization uses them.
+// QuickMatchWeights are the goal-group weights of Fits you. Fits you divides by the weights of
+// the groups it uses, so they need not sum to 1; they are versioned with the rule set. A
+// leftover professional key in an older runtime.yaml is ignored.
 type QuickMatchWeights struct {
 	Role         float64 `yaml:"role"         json:"role"`
-	Professional float64 `yaml:"professional" json:"professional"`
 	Compensation float64 `yaml:"compensation" json:"compensation"`
 	Geography    float64 `yaml:"geography"    json:"geography"`
 	Conditions   float64 `yaml:"conditions"   json:"conditions"`
 }
 
-// Sum returns the total of the five group weights.
+// Sum returns the total of the four goal-group weights.
 func (w QuickMatchWeights) Sum() float64 {
-	return w.Role + w.Professional + w.Compensation + w.Geography + w.Conditions
+	return w.Role + w.Compensation + w.Geography + w.Conditions
 }
 
 // QuickMatchSourceField declares the usability of one source's structured fields. Only
@@ -135,6 +138,92 @@ type QuickMatch struct {
 	RequiredWeight      float64                          `yaml:"required_weight"      json:"requiredWeight"`
 	PreferredWeight     float64                          `yaml:"preferred_weight"     json:"preferredWeight"`
 	SourceFields        map[string]QuickMatchSourceField `yaml:"source_fields"        json:"sourceFields"`
+	ModelPasses         QuickMatchModelPasses            `yaml:"model_passes"         json:"modelPasses"`
+}
+
+// QuickMatchModelPasses tunes the two model passes (requirement extraction and profile matching).
+// Zero values select the documented defaults through the Effective accessors, so an older block
+// without this key stays valid.
+type QuickMatchModelPasses struct {
+	// MaxRequirements caps how many requirements one vacancy may keep after validation.
+	MaxRequirements int `yaml:"max_requirements" json:"maxRequirements"`
+	// MaxAttempts caps the calls made for one pass when the provider fails transiently.
+	MaxAttempts int `yaml:"max_attempts" json:"maxAttempts"`
+	// Temperature is the sampling temperature for both passes; nil selects the default.
+	Temperature *float64 `yaml:"temperature" json:"temperature"`
+	// AllowPaidBulkProvider lets bulk extraction use a provider that is neither local nor marked
+	// free. It is false unless the owner turns it on explicitly.
+	AllowPaidBulkProvider bool `yaml:"allow_paid_bulk_provider" json:"allowPaidBulkProvider"`
+	// Paused stops the background worker that runs the passes; a pass already running finishes.
+	Paused bool `yaml:"paused" json:"paused"`
+	// DailyLimit caps the vacancies analysed per local calendar day; 0 means no limit.
+	DailyLimit int `yaml:"daily_limit" json:"dailyLimit"`
+	// Order is the order the background worker takes vacancies in. It follows the Inbox sort
+	// toggle: "fit" (Fits you descending, the default) or "newest" (the Inbox Newest key). The
+	// frontend saves it through PUT /api/quick-match/order; the worker reads it before each vacancy.
+	Order string `yaml:"order" json:"order"`
+	// EvidencePassages is how many profile passages closest to a requirement the matching model is
+	// shown for it (the computed facts are always shown besides). Zero selects the default.
+	EvidencePassages int `yaml:"evidence_passages" json:"evidencePassages"`
+	// Matching switches the model's matching pass on. It is off unless set to true: the worker then
+	// runs extraction only, and You fit is not shown (docs/specs/quick-match.md 14.14).
+	Matching bool `yaml:"matching" json:"matching"`
+}
+
+// Defaults of the model passes.
+const (
+	DefaultMaxRequirements = 30
+	DefaultMaxAttempts     = 3
+	DefaultTemperature     = 0.1
+	// DefaultEvidencePassages is the number of profile passages shown for one requirement.
+	DefaultEvidencePassages = 3
+)
+
+// EffectiveMaxRequirements returns the configured cap, or the default when unset.
+func (m QuickMatchModelPasses) EffectiveMaxRequirements() int {
+	if m.MaxRequirements > 0 {
+		return m.MaxRequirements
+	}
+	return DefaultMaxRequirements
+}
+
+// EffectiveMaxAttempts returns the configured attempt cap, or the default when unset.
+func (m QuickMatchModelPasses) EffectiveMaxAttempts() int {
+	if m.MaxAttempts > 0 {
+		return m.MaxAttempts
+	}
+	return DefaultMaxAttempts
+}
+
+// EffectiveEvidencePassages returns the configured number of passages per requirement, or the
+// default when unset.
+func (m QuickMatchModelPasses) EffectiveEvidencePassages() int {
+	if m.EvidencePassages > 0 {
+		return m.EvidencePassages
+	}
+	return DefaultEvidencePassages
+}
+
+// Model work orders; they match the two values of the Inbox sort toggle.
+const (
+	OrderFit    = "fit"
+	OrderNewest = "newest"
+)
+
+// EffectiveOrder returns the configured order, or Best fit when unset.
+func (m QuickMatchModelPasses) EffectiveOrder() string {
+	if m.Order == OrderNewest {
+		return OrderNewest
+	}
+	return OrderFit
+}
+
+// EffectiveTemperature returns the configured temperature, or the default when unset.
+func (m QuickMatchModelPasses) EffectiveTemperature() float64 {
+	if m.Temperature != nil {
+		return *m.Temperature
+	}
+	return DefaultTemperature
 }
 
 // DefaultSourcePolicyVersion identifies the default source-field policy data shape.
@@ -145,10 +234,10 @@ const DefaultSourcePolicyVersion = "source-policy/1"
 func DefaultQuickMatch() QuickMatch {
 	return QuickMatch{
 		Version:             1,
-		RulesVersion:        "quickmatch.rules/1",
+		RulesVersion:        "quickmatch.rules/2",
 		SourcePolicyVersion: DefaultSourcePolicyVersion,
 		Weights: QuickMatchWeights{
-			Role: 0.25, Professional: 0.30, Compensation: 0.20,
+			Role: 0.25, Compensation: 0.20,
 			Geography: 0.15, Conditions: 0.10,
 		},
 		RequiredWeight:  2,
@@ -246,6 +335,14 @@ type Provider struct {
 	APIKeyEnv    string `yaml:"api_key_env"`
 	TimeoutMS    int    `yaml:"timeout_ms"`
 	ContextChars int    `yaml:"context_chars"`
+	// Free marks a provider that costs nothing per call (for example a flat subscription the
+	// owner accepts for bulk work). Local providers (ollama, compatible over loopback) are free
+	// by construction and need no mark.
+	Free bool `yaml:"free,omitempty"`
+	// Think sets the reasoning effort ("low", "medium" or "high") of an ollama model that cannot
+	// switch reasoning off (gpt-oss). Empty leaves the model's own default, and the quick-match
+	// passes then ask for no reasoning.
+	Think string `yaml:"think,omitempty"`
 }
 
 // Providers is the provider configuration, with the provider chosen for each stage.
@@ -255,8 +352,19 @@ type Providers struct {
 		Assessment  string `yaml:"assessment"`
 		Extraction  string `yaml:"extraction"`
 		Preparation string `yaml:"preparation"`
+		// Matching is the provider that compares requirements with the profile. Optional: empty
+		// means the extraction provider, so one model does both passes unless this names another.
+		Matching string `yaml:"matching,omitempty"`
 	} `yaml:"stages"`
 	Providers map[string]Provider `yaml:"providers"`
+}
+
+// MatchingStage is the name of the provider the matching pass uses.
+func (p Providers) MatchingStage() string {
+	if p.Stages.Matching != "" {
+		return p.Stages.Matching
+	}
+	return p.Stages.Extraction
 }
 
 // SourceRole describes the category and scope of a candidate evidence source.
@@ -297,6 +405,8 @@ type Config struct {
 	Providers Providers
 	Candidate Candidate
 	Network   Network
+	// Skills is the vocabulary of the requirement matcher (skills.yaml, or the built-in default).
+	Skills Skills
 }
 
 var validProviderTypes = map[string]bool{"opencode": true, "claude": true, "ollama": true, "compatible": true}
@@ -342,6 +452,11 @@ func Load(d dirs.Dirs) (*Config, error) {
 			return nil, err
 		}
 	}
+	skills, err := loadSkills(d)
+	if err != nil {
+		return nil, err
+	}
+	c.Skills = skills
 	if err := c.validate(); err != nil {
 		return nil, err
 	}
@@ -395,6 +510,11 @@ func (c *Config) validate() error {
 		if p.APIKeyEnv != "" && !apiKeyEnvRe.MatchString(p.APIKeyEnv) {
 			return fmt.Errorf("providers.yaml: provider %q api_key_env must be an environment variable name", name)
 		}
+		switch p.Think {
+		case "", "low", "medium", "high":
+		default:
+			return fmt.Errorf("providers.yaml: provider %q think must be low, medium or high", name)
+		}
 	}
 	for stage, name := range map[string]string{"assessment": c.Providers.Stages.Assessment, "extraction": c.Providers.Stages.Extraction} {
 		if name == "" {
@@ -404,10 +524,13 @@ func (c *Config) validate() error {
 			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", stage, name)
 		}
 	}
-	// preparation is optional (empty means unset); if set, it must name a known provider.
-	if p := c.Providers.Stages.Preparation; p != "" {
+	// preparation and matching are optional (empty means unset); if set, each must name a known provider.
+	for stage, p := range map[string]string{"preparation": c.Providers.Stages.Preparation, "matching": c.Providers.Stages.Matching} {
+		if p == "" {
+			continue
+		}
 		if _, ok := c.Providers.Providers[p]; !ok {
-			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", "preparation", p)
+			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", stage, p)
 		}
 	}
 	if c.Candidate.Version != 1 {

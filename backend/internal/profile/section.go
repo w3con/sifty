@@ -16,6 +16,7 @@ const (
 	SectionIdentity          Section = "identity"
 	SectionDemographics      Section = "demographics"
 	SectionSkills            Section = "skills"
+	SectionAbsentSkills      Section = "absent-skills"
 	SectionExperience        Section = "experience"
 	SectionGoals             Section = "goals"
 	SectionCompensation      Section = "compensation"
@@ -30,7 +31,7 @@ const (
 // ParseSection validates a route/section name.
 func ParseSection(value string) (Section, error) {
 	switch Section(value) {
-	case SectionIdentity, SectionDemographics, SectionSkills, SectionExperience, SectionGoals,
+	case SectionIdentity, SectionDemographics, SectionSkills, SectionAbsentSkills, SectionExperience, SectionGoals,
 		SectionCompensation, SectionWork, SectionGeography, SectionLanguages,
 		SectionAvailability, SectionDealbreakers, SectionOtherRequirements:
 		return Section(value), nil
@@ -124,6 +125,26 @@ func mergeSection(data *ProfileData, section Section, value json.RawMessage) err
 			return fmt.Errorf("skills: %w", err)
 		}
 		data.Skills = markManualSkillProvenance(incoming, data.Skills)
+		// A skill the owner now has is no longer one they do not have.
+		data.AbsentSkills = withoutSkills(data.AbsentSkills, data.Skills)
+	case SectionAbsentSkills:
+		rows, err := mergeAbsentSkills(value)
+		if err != nil {
+			return fmt.Errorf("skills you do not have: %w", err)
+		}
+		data.AbsentSkills = rows
+		// The two lists never overlap: naming a skill here takes it out of the skills they have.
+		kept := make([]Skill, 0, len(data.Skills))
+		gone := map[string]bool{}
+		for _, a := range rows {
+			gone[a.Key] = true
+		}
+		for _, sk := range data.Skills {
+			if !gone[sk.Key] {
+				kept = append(kept, sk)
+			}
+		}
+		data.Skills = kept
 	case SectionExperience:
 		incoming, err := mergeExperience(data.Experience, value)
 		if err != nil {
@@ -425,7 +446,15 @@ func sectionSnapshot(data ProfileData, section Section) any {
 	case SectionDemographics:
 		return data.Demographics
 	case SectionSkills:
-		return data.Skills
+		return struct {
+			Skills []Skill
+			Absent []AbsentSkill
+		}{data.Skills, data.AbsentSkills}
+	case SectionAbsentSkills:
+		return struct {
+			Skills []Skill
+			Absent []AbsentSkill
+		}{data.Skills, data.AbsentSkills}
 	case SectionExperience:
 		return data.Experience
 	case SectionGoals:
@@ -446,4 +475,45 @@ func sectionSnapshot(data ProfileData, section Section) any {
 		return data.OtherRequirements
 	}
 	return nil
+}
+
+// mergeAbsentSkills decodes the list of skills the owner does not have. The list is replaced as a
+// whole; a row without a key gets one from its name, and a repeated name is kept once.
+func mergeAbsentSkills(value json.RawMessage) ([]AbsentSkill, error) {
+	var rows []AbsentSkill
+	if err := json.Unmarshal(value, &rows); err != nil {
+		return nil, err
+	}
+	out := make([]AbsentSkill, 0, len(rows))
+	seen := map[string]bool{}
+	for _, r := range rows {
+		r.Name = strings.Join(strings.Fields(r.Name), " ")
+		if r.Name == "" {
+			continue
+		}
+		if strings.TrimSpace(r.Key) == "" {
+			r.Key = skillKeyOf(r.Name)
+		}
+		if r.Key == "" || seen[r.Key] {
+			continue
+		}
+		seen[r.Key] = true
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// withoutSkills drops from the absences every skill that is now among the skills the owner has.
+func withoutSkills(absent []AbsentSkill, skills []Skill) []AbsentSkill {
+	have := map[string]bool{}
+	for _, s := range skills {
+		have[s.Key] = true
+	}
+	out := make([]AbsentSkill, 0, len(absent))
+	for _, a := range absent {
+		if !have[a.Key] {
+			out = append(out, a)
+		}
+	}
+	return out
 }

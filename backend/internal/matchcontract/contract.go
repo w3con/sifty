@@ -17,8 +17,10 @@ const ExtractorVersion = "jobextract/3"
 
 // RulesVersion identifies the numerical Quick Match policy. The concrete weights and
 // sub-weights are configuration data, validated into Rules; this constant only identifies the
-// rule set shape.
-const RulesVersion = "quickmatch.rules/1"
+// rule set shape. Version 2 is the two-score policy: a group with no comparable fact counts as
+// the midpoint, the professional group and work authorization are no longer goals, and You fit
+// is computed from model-extracted requirements.
+const RulesVersion = "quickmatch.rules/2"
 
 // Group is one of the five fit groups.
 type Group string
@@ -34,6 +36,22 @@ const (
 // Groups returns the five groups in contract order.
 func Groups() []Group {
 	return []Group{GroupRole, GroupProfessional, GroupCompensation, GroupGeography, GroupConditions}
+}
+
+// GoalGroups returns the groups that take part in Fits you: the four the owner states as goals.
+// The professional group describes the vacancy's requirements, which You fit judges instead, so
+// it carries no weight.
+func GoalGroups() []Group {
+	return []Group{GroupRole, GroupCompensation, GroupGeography, GroupConditions}
+}
+
+// IsGoal reports whether g is one of the goal groups that carry a weight.
+func (g Group) IsGoal() bool {
+	switch g {
+	case GroupRole, GroupCompensation, GroupGeography, GroupConditions:
+		return true
+	}
+	return false
 }
 
 // Valid reports whether g is a known group.
@@ -441,13 +459,17 @@ type ProfileAuthorization struct {
 	Status  string `json:"status,omitempty"`
 }
 
-// Rules is the validated numerical policy supplied to the evaluator. Weights sum to 1.
+// Rules is the validated numerical policy supplied to the evaluator. Weights hold exactly the four
+// goal groups; Fits you divides by the sum of the weights of the groups it uses, so the weights
+// need not add up to 1. RequiredWeight and PreferredWeight weigh requirements in You fit.
 type Rules struct {
-	SchemaVersion   string            `json:"schemaVersion"`
-	RulesVersion    string            `json:"rulesVersion"`
-	Weights         map[Group]float64 `json:"weights"`
-	RequiredWeight  float64           `json:"requiredWeight"`
-	PreferredWeight float64           `json:"preferredWeight"`
+	SchemaVersion      string            `json:"schemaVersion"`
+	RulesVersion       string            `json:"rulesVersion"`
+	Weights            map[Group]float64 `json:"weights"`
+	RequiredWeight     float64           `json:"requiredWeight"`
+	PreferredWeight    float64           `json:"preferredWeight"`
+	UnknownGoalUtility float64           `json:"unknownGoalUtility"`
+	VerdictUtility     VerdictUtilities  `json:"verdictUtility"`
 }
 
 // ResultStatus distinguishes a numeric score, no usable evidence, and a stale saved result.
@@ -588,6 +610,9 @@ type Contribution struct {
 	Utility          float64     `json:"utility"`
 	Weighted         float64     `json:"weighted"`
 	Status           Reliability `json:"status"`
+	// Assumed marks a group that had no comparable fact: Utility is the configured midpoint,
+	// not an observed comparison.
+	Assumed bool `json:"assumed,omitempty"`
 }
 
 // Unknown is one missing or ambiguous fact shown to the owner.

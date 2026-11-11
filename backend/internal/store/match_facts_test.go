@@ -202,8 +202,8 @@ func TestMigrationV19PreservesV18Data(t *testing.T) {
 	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatal(err)
 	}
-	if version != 20 {
-		t.Errorf("user_version = %d, want 20", version)
+	if version != 22 {
+		t.Errorf("user_version = %d, want 22", version)
 	}
 	var title, basis, reason string
 	if err := s.DB.QueryRow("SELECT title, published_basis, outcome_reason FROM jobs WHERE id=?", id).

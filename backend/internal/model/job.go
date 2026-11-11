@@ -60,11 +60,14 @@ type Job struct {
 	MatchStale           bool                `json:"matchStale"`
 	QuickMatch           *matchcontract.View `json:"quickMatch,omitempty"`
 	QuickMatchError      string              `json:"quickMatchError,omitempty"`
-	Assessment           any                 `json:"assessment"`
-	AssessmentError      *string             `json:"assessmentError"`
-	Sources              []JobSource         `json:"sources"`
-	Blocked              bool                `json:"blocked"`
-	BlockedBy            string              `json:"blockedBy"`
-	Stopped              bool                `json:"stopped"`
-	StoppedBy            string              `json:"stoppedBy"`
+	// Fit is the stored two-score result (Fits you, You fit and the four lists). Nil until the
+	// vacancy has been scored.
+	Fit             *matchcontract.FitView `json:"fit,omitempty"`
+	Assessment      any                    `json:"assessment"`
+	AssessmentError *string                `json:"assessmentError"`
+	Sources         []JobSource            `json:"sources"`
+	Blocked         bool                   `json:"blocked"`
+	BlockedBy       string                 `json:"blockedBy"`
+	Stopped         bool                   `json:"stopped"`
+	StoppedBy       string                 `json:"stoppedBy"`
 }

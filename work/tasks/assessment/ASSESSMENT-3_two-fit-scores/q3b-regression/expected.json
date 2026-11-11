@@ -1,0 +1,99 @@
+{
+  "note": "Expected requirements and conditions, written by hand from the vacancy text before any model run. 'match' is a list of regular expressions tried against a received requirement's text, its alternatives and its quote; any hit finds it. 'level' is the level the text implies ('any' when the wording is ambiguous). 'group' means the demand lists examples or choices and must come back as ONE requirement with alternatives. 'forbidden' are things that must NOT come back as requirements. A condition is 'null' (not stated, must not be reported), a value, or 'either' (a value or null is acceptable).",
+  "jobs": [
+    {
+      "id": 84, "label": "Tech Lead | Parity (glued paragraph; '50/50 hybrid role' is about duties)",
+      "requirements": [
+        {"name": "Software engineer / tech lead background, production code and architecture", "match": ["software engineer", "tech lead", "engineering manager", "production-level", "architect"], "level": "required"},
+        {"name": "Managing or leading engineering teams", "match": ["manag", "leading engineering", "people leadership", "team leadership"], "level": "required"},
+        {"name": "Founder / early-stage startup experience", "match": ["founder", "startup"], "level": "preferred"},
+        {"name": "Interest or background in Web3, blockchain, distributed or low-level systems (Rust, Substrate, Go, C++ are examples)", "match": ["web3", "blockchain", "distributed systems", "low-level"], "level": "preferred", "group": true},
+        {"name": "Sprint management, dependency tracking, cross-team communication", "match": ["sprint", "dependency", "cross-team"], "level": "required"},
+        {"name": "Asynchronous communication, European or aligned time zones", "match": ["async", "time ?zone", "european"], "level": "required"}
+      ],
+      "forbidden": [{"name": "an example technology listed as its own requirement", "match": ["^rust$", "^substrate$", "^go$", "^c\\+\\+$"]}],
+      "conditions": {"workMode": "remote", "engagement": "contract", "hours": "null", "timezone": "either", "compensation": "null", "location": "either"}
+    },
+    {
+      "id": 2616, "label": "Software Engineer - Applied AI | Deepgram (stack sentence, in-person, '9-to-5' negated)",
+      "requirements": [
+        {"name": "Backend services shipped in production in the cloud", "match": ["backend", "production in the cloud"], "level": "required"},
+        {"name": "AI-native way of working with AI coding tools", "match": ["ai-native", "ai coding", "ai tools"], "level": "required"},
+        {"name": "Learns quickly, unfamiliar parts of the stack", "match": ["learn"], "level": "required"},
+        {"name": "Finds problems and proposes solutions", "match": ["finds work", "problems", "propose", "proactiv", "initiative"], "level": "required"},
+        {"name": "Took something from idea to production", "match": ["idea to production", "from idea"], "level": "required"},
+        {"name": "Clear communication, works with customers", "match": ["communicat", "customer"], "level": "required"},
+        {"name": "Comfortable working across languages (stack: Kotlin, Python, TypeScript)", "match": ["across languages", "multiple languages", "polyglot", "languages"], "level": "required"},
+        {"name": "Model training / fine-tuning experience", "match": ["fine-tun", "training"], "level": "preferred"},
+        {"name": "Evaluation or scoring for models or agents", "match": ["evaluation", "scoring"], "level": "preferred"},
+        {"name": "Audio, speech-to-text or text-to-speech", "match": ["audio", "speech"], "level": "preferred"},
+        {"name": "Founder or early startup, zero to one", "match": ["founder", "startup", "zero to one"], "level": "preferred"},
+        {"name": "2+ years of engineering experience", "match": ["2\\+ years", "two years", "2 years"], "level": "preferred"}
+      ],
+      "forbidden": [{"name": "the company's own stack as a spoken-language requirement or separate requirement", "match": ["^kotlin( and python)?$", "^python$", "^typescript$"]}],
+      "conditions": {"workMode": "office", "engagement": "null", "hours": "null", "timezone": "null", "compensation": "null", "location": "either"}
+    },
+    {
+      "id": 2520, "label": "Backend Product Software Engineer | Dropbox (list page: other listings and pay ranges follow the text)",
+      "requirements": [
+        {"name": "5+ years of software engineering experience", "match": ["5\\+ years", "5 years", "five years"], "level": "required"},
+        {"name": "BS in computer science or equivalent experience", "match": ["bs degree", "bachelor", "computer science", "degree"], "level": "required"},
+        {"name": "Track record delivering software solutions through milestones", "match": ["track record", "milestones", "delivering software"], "level": "required"},
+        {"name": "Shipped large-scale web applications", "match": ["large-scale web", "web applications"], "level": "required"},
+        {"name": "Building user-facing software for web / desktop", "match": ["user-facing"], "level": "required"},
+        {"name": "Open-source contributions", "match": ["open source"], "level": "preferred"},
+        {"name": "Full-stack development", "match": ["full-stack", "full stack"], "level": "preferred"},
+        {"name": "Technologies: MySQL, Python, Go, Java, Rust", "match": ["mysql", "technologies"], "level": "preferred", "group": true}
+      ],
+      "forbidden": [{"name": "the 'durable skills' values are not requirements", "match": ["awareness", "judgment", "adaptab", "^connection$"]}],
+      "conditions": {"workMode": "null", "engagement": "null", "hours": "either", "timezone": "null", "compensation": "null", "location": "either"}
+    },
+    {
+      "id": 834, "label": "Software Engineer | Chalk ('This is not a hybrid role', in the office 5 days)",
+      "requirements": [
+        {"name": "4+ years of professional backend engineering", "match": ["4\\+ years", "4 years", "four years"], "level": "required"},
+        {"name": "Strong computer science fundamentals", "match": ["fundamentals"], "level": "required"},
+        {"name": "Comfort leading development of new components, ownership", "match": ["leading development", "ownership", "lead"], "level": "required"},
+        {"name": "Learns new concepts quickly", "match": ["learn"], "level": "required"},
+        {"name": "Works autonomously, pragmatic tradeoffs", "match": ["autonom", "tradeoff"], "level": "required"},
+        {"name": "Strong communication skills", "match": ["communication"], "level": "required"},
+        {"name": "Bachelor's degree in Computer Science or equivalent", "match": ["bachelor", "degree"], "level": "required"},
+        {"name": "Data infrastructure experience", "match": ["data infrastructure"], "level": "preferred"},
+        {"name": "Distributed systems / compilers / query planners", "match": ["distributed systems", "compilers", "query planner"], "level": "preferred", "group": true},
+        {"name": "Rust experience", "match": ["rust"], "level": "preferred"},
+        {"name": "PaaS-like software", "match": ["paas"], "level": "preferred"}
+      ],
+      "forbidden": [{"name": "'Write C++, Python and Rust' is a task, not a requirement", "match": ["^c\\+\\+", "^write c\\+\\+"]}],
+      "conditions": {"workMode": "office", "engagement": "null", "hours": "null", "timezone": "null", "compensation": "null", "location": "either"}
+    },
+    {
+      "id": 32, "label": "Principal Engineer | OKX (glued, 'PhD or Master's', right-to-work preference, 'e.g.' in the role description)",
+      "requirements": [
+        {"name": "PhD or Master's in CS, AI, ML, Robotics or a related field", "match": ["phd", "master"], "level": "required"},
+        {"name": "10+ years of industry experience", "match": ["10 years", "10\\+ years", "ten years"], "level": "required"},
+        {"name": "Deep expertise in long-term memory, knowledge graphs or context management", "match": ["long-term memory", "knowledge graph", "context management"], "level": "required", "group": true},
+        {"name": "Right to work in Singapore without sponsorship", "match": ["right to work", "singapore", "sponsor"], "level": "any"},
+        {"name": "Experience in top-tier AI labs or tech leaders", "match": ["top-tier", "ai labs"], "level": "preferred"},
+        {"name": "Experience in high-frequency trading, fintech, Web3 or crypto", "match": ["fintech", "web3", "crypto", "high-frequency"], "level": "preferred"},
+        {"name": "Startups or research-intensive environments, comfortable with ambiguity", "match": ["startup", "research-intensive", "ambiguity"], "level": "preferred"}
+      ],
+      "forbidden": [{"name": "research concepts named as examples are not requirements", "match": ["^context graphs?$", "^graphrag$", "^agent memory architectures?$"]}],
+      "conditions": {"workMode": "null", "engagement": "null", "hours": "null", "timezone": "null", "compensation": "null", "location": "either"}
+    },
+    {
+      "id": 29, "label": "Staff Software Development Engineer | Zscaler (glued, 'such as C, C++, Python', '#LI-Hybrid' tag, 'is a plus')",
+      "requirements": [
+        {"name": "5+ years in software development or sustenance engineering", "match": ["5\\+ years", "5 years", "five years"], "level": "required"},
+        {"name": "Proficiency in programming languages such as C, C++, Python and Linux", "match": ["programming languages", "c\\+\\+"], "level": "required", "group": true},
+        {"name": "Hands-on experience with network security products (firewalls, VPNs, data protection)", "match": ["network security", "firewall"], "level": "required", "group": true},
+        {"name": "Experience developing cloud and customer reliability tools", "match": ["reliability tools", "customer reliability"], "level": "required"},
+        {"name": "Interest in troubleshooting customer issues; public cloud / Kubernetes knowledge is a plus", "match": ["troubleshooting", "kubernetes", "public cloud"], "level": "any"},
+        {"name": "Bachelor's degree in Computer Science or engineering", "match": ["bachelor", "degree"], "level": "preferred"},
+        {"name": "Cloud reliability engineering experience", "match": ["reliability engineering"], "level": "preferred"},
+        {"name": "Delivering products as cloud-based services", "match": ["cloud-based services", "delivering products"], "level": "preferred"}
+      ],
+      "forbidden": [{"name": "an example language listed as its own requirement", "match": ["^c$", "^c\\+\\+$", "^python$", "^linux$"]}],
+      "conditions": {"workMode": "either", "engagement": "null", "hours": "null", "timezone": "null", "compensation": "null", "location": "either"}
+    }
+  ]
+}

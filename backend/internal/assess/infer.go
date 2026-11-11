@@ -220,12 +220,21 @@ func inferHTTP(ctx context.Context, p Provider, requestText string, schema any) 
 		if numCtx > maxNumCtx {
 			numCtx = maxNumCtx
 		}
-		payload["options"] = map[string]any{"num_ctx": numCtx}
+		options := map[string]any{"num_ctx": numCtx}
+		if p.Temperature != nil {
+			options["temperature"] = *p.Temperature
+		}
+		payload["options"] = options
 		payload["format"] = schema
-		if p.Think != nil {
+		if p.ThinkLevel != "" {
+			payload["think"] = p.ThinkLevel
+		} else if p.Think != nil {
 			payload["think"] = *p.Think
 		}
 	} else {
+		if p.Temperature != nil {
+			payload["temperature"] = *p.Temperature
+		}
 		payload["response_format"] = map[string]any{
 			"type":        "json_schema",
 			"json_schema": map[string]any{"name": "result", "schema": schema, "strict": true},

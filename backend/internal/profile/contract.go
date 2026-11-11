@@ -340,12 +340,21 @@ type OtherRequirements struct {
 	Selected bool            `json:"selected,omitempty"`
 }
 
+// AbsentSkill is a skill the owner has said they do not have, kept beside the skills they do have.
+// It is a confirmed absence: a requirement for it is answered "no" without asking a model, and it
+// is not offered for adding again. Key follows the same rule as Skill.Key.
+type AbsentSkill struct {
+	Key  string `json:"key"`
+	Name string `json:"name"`
+}
+
 // ProfileData is the complete typed profile contract. Empty strings, nil numbers and empty
 // slices mean "unknown"; they must not be displayed or scored as confirmed zero/false values.
 type ProfileData struct {
 	Identity             Identity          `json:"identity"`
 	Demographics         Demographics      `json:"demographics"`
 	Skills               []Skill           `json:"skills"`
+	AbsentSkills         []AbsentSkill     `json:"absentSkills"`
 	Experience           []Experience      `json:"experience"`
 	TargetRoles          []string          `json:"targetRoles"`
 	TargetIndustries     []string          `json:"targetIndustries"`
@@ -370,6 +379,9 @@ func (p *ProfileData) Normalize() {
 	}
 	if p.Skills == nil {
 		p.Skills = []Skill{}
+	}
+	if p.AbsentSkills == nil {
+		p.AbsentSkills = []AbsentSkill{}
 	}
 	if p.Experience == nil {
 		p.Experience = []Experience{}
@@ -548,6 +560,23 @@ var (
 // Validate rejects malformed typed values before they reach storage. Empty enum values are
 // accepted as "unknown"; invalid non-empty values are refused rather than silently coerced.
 func (p *ProfileData) Validate() error {
+	have := map[string]bool{}
+	for _, s := range p.Skills {
+		have[strings.TrimSpace(s.Key)] = true
+	}
+	absent := map[string]bool{}
+	for i, a := range p.AbsentSkills {
+		if strings.TrimSpace(a.Key) == "" || strings.TrimSpace(a.Name) == "" {
+			return fmt.Errorf("Skill you do not have %d: enter a name", i+1)
+		}
+		if absent[a.Key] {
+			return fmt.Errorf("%q is listed twice among the skills you do not have", a.Name)
+		}
+		if have[a.Key] {
+			return fmt.Errorf("%q is both in your skills and among the skills you do not have", a.Name)
+		}
+		absent[a.Key] = true
+	}
 	seenKeys := map[string]bool{}
 	seenSkillIDs := map[string]bool{}
 	for i, s := range p.Skills {

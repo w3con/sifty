@@ -16,7 +16,7 @@ func matchRules() matchcontract.Rules {
 	return matchcontract.Rules{
 		SchemaVersion: matchcontract.SchemaVersion, RulesVersion: matchcontract.RulesVersion,
 		Weights: map[matchcontract.Group]float64{
-			matchcontract.GroupRole: 0.25, matchcontract.GroupProfessional: 0.30,
+			matchcontract.GroupRole:         0.25,
 			matchcontract.GroupCompensation: 0.20, matchcontract.GroupGeography: 0.15,
 			matchcontract.GroupConditions: 0.10,
 		},
@@ -129,7 +129,7 @@ func TestMatchResultCASPreservesStaleData(t *testing.T) {
 	// An active rules identity that differs by content invalidates the old result.
 	changed := rules
 	changed.Weights[matchcontract.GroupRole] = 0.20
-	changed.Weights[matchcontract.GroupProfessional] = 0.35
+	changed.Weights[matchcontract.GroupCompensation] = 0.35
 	changedID, _ := matchcontract.RulesIdentity(changed)
 	if changedID == rulesID {
 		t.Fatal("rules identity did not change with content")
@@ -190,8 +190,8 @@ func TestMigrationV20PreservesQ1Data(t *testing.T) {
 	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("version: %v", err)
 	}
-	if version != 20 {
-		t.Fatalf("user_version = %d, want 20", version)
+	if version != 22 {
+		t.Fatalf("user_version = %d, want 22", version)
 	}
 	if p, err := s.CurrentProfile(); err != nil || p == nil || p.Revision != 1 {
 		t.Fatalf("profile lost: %+v err=%v", p, err)

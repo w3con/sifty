@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from 'react';
+import React,{useEffect,useRef,useState} from 'react';
 import type {Job} from './model/core';
 import {api} from './api';
 import {assessmentStatus} from './filters';
@@ -6,18 +6,46 @@ import {publicationInfo} from './dates';
 import {summarizeLocation} from './location';
 import {ApplicationDraftView} from './ApplicationDraft';
 import {QuickMatchPanel} from './QuickMatchPanel';
-import {buildFactStrip,coveragePercent,scorePresentation} from './quickmatch';
+import {buildFactStrip,fitsYouCell,youFitCell,youFitOff,type AnalysisStatus} from './quickmatch';
 
-type Props={job:Job;queue:any;onQueue:(q:any)=>void;refresh:()=>Promise<void>;onError:(s:string)=>void;onNotice:(s:string)=>void;onOpenProfile:(section?:string)=>void};
-export function RoleContent({job,queue,onQueue,refresh,onError,onNotice,onOpenProfile}:Props){
+type Props={job:Job;analysis?:AnalysisStatus|null;queue:any;onQueue:(q:any)=>void;refresh:()=>Promise<void>;onError:(s:string)=>void;onNotice:(s:string)=>void;onOpenProfile:(section?:string)=>void};
+export function RoleContent({job,analysis,queue,onQueue,refresh,onError,onNotice,onOpenProfile}:Props){
   const [tab,setTab]=useState<'overview'|'application'>('overview'),[applicationOpened,setApplicationOpened]=useState(false);
   const [options,setOptions]=useState<any>(null),[provider,setProvider]=useState('');
   const [feedback,setFeedback]=useState(''),[scope,setScope]=useState('general'),[history,setHistory]=useState<any[]>([]),[revision,setRevision]=useState<string>(),[saving,setSaving]=useState(false);
   useEffect(()=>{api('assessment-options').then(setOptions).catch(e=>onError(e.message));},[]);
   useEffect(()=>{let active=true;api(`jobs/${job.id}/feedback`).then(r=>{if(active)setHistory(r);}).catch(e=>onError(e.message));return()=>{active=false;};},[job.id]);
   const assessment=job.assessment,row=queue?.rows.find((r:any)=>r.job_id===job.id),publication=publicationInfo(job.publishedAt,job.publishedBasis);
-  const quick=scorePresentation(job.quickMatch,job.quickMatchError),quickCoverage=coveragePercent(job.quickMatch);
-  const quickWidth=job.quickMatch?.result.score==null?0:Math.max(0,Math.min(100,job.quickMatch.result.score));
+  const fitsYou=fitsYouCell(job.fit),youFit=youFitCell(job.fit,analysis);
+  const fitsYouWidth=/^\d+$/.test(fitsYou.number)?Number(fitsYou.number):0;
+  // Adds a skill from a requirement of this vacancy to the profile and stays on the page. It resolves
+  // as soon as the skill is saved; the server matches this vacancy first, and the page reloads every
+  // few seconds in the background until its You fit is back.
+  const jobRef=useRef(job);jobRef.current=job;
+  async function recheck(){
+    let settled=0;
+    for(let i=0;i<30&&settled<2;i++){
+      await refresh();
+      const fit=jobRef.current.fit;
+      settled=fit&&!fit.stale&&(fit.result.youFit.status==='scored'||fit.result.youFit.status==='off')&&i>=2?settled+1:0;
+      if(settled<2)await new Promise(r=>setTimeout(r,2500));
+    }
+  }
+  async function addSkill(name:string){
+    try{
+      await api('profile/skills','POST',{name,jobId:job.id});
+      onNotice(`Added “${name}” to your skills (level Proficient; change it in your profile). Checking this role again…`);
+    }catch(e:any){onError(e.message);throw e;}
+    void recheck().catch(e=>onError(e.message));
+  }
+  async function dismissSkill(name:string){
+    try{
+      await api('profile/absent-skills','POST',{name,jobId:job.id});
+      onNotice(`Noted that you do not have “${name}”. It is listed in your profile under Skills.`);
+    }catch(e:any){onError(e.message);throw e;}
+    void recheck().catch(e=>onError(e.message));
+  }
+  async function refreshSource(){try{await api(`jobs/${job.id}/read`,'POST',{});await refresh();}catch(e:any){onError(e.message);}}
   // Facts about the job itself. Dates, source and expiry live next to the title.
   const loc=summarizeLocation(job.location);
   const facts=buildFactStrip(job.quickMatch,loc.text);
@@ -27,9 +55,9 @@ export function RoleContent({job,queue,onQueue,refresh,onError,onNotice,onOpenPr
   return <>
     <div className="detail-tabs-row">    <nav className="detail-tabs" aria-label="Vacancy view"><button aria-pressed={tab==='overview'} className={tab==='overview'?'active':''} onClick={()=>setTab('overview')}>Overview</button><button disabled={job.stage==='triage'} title={job.stage==='triage'?'Shortlist this role to open Application':undefined} aria-describedby={job.stage==='triage'?'ai-analysis-note':undefined} aria-pressed={tab==='application'} className={tab==='application'?'active':''} onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button></nav>{tab==='overview'&&<div className="fact-strip" aria-label="Key facts">{known.map(f=><span key={f.label} className="fact-chip" title={f.note?`${f.label} · ${f.note}`:f.label}><FactIcon name={f.icon}/><span className="sr-only">{f.label}: </span>{f.value}</span>)}{!!unknown.length&&<span className="fact-unknown" title={`Not separately verified: ${unknown.map(f=>f.label.toLowerCase()).join(', ')}`}><span className="sr-only">Not separately verified: {unknown.map(f=>f.label).join(', ')}</span>{unknown.map(f=><FactIcon key={f.label} name={f.icon}/>)}<span aria-hidden="true">not separately verified</span></span>}</div>}</div>
     {tab==='application'&&<><section className="assessment">
-        <div className="summary-card"><div className="score-overview"><div className="large-score">{quick.number}<small>/100</small></div><div className="score-track"><span style={{width:`${quickWidth}%`}}/></div><strong>Quick match — {quick.label}{quickCoverage===null?'':' · evidence coverage '+quickCoverage+'%'}</strong></div><div className="summary-copy"><p>{assessment?.summary??'Not assessed yet. A configured provider will compare this description with versioned candidate evidence. No role is hidden for low fit.'}</p><div className="assessment-toolbar"><span className="assessed-date">{assessment?.createdAt?`Assessed ${new Date(assessment.createdAt).toLocaleString()}`:assessmentStatus(job,queue?.rows??[])}</span><select aria-label="Assessment provider" value={provider} onChange={e=>setProvider(e.target.value)}><option value="">Configured default ({options?.selected??'loading'})</option>{options?.providers.map((p:any)=><option key={p.name} value={p.name}>{p.name} · {p.model}</option>)}</select><button onClick={reassess}>{assessment?'Assess now':'Assess now'}</button></div></div></div>
+        <div className="summary-card"><div className="score-overview"><div className="large-score">{fitsYou.number}<small>/100</small></div><div className="score-track"><span style={{width:`${fitsYouWidth}%`}}/></div><strong>Fits you{fitsYou.label?` — ${fitsYou.label}`:''}{!youFitOff(job.fit)&&` · You fit ${youFit.number}`}</strong></div><div className="summary-copy"><p>{assessment?.summary??'Not assessed yet. A configured provider will compare this description with versioned candidate evidence. No role is hidden for low fit.'}</p><div className="assessment-toolbar"><span className="assessed-date">{assessment?.createdAt?`Assessed ${new Date(assessment.createdAt).toLocaleString()}`:assessmentStatus(job,queue?.rows??[])}</span><select aria-label="Assessment provider" value={provider} onChange={e=>setProvider(e.target.value)}><option value="">Configured default ({options?.selected??'loading'})</option>{options?.providers.map((p:any)=><option key={p.name} value={p.name}>{p.name} · {p.model}</option>)}</select><button onClick={reassess}>{assessment?'Assess now':'Assess now'}</button></div></div></div>
         {stale&&<p className="warning assessment-state">Candidate evidence or vacancy changed; this assessment uses an older snapshot.</p>}
-        {job.matchStale&&<p className="warning assessment-state">Quick score uses an older profile revision; it is not presented as current.</p>}
+        {job.fit?.stale&&<p className="warning assessment-state">The fit scores are being updated after a change; they are not presented as current.</p>}
         {row&&<p className={`assessment-state ${row.error?'warning':'muted'}`}>{row.status} · {row.provider} · {Math.floor(row.elapsedMs/1000)}s · attempt {row.attempts}{row.error?` · ${row.error}`:''}{row.next_at?` · Retry after ${new Date(row.next_at).toLocaleString()}`:''}</p>}
         {job.assessmentError&&<p className="error assessment-state">Assessment pending: {job.assessmentError}</p>}
         <div className="fit-grid"><section><h3>Evidence of fit <span>· {assessment?.evidence.length??0}</span></h3>{assessment?.evidence.length?assessment.evidence.map((e:any,i:number)=><div className="evidence" key={i}><p><span className="dot"/>{e.claim}</p><blockquote>“{e.quote}”</blockquote><small>{e.sourceId}</small></div>):<p className="empty-card">No verified supporting evidence returned.</p>}</section><div className="fit-unknowns">{[['confirmedMismatches','Confirmed mismatches'],['employerUnknowns','Unknown employer details'],['candidateUnknowns','Candidate facts / questions']].map(([key,label])=><section key={key}><h3>{label}</h3>{assessment?.[key]?.length?<ol className={`unknown-list ${key}`}>{assessment[key].map((g:string,i:number)=><li key={i}>{g}</li>)}</ol>:<p className="empty-card">None recorded.</p>}</section>)}</div></div>
@@ -45,7 +73,7 @@ export function RoleContent({job,queue,onQueue,refresh,onError,onNotice,onOpenPr
       </section></div>
       <aside className="overview-rail">
         
-        <QuickMatchPanel view={job.quickMatch} error={job.quickMatchError} onOpenProfile={onOpenProfile}/>
+        <QuickMatchPanel fit={job.fit} analysis={analysis} onOpenProfile={onOpenProfile} onRefreshSource={refreshSource} onAddSkill={addSkill} onDismissSkill={dismissSkill}/>
         <section className="rail-card ai-note" id="ai-analysis-note"><h3>AI analysis</h3><p>{job.stage==='triage'?<>Detailed model assessment is shown in <b>Application</b> for shortlisted roles.</>:assessment?<>Assessed{assessment.createdAt?` ${new Date(assessment.createdAt).toLocaleDateString()}`:''}. Open <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button> to read it.</>:<>Status: {assessmentStatus(job,queue?.rows??[])}. Results appear in <button className="link-button" onClick={()=>{setApplicationOpened(true);setTab('application');}}>Application</button>.</>}</p></section>
       </aside>
     </div>}

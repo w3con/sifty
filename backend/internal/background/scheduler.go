@@ -92,6 +92,10 @@ func (sc *DailyScheduler) tick() {
 	}
 
 	cfg := sc.cfg.Get()
+	if cfg.Runtime.CollectionDisabled {
+		sc.mu.Unlock()
+		return
+	}
 	now := sc.nowFn()
 	hour := cfg.Runtime.DailyHour
 	minute := cfg.Runtime.DailyMinute

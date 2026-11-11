@@ -247,3 +247,35 @@ func TestTriggerCollectionPastCooldown(t *testing.T) {
 		t.Error("RunID must be a new row, not the previously planted one")
 	}
 }
+
+// TestCollectionDisabledInConfiguration verifies that collection_disabled stops manual runs, the
+// asynchronous start used by POST /api/search, and the daily scheduler, and that none of them
+// records a run or calls the dispatch.
+func TestCollectionDisabledInConfiguration(t *testing.T) {
+	s := newTestStore(t)
+	d := newTestDirs(t)
+	cfg := minimalTestCfg()
+	cfg.Runtime.CollectionDisabled = true
+	cfg.Runtime.DailyHour, cfg.Runtime.DailyMinute = 0, 0 // due at any time of day
+
+	var called int32
+	res, err := TriggerCollection(s, d, cfg, TriggerOpts{Force: true, CollectFn: stubCollect(&called)})
+	if err != nil || !res.Skipped || res.RunID != 0 {
+		t.Fatalf("TriggerCollection: res=%+v err=%v; want skipped without a run", res, err)
+	}
+	runID, status, err := TriggerAsync(s, d, cfg, TriggerOpts{Force: true, CollectFn: stubCollect(&called)})
+	if err != nil || runID != 0 || status != "skipped" {
+		t.Fatalf("TriggerAsync: runID=%d status=%q err=%v; want 0, skipped", runID, status, err)
+	}
+	sc := NewDailyScheduler(s, d, config.NewHolder(cfg), stubCollect(&called), simulatedTime(time.Now()))
+	sc.tick()
+	time.Sleep(200 * time.Millisecond)
+	sc.Stop()
+
+	if n := atomic.LoadInt32(&called); n != 0 {
+		t.Fatalf("dispatch called %d times while collection is disabled", n)
+	}
+	if run, _ := s.LatestCollectionRun(); run != nil {
+		t.Fatalf("a collection run was recorded: %v", run)
+	}
+}

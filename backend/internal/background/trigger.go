@@ -49,6 +49,9 @@ type TriggerResult struct {
 // the call returns immediately with Status "skipped" and records nothing. Otherwise it records a
 // new collection_runs row, runs the dispatch, and finishes the row.
 func TriggerCollection(s *store.Store, d dirs.Dirs, cfg *config.Config, opts TriggerOpts) (TriggerResult, error) {
+	if cfg.Runtime.CollectionDisabled {
+		return TriggerResult{Status: "skipped", Skipped: true, Reason: "collection is disabled in runtime.yaml (collection_disabled)"}, nil
+	}
 	collectFn := opts.CollectFn
 	if collectFn == nil {
 		collectFn = defaultCollect
@@ -119,6 +122,9 @@ func TriggerCollection(s *store.Store, d dirs.Dirs, cfg *config.Config, opts Tri
 //
 // Returns: runID (0 when skipped), status ("running" or "skipped"), error (setup failures only).
 func TriggerAsync(s *store.Store, d dirs.Dirs, cfg *config.Config, opts TriggerOpts) (int64, string, error) {
+	if cfg.Runtime.CollectionDisabled {
+		return 0, "skipped", nil
+	}
 	collectFn := opts.CollectFn
 	if collectFn == nil {
 		collectFn = defaultCollect

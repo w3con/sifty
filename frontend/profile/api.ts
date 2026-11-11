@@ -1,5 +1,5 @@
 import {api} from '../api';
-import type {Capabilities, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
+import type {AbsentSkill, Capabilities, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
 
 // Typed wrappers over the existing api() transport. Nothing here starts model work; only
 // analyzeDocument is an explicit user action that reaches the extraction provider.
@@ -13,6 +13,10 @@ export interface SectionSaveResult {
 // current stored profile. The client never submits a full profile from a section editor.
 export const putProfileSection = <K extends SectionKey>(section: K, value: SectionValues[K]): Promise<SectionSaveResult> =>
   api(`profile/sections/${encodeURIComponent(section)}`, 'PUT', {value});
+// Replaces the list of skills the owner has said they do not have (the whole list, as the server
+// expects); used to take one off it. The server also removes any of them from the skills they have.
+export const putAbsentSkills = (value: AbsentSkill[]): Promise<SectionSaveResult> =>
+  api('profile/sections/absent-skills', 'PUT', {value});
 export const getProfileCapabilities = (): Promise<Capabilities> => api('profile/capabilities');
 // Recomputes the local derived context/ranking from the already-saved profile. It starts no
 // extraction, remote fetch, model call or assessment.

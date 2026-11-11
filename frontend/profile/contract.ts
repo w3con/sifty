@@ -138,10 +138,17 @@ export interface OtherRequirements extends RichText {
   selected?: boolean;
 }
 
+// A skill the owner has said they do not have (kept beside the skills they have).
+export interface AbsentSkill {
+  key: string;
+  name: string;
+}
+
 export interface ProfileData {
   identity: Identity;
   demographics?: Demographics;
   skills: Skill[];
+  absentSkills?: AbsentSkill[];
   experience: Experience[];
   targetRoles: string[];
   targetIndustries: string[];

@@ -15,6 +15,7 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/inspect"
+	"github.com/w3con/sifty/internal/modellock"
 	"github.com/w3con/sifty/internal/prepare"
 	"github.com/w3con/sifty/internal/prompts"
 	"github.com/w3con/sifty/internal/store"
@@ -125,7 +126,6 @@ func (w *PreparationWorker) runOnce() error {
 
 	opID := op["id"].(int64)
 	jobID := op["jobId"].(int64)
-	pid := os.Getpid()
 	request := requestMap(op)
 
 	progress := func(msg string) {
@@ -216,13 +216,14 @@ func (w *PreparationWorker) runOnce() error {
 
 	// Try to acquire the inference lock. If another process holds it, re-queue this
 	// operation (with inspect=false already saved) to be retried on the next tick.
-	if err := w.store.AcquireLock("inference", pid); err != nil {
+	lock, lockErr := modellock.TryAcquire()
+	if lockErr != nil {
 		_, _ = w.store.DB.Exec(
 			"UPDATE preparation_operations SET status='queued',pid=NULL,progress='Waiting for shared inference slot',updated=? WHERE id=?",
 			nowMs(), opID)
 		return nil
 	}
-	defer func() { _ = w.store.ReleaseLock("inference", pid) }()
+	defer lock.Release()
 
 	// Run the preparation. Errors are recorded on the operation row; they do not propagate.
 	prepErr := w.prepareFn(w.store, w.dirs, w.cfg.Get(), jobID, opID, request, progress, w.inferFn)

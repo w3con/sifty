@@ -45,6 +45,10 @@ type Deps struct {
 	// InferenceFn is the provider-configurable model call. If nil, assess.Infer is used.
 	InferenceFn assess.Inference
 
+	// FitStatus reports the background model-pass worker's state and counts for
+	// GET /api/quick-match/analysis. Nil (tests, or no worker) reports an unavailable worker.
+	FitStatus func() any
+
 	// CollectFn is called by POST /api/search to start a (possibly throttled) collection. It
 	// returns the runID (0 when skipped), the status ("running" or "skipped"), and any setup
 	// error. When nil, POST /api/search falls back to the legacy behaviour of recording a run
@@ -107,7 +111,9 @@ func RegisterRoutes(mux Router, d *Deps) {
 		// the deterministic fit order. Q.4 will adapt the frontend to pass this parameter or
 		// sort by the returned quickMatch value.
 		switch r.URL.Query().Get("sort") {
-		case "fit", "match", "best-fit", "bestfit":
+		case "fit", "fits-you":
+			matchsvc.SortByFit(jobs)
+		case "match", "best-fit", "bestfit":
 			matchsvc.Sort(jobs)
 		}
 		writeJSON(w, http.StatusOK, jobs)
@@ -452,6 +458,48 @@ func RegisterRoutes(mux Router, d *Deps) {
 	// Phase 4.3 — Assessment queue and options
 	// ------------------------------------------------------------------
 
+	// Progress of the background analysis that extracts each vacancy's requirements and compares
+	// them with the profile: a read-only status and counts, no controls. Pausing is a setting.
+	mux.HandleFunc("GET /api/quick-match/analysis", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		if d.FitStatus == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"state": "unavailable", "modelAvailable": false})
+			return nil
+		}
+		writeJSON(w, http.StatusOK, d.FitStatus())
+		return nil
+	}))
+
+	// The order the background analysis takes vacancies in follows the Inbox sort toggle (Best fit
+	// or Newest). The toggle saves it here so that the worker, which runs on the server, can read it;
+	// the value lives in runtime.yaml (quick_match.model_passes.order). Changing it recomputes nothing.
+	mux.HandleFunc("GET /api/quick-match/order", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		writeJSON(w, http.StatusOK, map[string]any{"order": d.Cfg.Get().Runtime.EffectiveQuickMatch().ModelPasses.EffectiveOrder()})
+		return nil
+	}))
+	mux.HandleFunc("PUT /api/quick-match/order", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
+		var body struct {
+			Order string `json:"order"`
+		}
+		if err := readBody(r, &body); err != nil {
+			return err
+		}
+		result, err := ex.Run(func() (any, error) {
+			if err := config.SetModelPassOrder(d.Dirs, body.Order); err != nil {
+				return nil, err
+			}
+			// The file is saved; like the generic config save, a reload that fails does not undo it.
+			if err := d.Cfg.Reload(d.Dirs); err != nil {
+				log.Printf("quick-match order saved to runtime.yaml but the configuration could not be reloaded: %v", err)
+			}
+			return map[string]any{"order": body.Order}, nil
+		})
+		if err != nil {
+			return err
+		}
+		writeJSON(w, http.StatusOK, result)
+		return nil
+	}))
+
 	mux.HandleFunc("GET /api/queue", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
 		status, err := queueStatus(d.Store)
 		if err != nil {
@@ -640,7 +688,7 @@ func RegisterRoutes(mux Router, d *Deps) {
 					if d.Cfg.Get().Runtime.Port != oldPort {
 						resp["restartRequired"] = "port change requires a restart to take effect"
 					}
-					if _, qerr := matchsvc.New(d.Store, d.Cfg).Recompute(context.Background()); qerr != nil && !errors.Is(qerr, matchsvc.ErrNoProfile) {
+					if qerr := matchsvc.New(d.Store, d.Cfg).Recalculate(context.Background()); qerr != nil && !errors.Is(qerr, matchsvc.ErrNoProfile) {
 						resp["quickMatchWarning"] = qerr.Error()
 					}
 				}

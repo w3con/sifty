@@ -36,6 +36,14 @@ func HashRetainedSource(src RetainedSource) (string, error) {
 	return hashJSON(c)
 }
 
+// HashDescription returns the SHA-256 of a retained vacancy description exactly as stored. It is
+// the key of a model extraction: the model reads the description and nothing else, so only a
+// change of that text may ask it again.
+func HashDescription(description string) string {
+	sum := sha256.Sum256([]byte(description))
+	return hex.EncodeToString(sum[:])
+}
+
 // HashProfileSnapshot returns the canonical SHA-256 of the confirmed matching projection.
 func HashProfileSnapshot(p ProfileSnapshot) (string, error) {
 	c := p
@@ -332,25 +340,28 @@ func (r Rules) Validate() error {
 		return fmt.Errorf("requirement weights must be finite and positive")
 	}
 	sum := 0.0
-	for _, g := range Groups() {
+	for _, g := range GoalGroups() {
 		w, ok := r.Weights[g]
 		if !ok {
-			return fmt.Errorf("rules are missing group %q", g)
+			return fmt.Errorf("rules are missing goal group %q", g)
 		}
-		if !isFinite(w) || w < 0 {
-			return fmt.Errorf("group weight %q must be finite and not negative", g)
+		if !isFinite(w) || w <= 0 {
+			return fmt.Errorf("goal group weight %q must be finite and positive", g)
 		}
 		sum += w
 	}
-	if diff := sum - 1; diff > 1e-9 || diff < -1e-9 {
-		return fmt.Errorf("group weights sum to %v, want 1", sum)
+	if sum <= 0 {
+		return fmt.Errorf("goal group weights must have a positive sum")
 	}
 	for g := range r.Weights {
-		if !g.Valid() {
-			return fmt.Errorf("rules contain unknown group %q", g)
+		if !g.IsGoal() {
+			return fmt.Errorf("rules contain a weight for %q, which is not a goal group", g)
 		}
 	}
-	return nil
+	if !isFinite(r.UnknownGoalUtility) || r.UnknownGoalUtility < 0 || r.UnknownGoalUtility > 1 {
+		return fmt.Errorf("unknown goal utility must be within 0..1")
+	}
+	return r.VerdictUtility.validate()
 }
 
 // Validate checks profile snapshot identity. Demographics are structurally absent.

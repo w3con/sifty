@@ -173,12 +173,17 @@ func validateQuickMatch(q QuickMatch) error {
 	if q.RequiredWeight <= 0 || q.PreferredWeight <= 0 {
 		return fmt.Errorf("runtime.yaml: quick_match requirement weights must be positive")
 	}
-	if q.Weights.Role <= 0 || q.Weights.Professional <= 0 || q.Weights.Compensation <= 0 ||
+	if q.Weights.Role <= 0 || q.Weights.Compensation <= 0 ||
 		q.Weights.Geography <= 0 || q.Weights.Conditions <= 0 {
 		return fmt.Errorf("runtime.yaml: quick_match weights must all be positive")
 	}
-	if sum := q.Weights.Sum(); sum < 1-1e-9 || sum > 1+1e-9 {
-		return fmt.Errorf("runtime.yaml: quick_match weights sum to %v, want 1", sum)
+	if m := q.ModelPasses; m.MaxRequirements < 0 || m.MaxAttempts < 0 || m.MaxAttempts > 10 ||
+		m.DailyLimit < 0 ||
+		(m.Temperature != nil && (*m.Temperature < 0 || *m.Temperature > 2)) {
+		return fmt.Errorf("runtime.yaml: quick_match.model_passes has an out-of-range value")
+	}
+	if o := q.ModelPasses.Order; o != "" && o != OrderFit && o != OrderNewest {
+		return fmt.Errorf("runtime.yaml: quick_match.model_passes.order must be %q or %q", OrderFit, OrderNewest)
 	}
 	for source, rule := range q.SourceFields {
 		switch rule.Location {
@@ -215,10 +220,13 @@ func (c *Config) validateProviders() error {
 			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", stage, pname)
 		}
 	}
-	// preparation is optional (empty means unset); if set, it must name a known provider.
-	if p := c.Providers.Stages.Preparation; p != "" {
+	// preparation and matching are optional (empty means unset); if set, each must name a known provider.
+	for stage, p := range map[string]string{"preparation": c.Providers.Stages.Preparation, "matching": c.Providers.Stages.Matching} {
+		if p == "" {
+			continue
+		}
 		if _, ok := c.Providers.Providers[p]; !ok {
-			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", "preparation", p)
+			return fmt.Errorf("providers.yaml: stage %q names unknown provider %q", stage, p)
 		}
 	}
 	return nil

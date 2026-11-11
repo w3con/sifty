@@ -1,6 +1,6 @@
 // Package dirs resolves the local data directory and the paths beneath it. The application is
-// self-contained: it never resolves a git root, never writes outside the data directory, and
-// carries no project-specific directory names. The data directory is configured by the
+// self-contained: it never resolves a git root, writes outside the data directory only to the one
+// machine-wide model lock file (ModelLockPath), and carries no project-specific directory names. The data directory is configured by the
 // --data-dir flag, then the SIFTY_DATA_DIR environment variable, then a default of ./data.
 package dirs
 
@@ -78,4 +78,25 @@ func (d Dirs) Under(elem ...string) (string, error) {
 		return "", fmt.Errorf("path %q escapes the data directory", filepath.Join(elem...))
 	}
 	return joined, nil
+}
+
+// ModelLockEnvVar is the environment variable that overrides the location of the machine-wide
+// model lock file.
+const ModelLockEnvVar = "SIFTY_MODEL_LOCK"
+
+// ModelLockPath is the file every Sifty process on this machine locks around a model call. It is
+// the one path the application keeps outside the data directory, on purpose: production, staging
+// and review servers each have their own data directory but share one local model, so a lock
+// inside a data directory could not stop them overlapping. The location is the SIFTY_MODEL_LOCK
+// environment variable, then sifty/model.lock under the user's cache directory, then the same
+// beneath the system temporary directory.
+func ModelLockPath() string {
+	if p := os.Getenv(ModelLockEnvVar); p != "" {
+		return p
+	}
+	base, err := os.UserCacheDir()
+	if err != nil || base == "" {
+		base = os.TempDir()
+	}
+	return filepath.Join(base, "sifty", "model.lock")
 }

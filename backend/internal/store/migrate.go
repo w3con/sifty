@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const targetVersion = 20
+const targetVersion = 22
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
 // needed to produce the complete Sifty schema through user_version 16 (later versions add
@@ -475,8 +475,80 @@ func migrate(db *sql.DB) error {
 		}
 	}
 
+	// Phase 10 — v21: additive two-score model storage (docs/specs/quick-match.md section 14).
+	// Two tables: the requirements a model extracted from one retained vacancy source, and the
+	// verdicts a second pass gave against one profile revision. Existing tables, columns and rows
+	// are unchanged.
+	if version < 21 {
+		if _, err := db.Exec(modelPassSchema); err != nil {
+			return fmt.Errorf("apply model pass schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=21"); err != nil {
+			return fmt.Errorf("set user_version=21: %w", err)
+		}
+	}
+
+	// Phase 11 — v22: additive storage of the two-score result per vacancy (the evaluator's output,
+	// recomputed after every model pass, every profile or rules change). Existing tables, columns
+	// and rows are unchanged.
+	if version < 22 {
+		if _, err := db.Exec(fitResultSchema); err != nil {
+			return fmt.Errorf("apply fit result schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=22"); err != nil {
+			return fmt.Errorf("set user_version=22: %w", err)
+		}
+	}
+
 	return nil
 }
+
+// fitResultSchema holds one two-score result per vacancy. The scalar columns repeat numbers that
+// are also inside the record so the catalogue can order and the worker can prioritise without
+// decoding every record; the record is the authority.
+const fitResultSchema = `
+CREATE TABLE IF NOT EXISTS match_fit_results(
+  job_id           INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  profile_revision INTEGER NOT NULL,
+  rules_identity   TEXT    NOT NULL,
+  description_hash TEXT    NOT NULL,
+  fits_raw         REAL,
+  you_raw          REAL,
+  schema_version   TEXT    NOT NULL,
+  record           TEXT    NOT NULL,
+  computed_at      TEXT    NOT NULL
+);
+`
+
+// modelPassSchema holds the persisted output of the two model passes. An extraction is keyed by
+// the retained source it read and the extractor that read it; matches are keyed by the exact
+// requirement list they judged, the profile revision they saw and the matcher that judged them,
+// so a source change, a profile change or a version change each re-runs only the pass it affects.
+const modelPassSchema = `
+CREATE TABLE IF NOT EXISTS match_vacancy_extractions(
+  job_id            INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  source_hash       TEXT    NOT NULL,
+  extractor_version TEXT    NOT NULL,
+  requirements_hash TEXT    NOT NULL,
+  requirement_count INTEGER NOT NULL,
+  schema_version    TEXT    NOT NULL,
+  record            TEXT    NOT NULL,
+  created_at        TEXT    NOT NULL,
+  PRIMARY KEY(job_id, source_hash, extractor_version)
+);
+CREATE INDEX IF NOT EXISTS match_vacancy_extractions_requirements
+  ON match_vacancy_extractions(job_id, requirements_hash);
+CREATE TABLE IF NOT EXISTS match_requirement_matches(
+  job_id            INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  requirements_hash TEXT    NOT NULL,
+  profile_revision  INTEGER NOT NULL,
+  matcher_version   TEXT    NOT NULL,
+  schema_version    TEXT    NOT NULL,
+  record            TEXT    NOT NULL,
+  created_at        TEXT    NOT NULL,
+  PRIMARY KEY(job_id, requirements_hash, profile_revision, matcher_version)
+);
+`
 
 const quickMatchSchema = `
 CREATE TABLE IF NOT EXISTS match_job_inputs(

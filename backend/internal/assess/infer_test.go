@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -107,6 +108,45 @@ func TestInferHTTPOllamaThinkingOption(t *testing.T) {
 	}
 	if _, present := plain["think"]; present {
 		t.Fatalf("unset Think must not add a think field; body: %s", *captured)
+	}
+}
+
+// TestInferHTTPTemperatureOption verifies that an explicit temperature reaches the ollama options
+// and the OpenAI-compatible payload, and that an unset one adds nothing.
+func TestInferHTTPTemperatureOption(t *testing.T) {
+	temp := 0.1
+	for _, typ := range []string{"ollama", "compatible"} {
+		var stub any = ollamaStubResponse()
+		if typ == "compatible" {
+			stub = map[string]any{"choices": []any{map[string]any{"message": map[string]any{"content": "{}"}}}}
+		}
+		srv, captured := captureServer(t, stub)
+		endpoint := srv.URL
+		p := Provider{Type: typ, Model: "m", Endpoint: endpoint, TimeoutMS: 5000, ContextChars: 32000, Temperature: &temp}
+		if _, err := inferHTTP(context.Background(), p, "prompt", map[string]any{"type": "object"}); err != nil {
+			t.Fatalf("%s inferHTTP: %v", typ, err)
+		}
+		var body map[string]any
+		if err := json.Unmarshal(*captured, &body); err != nil {
+			t.Fatalf("%s: parse request body: %v", typ, err)
+		}
+		var got any
+		if typ == "ollama" {
+			got = body["options"].(map[string]any)["temperature"]
+		} else {
+			got = body["temperature"]
+		}
+		if v, ok := got.(float64); !ok || v != 0.1 {
+			t.Fatalf("%s temperature = %v, want 0.1; body: %s", typ, got, *captured)
+		}
+		p.Temperature = nil
+		if _, err := inferHTTP(context.Background(), p, "prompt", map[string]any{"type": "object"}); err != nil {
+			t.Fatalf("%s inferHTTP without temperature: %v", typ, err)
+		}
+		if strings.Contains(string(*captured), "temperature") {
+			t.Fatalf("%s: unset Temperature must not add a field; body: %s", typ, *captured)
+		}
+		srv.Close()
 	}
 }
 

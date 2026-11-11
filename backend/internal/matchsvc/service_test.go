@@ -71,7 +71,7 @@ func TestRecomputeReusesFactsAcrossProfileAndRuleChanges(t *testing.T) {
 	// Rules content change without a manual rules_version bump: identity changes, facts reused.
 	q := config.DefaultQuickMatch()
 	q.Weights.Role = 0.20
-	q.Weights.Professional = 0.35
+	q.Weights.Compensation = 0.35
 	holder.Set(&config.Config{Runtime: config.Runtime{QuickMatch: q}})
 	if _, err := svc.Recompute(context.Background()); err != nil {
 		t.Fatalf("recompute after rules: %v", err)

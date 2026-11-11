@@ -1,8 +1,11 @@
-// Presentation adapter for the deterministic Quick Match API envelope. This module performs no
-// requests and carries no scoring rules: every number, status, contribution and reason below is
-// copied from the stored backend result. It only gives those values names, labels and display
-// buckets. A stale result is always labelled as a previous result, never as current.
+// Presentation adapter for the stored Quick Match results. This module performs no requests and
+// carries no scoring rules: every number, status and list line below is copied from the backend's
+// stored result (`job.fit`, the two-score result of spec section 14). It only gives those values
+// names, labels and display buckets. Two parts remain from the single-score projection
+// (`job.quickMatch`): its vacancy-side facts feed the fact strip, and its types name them.
 
+
+// Single-score projection: kept for the vacancy-side facts strip only.
 export type MatchGroup = 'role' | 'professional' | 'compensation' | 'geography' | 'conditions';
 export type MatchStatus = 'scored' | 'unscored' | 'stale';
 export type MatchApplicability = 'applicable' | 'not_applicable' | 'unknown';
@@ -121,18 +124,6 @@ export interface QuickMatchView {
   facts?: VacancyFactsView | null;
 }
 
-export const allGroups: MatchGroup[] = ['role', 'professional', 'compensation', 'geography', 'conditions'];
-
-export function groupLabel(group: MatchGroup): string {
-  switch (group) {
-    case 'role': return 'Role';
-    case 'professional': return 'Professional';
-    case 'compensation': return 'Compensation';
-    case 'geography': return 'Geography';
-    case 'conditions': return 'Conditions';
-  }
-}
-
 export type QuickState = 'missing' | 'error' | 'stale' | 'unscored' | 'scored';
 
 export function quickState(view?: QuickMatchView | null, error?: string): QuickState {
@@ -143,256 +134,328 @@ export function quickState(view?: QuickMatchView | null, error?: string): QuickS
   return 'scored';
 }
 
+// ---------------------------------------------------------------------------------------------
+// Two-score result: Fits you (the job against the owner's goals) and You fit (the owner's
+// confirmed skills and experience against the stated requirements).
+// ---------------------------------------------------------------------------------------------
+
+export type ScoreStatus = 'scored' | 'unscored' | 'no_requirements' | 'pending' | 'unavailable' | 'off';
+export type Verdict = 'match' | 'partial' | 'no' | 'unclear';
+export type RequirementKind = 'skill' | 'experience' | 'qualification' | 'language' | 'authorization' | 'other';
+
+export interface FitCounts {match: number; partial: number; no: number; unclear: number}
+
+// One factual line of a list. Goal lines carry a criterion and the compared values; requirement
+// lines carry the requirement text (`subject`), its verdict and the profile fact it rests on.
+export interface FitLine {
+  origin: 'goal' | 'requirement';
+  group?: string;
+  criterion?: string;
+  kind?: RequirementKind;
+  level?: 'required' | 'preferred';
+  verdict?: Verdict;
+  subject?: string;
+  alternatives?: string[];
+  profileField?: string;
+  profileValue?: string;
+  jobValue?: string;
+  reason?: string;
+  quote?: string;
+}
+
+export interface FitResult {
+  source: 'usable' | 'unavailable';
+  fitsYou: {status: ScoreStatus; score: number | null; rawScore: number | null};
+  youFit: {status: ScoreStatus; score: number | null; rawScore: number | null; counts: FitCounts};
+  // True while the model's matching pass is off: no You fit is drawn, whatever its status.
+  matchingOff?: boolean;
+  lists: {matches: FitLine[]; mismatches: FitLine[]; missing: FitLine[]; toClarify: FitLine[]};
+}
+
+export interface FitView {
+  result: FitResult;
+  stale: boolean;
+  staleReasons?: string[];
+}
+
+// What GET /api/quick-match/analysis says about the background analysis. The panel uses it only
+// to say why a number is not there yet; it shows no counts, limits or queue.
+export interface AnalysisStatus {
+  state: 'idle' | 'working' | 'paused' | 'blocked' | 'waiting' | 'limit' | 'no_profile';
+  modelAvailable: boolean;
+}
+
 export function fitKeyForScore(score: number): FitKey {
   if (score >= 75) return 'strong';
   if (score >= 55) return 'partial';
   return 'weak';
 }
 
-export function fitBucketOf(view?: QuickMatchView | null): FitKey {
-  if (quickState(view) !== 'scored') return 'unscored';
-  return fitKeyForScore(view!.result.score as number);
-}
-
 export function bucketLabel(bucket: FitKey): string {
   switch (bucket) {
-    case 'strong': return 'Strong fit';
-    case 'partial': return 'Partial fit';
-    case 'weak': return 'Weak fit';
+    case 'strong': return 'Strong';
+    case 'partial': return 'Partial';
+    case 'weak': return 'Weak';
     case 'unscored': return 'Not scored';
   }
 }
 
-export interface ScorePresentation {
-  number: string;
-  bucket: ScoreBucket;
-  label: string;
-  previous: boolean;
-  title: string;
+export function countsText(c: FitCounts): string {
+  return `${c.match} match · ${c.partial} partial · ${c.no} no · ${c.unclear} unclear`;
 }
 
-export function scorePresentation(view?: QuickMatchView | null, error?: string): ScorePresentation {
-  const state = quickState(view, error);
-  if (state === 'error') {
-    return {number: '—', bucket: 'unavailable', label: 'Quick match unavailable', previous: false, title: `Quick match unavailable: ${error}`};
+// One score as shown in the panel header and in a catalogue row. `number` is a digit string, or a
+// dash / ellipsis when there is none; `note` says in words why there is no number.
+export interface ScoreCell {
+  number: string;
+  bucket: FitKey;
+  label: string;
+  note: string;
+  title: string;
+  previous: boolean;
+}
+
+const NO_NUMBER = {number: '—', bucket: 'unscored' as FitKey, label: '', previous: false};
+
+export function fitsYouCell(fit?: FitView | null): ScoreCell {
+  if (!fit) return {...NO_NUMBER, note: 'Not compared yet', title: 'Fits you: not compared yet'};
+  const r = fit.result.fitsYou;
+  if (fit.result.source === 'unavailable' || r.status === 'unavailable') {
+    return {...NO_NUMBER, note: 'Full job description is unavailable', title: 'Fits you: full job description is unavailable'};
   }
-  if (state === 'missing') {
-    return {number: '—', bucket: 'unscored', label: 'Not calculated', previous: false, title: 'No Quick Match result has been calculated for this role.'};
+  if (r.status !== 'scored' || r.score === null) {
+    return {...NO_NUMBER, note: 'Your profile states no goals to compare', title: 'Fits you: your profile states no goals to compare'};
   }
-  const score = view!.result.score;
-  if (state === 'stale') {
-    const reasons = staleReasonText(view!);
+  const bucket = fitKeyForScore(r.score);
+  return {number: String(r.score), bucket, label: bucketLabel(bucket), note: '', previous: fit.stale, title: `Fits you ${r.score}: ${bucketLabel(bucket)}`};
+}
+
+// You fit is not shown while the model's matching pass is switched off (spec 14.14): the backend
+// then gives it the status `off`, and neither the panel nor a catalogue row draws it.
+export function youFitOff(fit?: FitView | null): boolean {
+  return fit?.result.matchingOff === true || fit?.result.youFit.status === 'off';
+}
+
+// The requirement lines of a result, the ones a view shows under "Requirements" while You fit is
+// off: required before preferred, each list keeping its order.
+export function requirementLines(fit: FitView): FitLine[] {
+  const {matches, mismatches, missing} = fit.result.lists;
+  const all = [...matches, ...mismatches, ...missing].filter(l => l.origin === 'requirement');
+  const rank = (l: FitLine) => (l.level === 'required' ? 0 : 1);
+  return all.map((l, i) => ({l, i})).sort((a, b) => rank(a.l) - rank(b.l) || a.i - b.i).map(x => x.l);
+}
+
+// The mark of a requirement line while You fit is off: a state only where code decided one.
+export function requirementMark(line: FitLine): string {
+  if (line.verdict === 'match' || line.verdict === 'partial') return '✓';
+  if (line.verdict === 'no') return '✕';
+  return '·';
+}
+
+export function youFitCell(fit?: FitView | null, analysis?: AnalysisStatus | null): ScoreCell {
+  if (!fit) return {...NO_NUMBER, note: 'Not compared yet', title: 'You fit: not compared yet'};
+  const r = fit.result.youFit;
+  switch (r.status) {
+    case 'off':
+      return {...NO_NUMBER, note: '', title: ''};
+    case 'scored': {
+      if (r.score === null) break;
+      const bucket = fitKeyForScore(r.score);
+      return {number: String(r.score), bucket, label: bucketLabel(bucket), note: '', previous: fit.stale, title: `You fit ${r.score}: ${countsText(r.counts)}`};
+    }
+    case 'no_requirements':
+      return {...NO_NUMBER, note: 'No requirements stated', title: 'You fit: no requirements stated'};
+    case 'pending': {
+      // Say "analysing" only while that is true; a model that is not running is not analysing.
+      const working = pendingNotice(analysis).kind === 'working';
+      const note = working ? 'Analysing requirements…' : 'Not analysed yet';
+      return {...NO_NUMBER, number: '…', note, title: `You fit: ${note.toLowerCase()}`};
+    }
+  }
+  return {...NO_NUMBER, note: 'Full job description is unavailable', title: 'You fit: full job description is unavailable'};
+}
+
+// Catalogue order, as in spec section 14.3 and the backend's SortByFit: a current Fits you
+// number first (higher first), then You fit (higher first; pending or no requirements counts as
+// the midpoint), then the job id. A result that is stale or has no Fits you number follows every
+// current one.
+export interface FitSortKey {hasFits: boolean; fits: number; you: number}
+
+export function fitSortKey(fit?: FitView | null): FitSortKey {
+  const key: FitSortKey = {hasFits: false, fits: 0, you: 0.5};
+  if (!fit || fit.stale) return key;
+  const f = fit.result.fitsYou, y = fit.result.youFit;
+  if (f.status === 'scored' && f.rawScore !== null) { key.hasFits = true; key.fits = f.rawScore; }
+  if (y.status === 'scored' && y.rawScore !== null) key.you = y.rawScore;
+  return key;
+}
+
+// Orders two results as the catalogue does; the caller breaks a tie by job id.
+export function compareByFit(a?: FitView | null, b?: FitView | null): number {
+  const x = fitSortKey(a), y = fitSortKey(b);
+  if (x.hasFits !== y.hasFits) return x.hasFits ? -1 : 1;
+  if (x.hasFits && x.fits !== y.fits) return y.fits - x.fits;
+  return y.you - x.you;
+}
+
+// The Fit filter in the catalogue works on Fits you.
+export function fitBucketOf(fit?: FitView | null): FitKey {
+  const r = fit?.result.fitsYou;
+  if (!fit || fit.stale || r?.status !== 'scored' || r.score === null) return 'unscored';
+  return fitKeyForScore(r.score);
+}
+
+const CRITERION_NOUN: Record<string, string> = {
+  'role.title': 'Role',
+  'compensation.cash': 'Pay',
+  'geography.location': 'Location',
+  'geography.authorization': 'Work authorization',
+  'conditions.work_mode': 'Work mode',
+  'conditions.engagement': 'Contract type',
+  'conditions.hours': 'Hours',
+  'conditions.timezone': 'Time zone',
+};
+
+const CRITERION_CLARIFY: Record<string, string> = {
+  'role.title': 'Role',
+  'compensation.cash': 'Salary',
+  'geography.location': 'Location',
+  'geography.authorization': 'Work authorization',
+  'conditions.work_mode': 'Work mode',
+  'conditions.engagement': 'Contract type',
+  'conditions.hours': 'Hours',
+  'conditions.timezone': 'Time zone',
+};
+
+// What the profile says about a goal, worded for the line it sits on.
+const GOAL_PROFILE_PREFIX: Record<string, string> = {
+  'role.title': 'your target ',
+  'compensation.cash': 'your minimum ',
+  'geography.location': 'you want ',
+  'conditions.work_mode': 'you want ',
+  'conditions.engagement': 'you want ',
+  'conditions.hours': 'you want ',
+  'conditions.timezone': 'you want ',
+};
+
+export interface LineText {
+  main: string;
+  // The members of an "any one of these" demand, joined for the line: "Kotlin · Python · Go".
+  alternatives?: string;
+  note?: string;
+  // The note in full, when it was shortened for the line.
+  fullNote?: string;
+  partial: boolean;
+  preferred: boolean;
+}
+
+// A profile fact can be long (a computed experience fact lists the roles it was computed from).
+// The line keeps it to about one line of text and puts the whole of it in the hover text.
+const NOTE_LIMIT = 72;
+
+function shortNote(text: string): {note: string; fullNote?: string} {
+  if (text.length <= NOTE_LIMIT) return {note: text};
+  const cut = text.slice(0, NOTE_LIMIT);
+  const space = cut.lastIndexOf(' ');
+  return {note: `${(space > NOTE_LIMIT / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:]+$/, '')}…`, fullNote: text};
+}
+
+// The one place a list line is turned into words. A goal line reads "Work mode: Remote — you want
+// remote"; a requirement line reads "Go — Go (expert)" (the requirement, then the profile fact
+// that meets it). The model's own explanation of a verdict is never shown: for a requirement the
+// profile lacks it only restates the line; a fact that contradicts a requirement is shown as the note.
+export function lineText(line: FitLine): LineText {
+  if (line.origin === 'goal') {
+    const noun = CRITERION_NOUN[line.criterion ?? ''] ?? 'Goal';
+    const job = (line.jobValue ?? '').trim();
+    const profile = (line.profileValue ?? '').trim();
     return {
-      number: score === null ? '—' : String(score),
-      bucket: 'previous',
-      label: score === null ? 'Previous result' : 'Previous score',
-      previous: true,
-      title: `Previous Quick Match result, not current: ${reasons}`,
+      main: job ? `${noun}: ${job}` : noun,
+      ...(profile ? shortNote(`${GOAL_PROFILE_PREFIX[line.criterion ?? ''] ?? ''}${profile}`) : {}),
+      partial: false,
+      preferred: false,
     };
   }
-  if (state === 'unscored') {
-    return {number: '—', bucket: 'unscored', label: 'Not scored', previous: false, title: 'No comparable evidence; this is not a zero score.'};
-  }
-  const value = score as number;
-  return {number: String(value), bucket: fitKeyForScore(value), label: bucketLabel(fitKeyForScore(value)), previous: false, title: `Current Quick Match score ${value}/100`};
+  const note = (line.profileValue ?? '').trim();
+  return {
+    main: (line.subject ?? '').trim() || 'Requirement',
+    ...(line.alternatives?.length ? {alternatives: line.alternatives.join(' · ')} : {}),
+    ...(note ? shortNote(note) : {}),
+    partial: line.verdict === 'partial',
+    preferred: line.level === 'preferred',
+  };
 }
 
-// Mirrors the backend catalogue order: current scored results first, raw score descending, then
-// evidence coverage descending. Stale and unscored results never pretend to be current.
-export function sortableQuickScore(view?: QuickMatchView | null): {scored: boolean; raw: number; coverage: number} {
-  if (!view || quickState(view) !== 'scored') {
-    return {scored: false, raw: 0, coverage: view?.summary.coverage ?? 0};
-  }
-  const raw = view.summary.rawScore ?? (view.summary.score === null ? 0 : view.summary.score / 100);
-  return {scored: true, raw, coverage: view.summary.coverage};
+// "? Salary", "? Contract type": a condition the owner cares about that the vacancy does not state.
+export function clarifyLabel(line: FitLine): string {
+  return CRITERION_CLARIFY[line.criterion ?? ''] ?? 'Detail';
 }
 
-export function percent(value?: number | null): string {
-  if (value === null || value === undefined || !Number.isFinite(value)) return '—';
-  return `${Math.round(Math.max(0, Math.min(1, value)) * 100)}%`;
-}
-
-export function coveragePercent(view?: QuickMatchView | null): number | null {
-  if (!view) return null;
-  return Math.round(Math.max(0, Math.min(1, view.result.coverage.weighted)) * 100);
-}
-
-export function applicabilityLabel(value?: MatchApplicability): string {
-  switch (value) {
-    case 'applicable': return 'Compared';
-    case 'not_applicable': return 'Not applicable';
-    default: return 'Unknown';
-  }
-}
-
-export function reliabilityLabel(value?: MatchReliability): string {
-  switch (value) {
-    case 'usable': return 'usable';
-    case 'needs_corroboration': return 'needs corroboration';
-    case 'unusable': return 'unusable';
-    default: return 'not recorded';
-  }
-}
-
-export function sectionLabel(value?: MatchSection): string {
-  switch (value) {
-    case 'required': return 'Required';
-    case 'preferred': return 'Preferred';
-    case 'company_context': return 'Company context';
-    case 'unknown': return 'Section not identified';
-    default: return 'Section not recorded';
-  }
-}
-
-export function criterionLabel(criterion: string): string {
-  switch (criterion) {
-    case 'role.title': return 'Role title';
-    case 'professional.requirement': return 'Professional requirement';
-    case 'compensation.cash': return 'Compensation';
-    case 'geography.location': return 'Hiring location';
-    case 'geography.authorization': return 'Work authorization';
-    case 'conditions.work_mode': return 'Work mode';
-    case 'conditions.engagement': return 'Engagement';
-    case 'conditions.hours': return 'Hours';
-    case 'conditions.timezone': return 'Timezone';
-    default: return humanizeCode(criterion);
-  }
-}
-
-export function factLabel(fact: string): string {
-  switch (fact) {
-    case 'title': return 'Role title';
-    case 'cash': return 'Compensation';
-    case 'requirements': return 'Professional requirements';
-    case 'hiringLocations': return 'Hiring location';
-    case 'location': return 'Hiring location';
-    case 'workAuthorization': return 'Work authorization';
-    case 'workModes': return 'Work mode';
-    case 'engagement': return 'Engagement';
-    case 'hours': return 'Hours';
-    case 'timezone': return 'Timezone';
-    default: return fact;
-  }
-}
-
-export function unknownTitle(unknown: MatchUnknown): string {
-  if (unknown.kind.startsWith('skill_')) return `Requirement: ${unknown.fact}`;
-  return factLabel(unknown.fact);
-}
-
-const REASONS: Record<string, string> = {
-  no_comparable_evidence: 'No comparable profile and vacancy evidence yet.',
-  source_ambiguity: 'Source evidence is incomplete or ambiguous.',
-  role_title_aligned: 'A target role overlaps the vacancy title.',
-  role_title_no_overlap: 'The vacancy title does not overlap any target role.',
-  role_title_missing: 'The vacancy title is missing.',
-  role_title_unusable: 'The vacancy title is not reliable enough to compare.',
-  skill_evidenced: 'The profile evidences this requirement.',
-  skill_not_evidenced: 'The profile does not evidence this requirement.',
-  skill_requirement_compound: 'The requirement bundles several skills and is not split into invented parts.',
-  skill_years_unsupported: 'The requirement states years; Quick Match does not compare inferred years.',
-  skill_level_unsupported: 'The requirement states a level; Quick Match does not compare inferred levels.',
-  skill_requirement_unusable: 'The requirement text is not reliable enough to compare.',
-  skill_requirement_section_unknown: 'The listing section of this requirement is unknown.',
-  skill_requirements_missing: 'No explicit professional requirements were extracted.',
-  compensation_aligned: 'The declared vacancy ceiling meets the profile minimum.',
-  compensation_below_minimum: 'The declared vacancy ceiling is below the profile minimum.',
-  compensation_job_missing: 'The vacancy states no declared compensation ceiling.',
-  compensation_incomparable: 'Compensation uses different currency, period or tax basis.',
-  compensation_fact_unusable: 'The vacancy compensation fact is not reliable enough.',
-  location_compatible: 'A stated hiring location is compatible with the preferred locations.',
-  location_disjoint: 'The stated hiring locations are disjoint from the preferred locations.',
-  location_mapping_unsupported: 'A location statement could not be mapped to a country.',
-  location_missing: 'The vacancy states no usable hiring location.',
-  location_unusable: 'The vacancy location statement is not reliable enough.',
-  authorization_compatible: 'The stated work authorization is compatible with the profile.',
-  authorization_disjoint: 'The stated work authorization is incompatible with the profile.',
-  authorization_country_missing: 'The authorization statement does not identify a country.',
-  authorization_profile_missing: 'The profile has no authorization answer for this country.',
-  authorization_profile_status_missing: 'The profile authorization entry has no status.',
-  authorization_profile_ambiguous: 'The profile has conflicting authorization answers.',
-  authorization_job_missing: 'The vacancy states no work authorization requirement.',
-  authorization_fact_unusable: 'The authorization statement is not reliable enough.',
-  work_mode_compatible: 'The vacancy work mode is compatible with the profile.',
-  work_mode_disjoint: 'The vacancy work mode is incompatible with the profile.',
-  work_mode_missing: 'The vacancy states no usable work mode.',
-  work_mode_unusable: 'The vacancy work mode is not reliable enough.',
-  engagement_compatible: 'The vacancy engagement type is compatible with the profile.',
-  engagement_disjoint: 'The vacancy engagement type is incompatible with the profile.',
-  engagement_missing: 'The vacancy states no usable engagement type.',
-  engagement_unusable: 'The vacancy engagement statement is not reliable enough.',
-  hours_compatible: 'The vacancy hours are compatible with the profile.',
-  hours_disjoint: 'The vacancy hours are incompatible with the profile.',
-  hours_missing: 'The vacancy states no usable hours.',
-  hours_partial_unknown: 'The hours comparison is only partly known.',
-  hours_unusable: 'The vacancy hours statement is not reliable enough.',
-  timezone_unsupported: 'The timezone comparison is not supported by the retained facts.',
-  timezone_missing: 'The vacancy states no usable timezone.',
+// Profile sections a missing requirement can be answered in. A requirement of another kind has no
+// section to point to: the profile has no education or free-form section.
+const MISSING_SECTION: Partial<Record<RequirementKind, {id: string; label: string}>> = {
+  skill: {id: 'profile-skills', label: 'skills'},
+  language: {id: 'profile-languages', label: 'languages'},
+  experience: {id: 'profile-experience', label: 'experience'},
+  authorization: {id: 'profile-geography', label: 'work authorization'},
 };
 
-export function reasonText(code: string): string {
-  return REASONS[code] ?? `${humanizeCode(code)}.`;
+// The skills a requirement line offers to add to the profile, one by one. A requirement often lists
+// several in one line ("Kubernetes, IaC and observability") and a group of alternatives lists them
+// as members; each is its own skill, so a click adds exactly one and never the whole line. Only a
+// skill (not a language, an experience or a qualification) is offered. Names are split at commas,
+// semicolons, "and", "or" and "&"; a slash stays inside a name (CI/CD, Firebase/GCP), and a leading
+// word such as "strong" or "experience with" and a trailing one such as "expertise" or "skills" are dropped.
+const SKILL_SEPARATORS = /\s*(?:,|;|&|\s\band\b\s|\sor\b\s)\s*/i;
+const SKILL_SUFFIX = /\s+(?:expertise|experience|skills?|proficiency|knowledge|familiarity|background)$/i;
+const SKILL_PREFIX = /^(?:(?:strong|deep|solid|proven|good|excellent|advanced|expert|hands-on)\s+)?(?:(?:experience|knowledge|proficiency|familiarity|expertise)\s+(?:with|in|of)\s+)?(?:(?:strong|deep|solid|proven|good|excellent|advanced|expert|hands-on)\s+)?/i;
+const MAX_SKILL_OFFERS = 6;
+
+export function quickAddSkillNames(line: FitLine): string[] {
+  if (line.origin !== 'requirement' || line.kind !== 'skill') return [];
+  if (line.profileField === 'skillsAbsent') return []; // the owner already said they do not have it
+  const parts = line.alternatives && line.alternatives.length > 0 ? line.alternatives : (line.subject ?? '').split(SKILL_SEPARATORS);
+  const seen = new Set<string>();
+  const names: string[] = [];
+  for (const part of parts) {
+    const name = part.replace(/\s+/g, ' ').trim().replace(SKILL_PREFIX, '').replace(SKILL_SUFFIX, '').trim();
+    const key = name.toLowerCase();
+    if (name !== '' && name.length <= 80 && !seen.has(key)) {
+      seen.add(key);
+      names.push(name);
+    }
+  }
+  return names.length > MAX_SKILL_OFFERS ? [] : names;
 }
 
-const STALE: Record<string, string> = {
-  schema_version_changed: 'the result schema changed',
-  extractor_version_changed: 'the extractor changed',
-  rules_changed: 'the Quick Match rules or weights changed',
-  source_policy_changed: 'the source-field policy changed',
-  source_policy_version_changed: 'the source-field policy changed',
-  profile_missing: 'the saved profile is unavailable',
-  profile_changed: 'the saved profile changed',
-  facts_missing: 'the stored vacancy facts are missing',
-  facts_hash_changed: 'the extracted vacancy facts changed',
-  facts_source_changed: 'the saved vacancy changed',
-  saved_source_changed: 'the saved vacancy changed',
-  facts_schema_changed: 'the stored facts use an older schema',
-  facts_extractor_changed: 'the stored facts use an older extractor',
-  facts_source_policy_changed: 'the stored facts used an older source policy',
-  source_input_missing: 'the retained vacancy input is missing',
-};
-
-export function staleReasonText(view: QuickMatchView): string {
-  const codes = view.staleReasons ?? [];
-  if (!codes.length) return 'the profile or rules changed';
-  return [...new Set(codes.map(code => STALE[code] ?? humanizeCode(code)))].join('; ');
+export function missingSection(line: FitLine): {id: string; label: string} | undefined {
+  return line.kind ? MISSING_SECTION[line.kind] : undefined;
 }
 
-function humanizeCode(code: string): string {
-  const text = code.replace(/[._]+/g, ' ').trim();
-  return text ? text[0].toUpperCase() + text.slice(1) : 'Unknown reason';
+// Why a number is not there yet, from the worker's state. The wording names no queue, limit or
+// pass: a model that is not running is a retry message, a provider that may not be used is a
+// broken one, anything else is just not analysed yet.
+export type PendingNotice =
+  | {kind: 'working'; text: string}
+  | {kind: 'retry' | 'broken' | 'info'; text: string}
+  | {kind: 'profile'; text: string};
+
+export function pendingNotice(analysis?: AnalysisStatus | null): PendingNotice {
+  switch (analysis?.state) {
+    case 'waiting':
+      return {kind: 'retry', text: 'Requirements could not be analysed — the local model is not running.'};
+    case 'blocked':
+      return {kind: 'broken', text: 'Requirements are analysed only by a local model. The configured provider is not local.'};
+    case 'no_profile':
+      return {kind: 'profile', text: 'Requirements are compared with your profile once it is saved.'};
+    case 'paused':
+    case 'limit':
+      return {kind: 'info', text: 'Requirements have not been analysed yet.'};
+    default:
+      return {kind: 'working', text: 'Analysing requirements…'};
+  }
 }
 
-// Profile section ids match ProfileView's in-page anchors. Missing or future values simply do not
-// offer an edit button rather than guessing an editor.
-const PROFILE_SECTIONS: Record<string, {id: string; label: string}> = {
-  targetRoles: {id: 'profile-goals', label: 'Target roles'},
-  skills: {id: 'profile-skills', label: 'Skills'},
-  'compensation.minimum': {id: 'profile-compensation', label: 'Compensation'},
-  workModes: {id: 'profile-work', label: 'Work modes'},
-  engagementTypes: {id: 'profile-work', label: 'Engagement'},
-  hours: {id: 'profile-work', label: 'Hours'},
-  timezones: {id: 'profile-geography', label: 'Timezones'},
-  'geography.preferredLocations': {id: 'profile-geography', label: 'Geography'},
-  'geography.workAuthorizations': {id: 'profile-geography', label: 'Work authorization'},
-};
-
-export function profileAnchor(profileEdit?: string): string | undefined {
-  return profileEdit ? PROFILE_SECTIONS[profileEdit]?.id : undefined;
-}
-
-export function profileEditLabel(profileEdit?: string): string | undefined {
-  return profileEdit ? PROFILE_SECTIONS[profileEdit]?.label : undefined;
-}
-
-export function comparisonForUnknown(result: MatchResult, unknown: MatchUnknown): MatchComparison | undefined {
-  if (!unknown.kind.startsWith('skill_')) return undefined;
-  return (result.comparisons ?? []).find(c =>
-    c.group === unknown.group &&
-    c.criterion === 'professional.requirement' &&
-    c.reason === unknown.kind &&
-    (c.jobFact === unknown.fact || (c.jobValue ?? '').includes(unknown.fact)));
-}
 
 export interface FactItem {
   icon: 'pin' | 'money' | 'mode' | 'case' | 'clock';

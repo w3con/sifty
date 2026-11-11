@@ -1,137 +1,172 @@
-import React from 'react';
-import type {MatchComparison, MatchConflict, MatchResult, MatchUnknown, QuickMatchView} from './quickmatch';
-import {
-  allGroups, applicabilityLabel, comparisonForUnknown, coveragePercent, criterionLabel,
-  groupLabel, percent, profileAnchor, profileEditLabel, quickState, reasonText,
-  reliabilityLabel, scorePresentation, sectionLabel, staleReasonText, unknownTitle,
-} from './quickmatch';
+import React, {useState} from 'react';
+import type {AnalysisStatus, FitLine, FitView, ScoreCell} from './quickmatch';
+import {clarifyLabel, countsText, fitsYouCell, lineText, missingSection, pendingNotice, quickAddSkillNames, requirementLines, requirementMark, youFitCell, youFitOff} from './quickmatch';
 
 type Props = {
-  view?: QuickMatchView | null;
-  error?: string;
+  fit?: FitView | null;
+  analysis?: AnalysisStatus | null;
   onOpenProfile: (section?: string) => void;
+  // Fetches the full vacancy text again; resolves when the stored result has been refreshed.
+  onRefreshSource: () => Promise<void>;
+  // Adds a skill to the profile without leaving the page and re-checks this vacancy.
+  onAddSkill?: (name: string) => Promise<void>;
+  // Records that the owner does not have a skill (kept in the profile's skills section, so it is
+  // never offered again) and re-checks this vacancy.
+  onDismissSkill?: (name: string) => Promise<void>;
 };
 
-// Presentational only: receives the stored envelope and a named callback. It performs no request
-// and computes no weight, utility, score or bucket of its own.
-export function QuickMatchPanel({view, error, onOpenProfile}: Props) {
-  const state = quickState(view, error);
-  const score = scorePresentation(view, error);
-  const coverage = coveragePercent(view);
-  const result = view?.result;
-  const contributions = new Map((result?.contributions ?? []).map(item => [item.group, item]));
-  const unknowns = result?.unknowns ?? [];
-  const conflicts = result?.conflicts ?? [];
-  const comparisons = result?.comparisons ?? [];
-  const reasons = result?.reasons ?? [];
-  const stateLabel = state === 'scored' ? 'Current' : state === 'stale' ? 'Previous' : state === 'unscored' ? 'Not scored' : state === 'error' ? 'Unavailable' : 'Not calculated';
-  return <section className="rail-card quick-match">
-    <div className="qm-head"><h3>Quick match</h3><span className={`qm-status ${state}`}>{stateLabel}</span></div>
-    <div className="qm-score"><b className={score.previous ? 'previous-score' : undefined}>{score.number}</b><small>/100</small><span className={`qm-bucket ${score.bucket}`}>{score.label}</span></div>
-    <div className="qm-track"><span style={{width:`${state === 'scored' || state === 'unscored' ? Math.max(0, Math.min(100, view?.result.score ?? 0)) : score.previous ? Math.max(0, Math.min(100, view?.result.score ?? 0)) : 0}%`}}/></div>
-
-    {state === 'error' && <p className="qm-error">Quick match could not be read: {error}. This is not the same as a zero or an unscored role.</p>}
-    {state === 'missing' && <p>No Quick Match result has been calculated yet. The role is not hidden or ranked down for that.</p>}
-    {state === 'stale' && <p className="qm-warn">Previous result, not current: {staleReasonText(view!)}. The number is kept only as history and is not presented as the current score.</p>}
-    {state === 'unscored' && <p>No comparable evidence produced a score. This is not a zero; missing facts stay unknown instead of counting as mismatches.</p>}
-    {state === 'scored' && <p>{score.label}: {reasons.length ? 'The reasons and unknowns below explain the number.' : 'No reason codes were returned for this result.'}</p>}
-
-    {view && <>
-      <p className={`qm-coverage ${state === 'stale' ? 'previous' : ''}`}>Evidence coverage <b>{coverage === null ? '—' : `${coverage}%`}</b>{state === 'stale' ? ' (previous)' : ''}</p>
-      <div className="qm-track qm-coverage-track"><span style={{width:`${coverage ?? 0}%`}}/></div>
-      {coverage !== null && coverage < 100 && <p className="qm-coverage-note">Partial evidence. Missing facts stay unknown and are not counted as a mismatch, so the score is less certain.</p>}
-      {coverage === null && <p className="qm-coverage-note">Coverage was not reported by this result.</p>}
-
-      <div className="qm-groups" aria-label="Fit groups">
-        {allGroups.map(group => {
-          const applicability = result?.applicability[group] ?? 'unknown';
-          const groupCoverage = result?.coverage.groups[group];
-          const contribution = contributions.get(group);
-          return <div className={`qm-group ${applicability}`} key={group}>
-            <div className="qm-group-head"><strong>{groupLabel(group)}</strong><span>{applicabilityLabel(applicability)}</span></div>
-            {applicability === 'not_applicable'
-              ? <p className="qm-group-note">No comparison is required for this vacancy and profile.</p>
-              : applicability === 'unknown'
-                ? <p className="qm-group-note">Not compared: applicability is unknown.</p>
-                : <div className="qm-group-meta">
-                    <span>Evidence {percent(groupCoverage)}</span>
-                    {contribution
-                      ? <><span>Weight {percent(contribution.weight)}</span><span>Utility {percent(contribution.utility)}</span><span>Weighted {percent(contribution.weighted)}</span></>
-                      : <span>No scored contribution</span>}
-                  </div>}
-          </div>;
-        })}
-      </div>
-      <p className="qm-note">Weight and weighted values come from the stored result. Weighted is utility × group weight before the final score divides by the effective evidence denominator, so these values do not necessarily sum to 100.</p>
-
-      <details className="qm-details">
-        <summary>Unknowns <span>{unknowns.length ?? 0}</span></summary>
-        {unknowns.length ? <ul className="qm-unknowns">{unknowns.map((unknown, index) => <UnknownRow key={`${unknown.group}-${unknown.fact}-${unknown.kind}-${index}`} result={result!} unknown={unknown} onOpenProfile={onOpenProfile}/>)}</ul> : <p className="qm-note">{coverage !== null && coverage < 100 ? 'No individual unknown is listed, but evidence coverage is partial; the missing facts remain unknown.' : 'No unknown is listed for this result.'}</p>}
-      </details>
-
-      <details className="qm-details">
-        <summary>Conflicts <span>{conflicts.length ?? 0}</span></summary>
-        {conflicts.length ? <ul className="qm-conflicts">{conflicts.map((conflict, index) => <ConflictRow key={`${conflict.group}-${conflict.fact}-${index}`} conflict={conflict}/>)}</ul> : <p className="qm-note">No retained source conflict is listed.</p>}
-      </details>
-
-      <details className="qm-details">
-        <summary>Criterion comparisons <span>{comparisons.length ?? 0}</span></summary>
-        {comparisons.length ? allGroups.map(group => {
-          const rows = comparisons.filter(item => item.group === group);
-          if (!rows.length) return null;
-          return <section className="qm-compare-group" key={group}><h4>{groupLabel(group)}</h4>{rows.map((row, index) => <ComparisonRow key={`${row.criterion}-${index}`} row={row}/>)}</section>;
-        }) : <p className="qm-note">No criterion comparison was stored.</p>}
-      </details>
-
-      <details className="qm-details">
-        <summary>Why this result <span>{reasons.length ?? 0}</span></summary>
-        {reasons.length ? <ul className="qm-reasons">{reasons.map(code => <li key={code}>{reasonText(code)} <code>{code}</code></li>)}</ul> : <p className="qm-note">No reason code was stored.</p>}
-      </details>
-
-      <details className="qm-details">
-        <summary>Result provenance</summary>
-        <dl className="qm-provenance">
-          <div><dt>Profile revision</dt><dd>{result?.provenance.profileRevision ?? '—'}</dd></div>
-          <div><dt>Rules</dt><dd>{result?.provenance.rulesVersion || '—'}</dd></div>
-          <div><dt>Facts schema</dt><dd>{result?.provenance.schemaVersion || '—'}</dd></div>
-          <div><dt>Extractor</dt><dd>{result?.provenance.extractorVersion || '—'}</dd></div>
-          <div><dt>Facts usable</dt><dd>{result?.reliability.usable ?? '—'}</dd></div>
-          <div><dt>Needs corroboration</dt><dd>{result?.reliability.needsCorroboration ?? '—'}</dd></div>
-          <div><dt>Unusable</dt><dd>{result?.reliability.unusable ?? '—'}</dd></div>
-        </dl>
-      </details>
-    </>}
+// Presentational only: receives the stored two-score result and named callbacks. It performs no
+// request of its own and computes no weight, utility, score, bucket or verdict.
+export function QuickMatchPanel({fit, analysis, onOpenProfile, onRefreshSource, onAddSkill, onDismissSkill}: Props) {
+  const unavailable = !!fit && fit.result.source === 'unavailable';
+  return <section className="rail-card quick-match" aria-label="How this role fits">
+    {unavailable
+      ? <SourceUnavailable onRefreshSource={onRefreshSource}/>
+      : fit ? <Scores fit={fit} analysis={analysis} onOpenProfile={onOpenProfile} onAddSkill={onAddSkill} onDismissSkill={onDismissSkill}/> : <NotCompared analysis={analysis} onOpenProfile={onOpenProfile}/>}
   </section>;
 }
 
-function UnknownRow({result, unknown, onOpenProfile}: {result: MatchResult; unknown: MatchUnknown; onOpenProfile: (section?: string) => void}) {
-  const comparison = comparisonForUnknown(result, unknown);
-  const section = profileAnchor(unknown.profileEdit);
-  const label = profileEditLabel(unknown.profileEdit);
-  return <li>
-    <div className="qm-unknown-head"><strong>{unknownTitle(unknown)}</strong><span>{groupLabel(unknown.group)} · {reasonText(unknown.kind)}</span></div>
-    {comparison?.jobValue && <p className="qm-unknown-value">Vacancy requirement: {comparison.jobValue}</p>}
-    {(comparison?.evidenceQuote || unknown.quote) && <blockquote>{comparison?.evidenceQuote || unknown.quote}</blockquote>}
-    <p className="qm-unknown-meta">{sectionLabel(unknown.section)}{unknown.profileEdit ? ` · profile field: ${unknown.profileEdit}` : ''}</p>
-    {section && <button className="link-button qm-edit" onClick={() => onOpenProfile(section)}>Edit {label}</button>}
-  </li>;
+function NotCompared({analysis, onOpenProfile}: {analysis?: AnalysisStatus | null; onOpenProfile: (section?: string) => void}) {
+  if (analysis?.state === 'no_profile') {
+    return <>
+      <h3>Fit</h3>
+      <p className="fit-text">Roles are compared with your profile once it is saved.</p>
+      <button className="link-button" onClick={() => onOpenProfile()}>Open profile</button>
+    </>;
+  }
+  return <>
+    <h3>Fit</h3>
+    <p className="fit-text">Not compared yet.</p>
+  </>;
 }
 
-function ConflictRow({conflict}: {conflict: MatchConflict}) {
-  return <li><div className="qm-unknown-head"><strong>{conflict.fact}</strong><span>{groupLabel(conflict.group)} · {reasonText(conflict.kind)}</span></div><p>{conflict.detail}</p></li>;
+function SourceUnavailable({onRefreshSource}: {onRefreshSource: () => Promise<void>}) {
+  const [busy, setBusy] = useState(false);
+  return <>
+    <h3>Fit</h3>
+    <p className="fit-text"><b>Full job description is unavailable</b></p>
+    <p className="fit-text">Scores appear once the text of the role has been retrieved.</p>
+    <button disabled={busy} onClick={async () => { setBusy(true); try { await onRefreshSource(); } finally { setBusy(false); } }}>{busy ? 'Refreshing…' : 'Refresh'}</button>
+  </>;
 }
 
-function ComparisonRow({row}: {row: MatchComparison}) {
-  const profile = row.profileValue || (row.profileNumber !== undefined ? String(row.profileNumber) : '—');
-  const job = row.jobValue || (row.jobNumber !== undefined ? String(row.jobNumber) : '—');
-  const evidence = row.evidenceField || row.evidenceQuote;
-  return <article className={`qm-compare ${row.comparable ? 'comparable' : 'unknown'}`}>
-    <div className="qm-compare-head"><strong>{criterionLabel(row.criterion)}</strong><span>{applicabilityLabel(row.applicability)} · {reliabilityLabel(row.reliability)}</span></div>
-    <dl className="qm-compare-values">
-      <div><dt>Profile</dt><dd>{profile}</dd></div>
-      <div><dt>Vacancy</dt><dd>{job}</dd></div>
-    </dl>
-    {evidence && <p className="qm-evidence">{row.evidenceField ? `Source field: ${row.evidenceField}` : 'Source quote'}{row.evidenceQuote ? ` · “${row.evidenceQuote}”` : ''}</p>}
-    <p className="qm-compare-meta">{reasonText(row.reason)}{row.comparable && row.utility !== undefined ? ` · Utility ${percent(row.utility)}` : ' · Not comparable'}{(row.contribution ?? 0) > 0 ? ` · Share of group ${percent(row.contribution)}` : ''}</p>
-  </article>;
+function Scores({fit, analysis, onOpenProfile, onAddSkill, onDismissSkill}: {fit: FitView; analysis?: AnalysisStatus | null; onOpenProfile: (section?: string) => void; onAddSkill?: (name: string) => Promise<void>; onDismissSkill?: (name: string) => Promise<void>}) {
+  const fitsYou = fitsYouCell(fit), youFit = youFitCell(fit, analysis);
+  const {youFit: you} = fit.result;
+  const off = youFitOff(fit);
+  // While You fit is off the four lists carry the goal lines only; the requirements are one list.
+  const goals = (lines: FitLine[]) => (off ? lines.filter(l => l.origin === 'goal') : lines);
+  const lists = {matches: goals(fit.result.lists.matches), mismatches: goals(fit.result.lists.mismatches), missing: goals(fit.result.lists.missing), toClarify: fit.result.lists.toClarify};
+  const pending = !off && you.status === 'pending';
+  const notice = pending ? pendingNotice(analysis) : null;
+  return <>
+    <div className="fit-scores">
+      <ScoreBlock label="Fits you" cell={fitsYou}/>
+      {!off && <ScoreBlock label="You fit" cell={youFit} counts={you.status === 'scored' ? countsText(you.counts) : undefined}/>}
+    </div>
+    {fit.stale && <p className="msg info" role="status">Updating after a change; these numbers are from before it.</p>}
+    {fit.result.fitsYou.status === 'unscored' && <p className="fit-text"><button className="link-button" onClick={() => onOpenProfile('profile-goals')}>Add what you are looking for</button> to see this score.</p>}
+    {notice && notice.kind !== 'working' && notice.kind !== 'profile' && <p className={`msg ${notice.kind}`} role="status">{notice.text}</p>}
+    {notice?.kind === 'profile' && <p className="fit-text">{notice.text} <button className="link-button" onClick={() => onOpenProfile()}>Open profile</button></p>}
+
+    <Section title="Matches" lines={lists.matches} mark="✓" onOpenProfile={onOpenProfile}/>
+    <Section title="Mismatches" lines={lists.mismatches} mark="✕" onOpenProfile={onOpenProfile} onAddSkill={onAddSkill} onDismissSkill={onDismissSkill}/>
+    <Section title="Missing from your profile" lines={lists.missing} mark="?" onOpenProfile={onOpenProfile} onAddSkill={onAddSkill} onDismissSkill={onDismissSkill} offerAdd/>
+    <ToClarify lines={lists.toClarify}/>
+    {off && (requirementLines(fit).length > 0
+      ? <Section title="Requirements" lines={requirementLines(fit)} mark={requirementMark} onOpenProfile={onOpenProfile} onAddSkill={onAddSkill} onDismissSkill={onDismissSkill}/>
+      : <section className="fit-section"><h4>Requirements</h4><p className="fit-text">{you.status === 'no_requirements' ? 'No requirements stated' : 'Requirements appear once the role has been analysed.'}</p></section>)}
+  </>;
+}
+
+function ScoreBlock({label, cell, counts}: {label: string; cell: ScoreCell; counts?: string}) {
+  const hasNumber = /^\d+$/.test(cell.number);
+  return <div className={`fit-score${cell.previous ? ' previous' : ''}`} title={cell.title}>
+    <span className="fit-score-label">{label}</span>
+    {hasNumber
+      ? <><span className="fit-score-number">{cell.number}<small>/100</small></span><span className={`qm-bucket ${cell.bucket}`}>{cell.label}</span></>
+      : <span className="fit-score-none">{cell.note}</span>}
+    {counts && <span className="fit-counts" aria-label={counts}>{counts.split(' · ').map((part, i) => <React.Fragment key={part}>{i > 0 && ' · '}<span className="fit-count">{part}</span></React.Fragment>)}</span>}
+  </div>;
+}
+
+// A list longer than this shows its first lines and a control for the rest, so a dense vacancy
+// does not push the other lists out of sight.
+const SHORT_LIST = 6;
+
+function Section({title, lines, mark, onOpenProfile, onAddSkill, onDismissSkill, offerAdd}: {title: string; lines: FitLine[]; mark: string | ((line: FitLine) => string); onOpenProfile: (section?: string) => void; onAddSkill?: (name: string) => Promise<void>; onDismissSkill?: (name: string) => Promise<void>; offerAdd?: boolean}) {
+  const [expanded, setExpanded] = useState(false);
+  const [working, setWorking] = useState<string | null>(null);
+  const [done, setDone] = useState<Record<string, 'added' | 'dismissed'>>({});
+  async function act(name: string, kind: 'added' | 'dismissed') {
+    const run = kind === 'added' ? onAddSkill : onDismissSkill;
+    if (!run) return;
+    setWorking(name);
+    try { await run(name); setDone(d => ({...d, [name]: kind})); } finally { setWorking(null); }
+  }
+  if (!lines.length) return null;
+  // Goal lines (what you are looking for) come first, then the lines about the requirements,
+  // separated by a thin rule so that the requirement counts are not read against the goal lines.
+  const ordered = [...lines.filter(l => l.origin === 'goal'), ...lines.filter(l => l.origin !== 'goal')];
+  const shown = expanded ? ordered : ordered.slice(0, SHORT_LIST);
+  return <section className="fit-section">
+    <h4>{title} <span>{lines.length}</span></h4>
+    <ul className="fit-lines">
+      {shown.map((line, index) => {
+        const text = lineText(line);
+        const quickNames = onAddSkill && onDismissSkill ? quickAddSkillNames(line) : [];
+        const section = offerAdd && quickNames.length === 0 ? missingSection(line) : undefined;
+        const rule = index > 0 && line.origin !== 'goal' && shown[index - 1].origin === 'goal';
+        return <li key={`${line.criterion ?? line.subject}-${index}`} className={rule ? 'fit-rule' : undefined} title={line.quote || undefined}>
+          <span className="fit-mark" aria-hidden="true">{typeof mark === 'function' ? mark(line) : mark}</span>
+          <span className="fit-line-text">
+            <span>{text.main}</span>
+            {text.alternatives && <span className="fit-alternatives"> ({text.alternatives})</span>}
+            {text.partial && <span className="fit-tag">partial</span>}
+            {text.preferred && <span className="fit-tag">preferred</span>}
+            {text.note && <span className="fit-evidence" title={text.fullNote}> — {text.note}</span>}
+            {quickNames.length > 0 && <span className="fit-add-skills">{quickNames.map(name => <span key={name} className="fit-add-skill">
+              {quickNames.length > 1 && <span className="fit-add-name">{name}</span>}
+              {done[name]
+                ? <span className="fit-tag">{done[name] === 'added' ? 'added to skills' : 'marked as not yours'}</span>
+                : <>
+                  <button className="fit-skill-action add" disabled={working !== null} data-tip={`I have this: add ${name} to my skills`} aria-label={`Add ${name} to my skills`} onClick={() => act(name, 'added')}>{working === name ? '…' : '✓'}</button>
+                  <button className="fit-skill-action dismiss" disabled={working !== null} data-tip={`I do not have this: remember it in my profile and stop offering ${name}`} aria-label={`I do not have ${name}`} onClick={() => act(name, 'dismissed')}>✕</button>
+                </>}
+            </span>)}</span>}
+            {section && <> <button className="link-button" onClick={() => onOpenProfile(section.id)}>Add to {section.label}</button></>}
+          </span>
+        </li>;
+      })}
+    </ul>
+    {lines.length > SHORT_LIST && <button className="link-button fit-more" aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Show fewer' : `Show ${lines.length - SHORT_LIST} more`}</button>}
+  </section>;
+}
+
+function ToClarify({lines}: {lines: FitLine[]}) {
+  if (!lines.length) return null;
+  return <section className="fit-section">
+    <h4>To clarify <span>{lines.length}</span></h4>
+    <ul className="fit-lines">
+      {lines.map((line, index) => <li key={`${line.criterion}-${index}`}>
+        <span className="fit-mark" aria-hidden="true">?</span>
+        <span className="fit-line-text">{clarifyLabel(line)}</span>
+      </li>)}
+    </ul>
+  </section>;
+}
+
+// The two numbers of a catalogue row: Fits you, then You fit. The title spells both out in words.
+export function ScorePair({fit}: {fit?: FitView | null}) {
+  const a = fitsYouCell(fit), b = youFitCell(fit);
+  if (youFitOff(fit)) {
+    return <span className="score-pair" role="group" aria-label={a.title} title={a.title}>
+      <span className={`score fits-you${a.bucket === 'strong' ? ' strong' : ''}${a.previous ? ' previous' : ''}`}>{a.number}</span>
+    </span>;
+  }
+  const cls = (cell: ScoreCell, kind: string) => `score ${kind}${cell.bucket === 'strong' ? ' strong' : ''}${cell.previous ? ' previous' : ''}`;
+  return <span className="score-pair" role="group" aria-label={`${a.title}; ${b.title}`} title={`${a.title} · ${b.title}`}>
+    <span className={cls(a, 'fits-you')}>{a.number}</span>
+    <span className={cls(b, 'you-fit')}>{b.number}</span>
+  </span>;
 }

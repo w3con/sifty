@@ -18,9 +18,13 @@ func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
 		RulesVersion:    strings.TrimSpace(q.RulesVersion),
 		RequiredWeight:  q.RequiredWeight,
 		PreferredWeight: q.PreferredWeight,
+		// The midpoint and verdict utilities are versioned policy owned by the contract, not
+		// yet a runtime.yaml key; they enter the rules identity, so changing them re-evaluates
+		// stored results without any model call.
+		UnknownGoalUtility: matchcontract.DefaultUnknownGoalUtility,
+		VerdictUtility:     matchcontract.DefaultVerdictUtilities(),
 		Weights: map[matchcontract.Group]float64{
 			matchcontract.GroupRole:         q.Weights.Role,
-			matchcontract.GroupProfessional: q.Weights.Professional,
 			matchcontract.GroupCompensation: q.Weights.Compensation,
 			matchcontract.GroupGeography:    q.Weights.Geography,
 			matchcontract.GroupConditions:   q.Weights.Conditions,

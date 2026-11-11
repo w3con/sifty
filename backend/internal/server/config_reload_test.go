@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/w3con/sifty/internal/config"
@@ -166,5 +167,52 @@ max_jobs_per_source: 100
 	resp = apiDo(t, h, "GET", "/api/health", "")
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("GET /api/health after port-change save: %d (server must stay on original port)", resp.StatusCode)
+	}
+}
+
+// TestQuickMatchOrderEndpoint verifies that the Inbox sort toggle can be saved on the server and
+// read back, that the value reaches runtime.yaml and the running configuration, and that an
+// unknown order is refused.
+func TestQuickMatchOrderEndpoint(t *testing.T) {
+	h, _ := newReloadHandler(t)
+	template, err := os.ReadFile("../../../config/runtime.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := fmt.Sprintf(`{"content":%q}`, strings.Replace(string(template), "port: 8081", "port: 7373", 1))
+	if resp := apiDo(t, h, "PUT", "/api/config/runtime", body); resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT runtime template: %d", resp.StatusCode)
+	}
+	read := func() string {
+		resp := apiDo(t, h, "GET", "/api/quick-match/order", "")
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET order: %d", resp.StatusCode)
+		}
+		var out map[string]string
+		if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+			t.Fatal(err)
+		}
+		return out["order"]
+	}
+	if got := read(); got != "fit" {
+		t.Fatalf("default order = %q, want fit", got)
+	}
+	if resp := apiDo(t, h, "PUT", "/api/quick-match/order", `{"order":"newest"}`); resp.StatusCode != http.StatusOK {
+		t.Fatalf("PUT order newest: %d", resp.StatusCode)
+	}
+	if got := read(); got != "newest" {
+		t.Fatalf("order after save = %q, want newest", got)
+	}
+	resp := apiDo(t, h, "GET", "/api/config/runtime", "")
+	var saved map[string]string
+	_ = json.NewDecoder(resp.Body).Decode(&saved)
+	if !strings.Contains(saved["content"], "order: newest") {
+		t.Errorf("runtime.yaml does not carry the saved order:\n%s", saved["content"])
+	}
+	if resp := apiDo(t, h, "PUT", "/api/quick-match/order", `{"order":"random"}`); resp.StatusCode == http.StatusOK {
+		t.Error("an unknown order was accepted")
+	}
+	if got := read(); got != "newest" {
+		t.Fatalf("a refused save changed the order to %q", got)
 	}
 }

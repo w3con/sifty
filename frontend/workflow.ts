@@ -21,7 +21,7 @@ export function normalizeQuick(saved:Partial<QuickFilters>):QuickFilters{
 export const quickCount=(q:QuickFilters)=>[q.web3,q.remote,q.hideExpired,q.management,q.fit.length>0,q.fresh!==''].filter(Boolean).length;
 export function visibleInStage(j:Job,view:View,session:Set<number>) {return view!=='collection'&&(j.stage===view||(view==='triage'&&session.has(j.id)&&['preselected','no'].includes(j.stage)));}
 export function quickMatch(j:Job,q:QuickFilters,query:string) {
-  const bucket=fitBucketOf(j.quickMatch);
+  const bucket=fitBucketOf(j.fit);
   return (!q.management||managementTitle(j.title))&&(!q.web3||j.isWeb3)&&(!q.remote||/remote|anywhere|telecommute/i.test(j.location??''))&&(!q.strong||bucket==='strong')&&(!q.fit?.length||q.fit.includes(bucket))&&(!q.fresh||Date.now()-Date.parse(j.firstSeen)<=Number(q.fresh)*86400000)&&(!q.hideExpired||!j.expired)&&`${j.title} ${j.company} ${(j.tags??[]).join(' ')} ${j.description}`.toLowerCase().includes(query.toLowerCase());
 }
 export function nextUndecided(jobs:Job[],id:number) {const i=jobs.findIndex(j=>j.id===id);return [...jobs.slice(i+1),...jobs.slice(0,i)].find(j=>j.stage==='triage')?.id??id;}

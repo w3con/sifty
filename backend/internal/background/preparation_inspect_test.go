@@ -2,7 +2,6 @@ package background
 
 import (
 	"context"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +9,7 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/inspect"
 	"github.com/w3con/sifty/internal/model"
+	"github.com/w3con/sifty/internal/modellock"
 )
 
 // stubInspectFn returns an InspectFn that returns the given questionnaire.
@@ -151,16 +151,8 @@ func TestInspectCompletesWithInferenceLockHeld(t *testing.T) {
 	d := newTestDirs(t)
 	cfg := minimalTestCfg()
 
-	// Acquire the inference lock in this process to simulate a busy generate worker.
-	thisPID := os.Getpid()
-	if err := s.AcquireLock("inference", thisPID); err != nil {
-		t.Fatalf("AcquireLock: %v", err)
-	}
-	defer func() { _ = s.ReleaseLock("inference", thisPID) }()
-	// Confirm the lock is active: trying to acquire it again must fail.
-	if err := s.AcquireLock("inference", thisPID); err == nil {
-		t.Fatal("expected lock to be held; second AcquireLock should fail")
-	}
+	// Hold the model lock in this process to simulate a busy generate worker.
+	holdModelLock(t)
 
 	jobID := seedPreselectedJob(t, s, "InspectUnderLock", "https://apply.example.com/lock-test")
 	queueInspectOnly(t, s, jobID)
@@ -182,9 +174,10 @@ func TestInspectCompletesWithInferenceLockHeld(t *testing.T) {
 		t.Fatalf("inspect-only operation did not complete while inference lock was held; status=%q", status)
 	}
 
-	// Confirm the lock is still held by this process (the inspect phase never touched it).
-	if err := s.AcquireLock("inference", thisPID); err == nil {
-		t.Error("inference lock should still be held; the inspect phase must not acquire it")
+	// Confirm the lock is still held (the inspect phase never touched it).
+	if l, err := modellock.TryAcquire(); err == nil {
+		l.Release()
+		t.Error("the model lock should still be held; the inspect phase must not acquire it")
 	}
 }
 

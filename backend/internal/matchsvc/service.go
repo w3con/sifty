@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"sync/atomic"
 
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/jobextract"
@@ -55,6 +56,10 @@ type settings struct {
 	policyIdentity     string
 	effectivePolicyVer string
 	extractionPolicy   matchcontract.SourcePolicy
+	// matchingOn is quick_match.model_passes.matching. It is part of the identity a stored
+	// two-score result is keyed by, so switching it recomputes the results.
+	matchingOn  bool
+	fitIdentity string
 }
 
 func (s *Service) activeSettings(cfg *config.Config) (settings, error) {
@@ -78,17 +83,33 @@ func (s *Service) activeSettings(cfg *config.Config) (settings, error) {
 	effective := policy.Version + "+" + policyIdentity
 	extraction := policy
 	extraction.Version = effective
+	matchingOn := q.ModelPasses.Matching
+	fitIdentity := rulesIdentity
+	if !matchingOn {
+		fitIdentity += "+matching-off"
+	}
 	return settings{
+		matchingOn: matchingOn, fitIdentity: fitIdentity,
 		rules: rules, rulesIdentity: rulesIdentity,
 		policyIdentity:     policyIdentity,
 		effectivePolicyVer: effective, extractionPolicy: extraction,
 	}, nil
 }
 
-// Recalculate implements the profile save effect, which needs only success/failure.
+// Recalculate implements the profile save, collection and rules-change effect, which needs only
+// success/failure. It recomputes the single-score results, rescores the two-score results from
+// what is already stored (no model call), and then wakes the model-pass worker so that stale
+// profile matches and newly collected vacancies are picked up. A profile save therefore re-runs
+// only the matching pass; extraction is reused because the description did not change.
 func (s *Service) Recalculate(ctx context.Context) error {
-	_, err := s.Recompute(ctx)
-	return err
+	if _, err := s.Recompute(ctx); err != nil {
+		return err
+	}
+	if _, err := s.RescoreAllFit(ctx); err != nil && !errors.Is(err, ErrNoProfile) {
+		return err
+	}
+	notifyModelWork()
+	return nil
 }
 
 // Recompute recomputes every saved role under one guarded configuration snapshot. A profile or
@@ -166,12 +187,21 @@ func (s *Service) RecalculateJob(ctx context.Context, jobID int64) error {
 		if err != nil {
 			return err
 		}
-		_, err = s.recomputeJob(*current, set, jobID)
-		return err
+		if _, err = s.recomputeJob(*current, set, jobID); err != nil {
+			return err
+		}
+		if err = s.fitJob(*current, set, jobID); err != nil {
+			return err
+		}
+		notifyModelWork()
+		return nil
 	})
 }
 
-func (s *Service) recomputeJob(current profile.Profile, set settings, jobID int64) (matchcontract.ResultStatus, error) {
+// factsFor returns the deterministic facts of one saved role under the active source policy,
+// reusing the persisted facts when the retained source and the policy are unchanged and
+// re-capturing and re-extracting the already saved input otherwise.
+func (s *Service) factsFor(jobID int64, set settings) (*matchcontract.VacancyFacts, error) {
 	facts, err := s.store.GetMatchFacts(jobID)
 	if err != nil || facts == nil {
 		facts = nil
@@ -182,7 +212,7 @@ func (s *Service) recomputeJob(current profile.Profile, set settings, jobID int6
 		facts.SourcePolicyVersion == set.effectivePolicyVer {
 		sourceCurrent, err = s.store.MatchSourceCurrent(jobID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		// The retained input can be newer than the facts when a previous capture succeeded but
 		// extraction or fact save failed. Reusing those older facts would fail the result CAS
@@ -190,14 +220,14 @@ func (s *Service) recomputeJob(current profile.Profile, set settings, jobID int6
 		if sourceCurrent {
 			input, ierr := s.store.GetMatchInput(jobID)
 			if ierr != nil {
-				return "", ierr
+				return nil, ierr
 			}
 			if input == nil {
 				sourceCurrent = false
 			} else {
 				inputHash, herr := matchcontract.HashRetainedSource(*input)
 				if herr != nil {
-					return "", herr
+					return nil, herr
 				}
 				sourceCurrent = facts.RawSourceHash == inputHash
 			}
@@ -206,16 +236,25 @@ func (s *Service) recomputeJob(current profile.Profile, set settings, jobID int6
 	if facts == nil || !sourceCurrent {
 		src, err := s.store.CaptureMatchInput(jobID)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 		extracted, err := jobextract.Extract(src, jobextract.Policy{Source: set.extractionPolicy})
 		if err != nil {
-			return "", fmt.Errorf("quick match: extract job %d: %w", jobID, err)
+			return nil, fmt.Errorf("quick match: extract job %d: %w", jobID, err)
 		}
 		if err := s.store.SaveMatchFacts(extracted); err != nil {
-			return "", fmt.Errorf("quick match: save facts for job %d: %w", jobID, err)
+			return nil, fmt.Errorf("quick match: save facts for job %d: %w", jobID, err)
 		}
 		facts = &extracted
+	}
+
+	return facts, nil
+}
+
+func (s *Service) recomputeJob(current profile.Profile, set settings, jobID int64) (matchcontract.ResultStatus, error) {
+	facts, err := s.factsFor(jobID, set)
+	if err != nil {
+		return "", err
 	}
 
 	snapshot := profile.QuickMatchSnapshot(&current)
@@ -331,6 +370,7 @@ func (s *Service) Decorate(jobs []*model.Job) {
 		if err != nil {
 			return err
 		}
+		s.attachFit(jobs, current.Revision, set)
 		for _, job := range jobs {
 			view, verr := s.viewWithSettings(job.ID, set)
 			if verr != nil {
@@ -420,4 +460,78 @@ func clearQuickMatch(job *model.Job) {
 	job.MatchScore = 0
 	job.MatchProfileRevision = 0
 	job.MatchStale = true
+}
+
+var modelWorkNotifier atomic.Pointer[func()]
+
+// SetModelWorkNotifier registers the function that wakes the model-pass worker. It is a
+// package-level hook because request handlers build a fresh Service per request; passing nil
+// removes it.
+func SetModelWorkNotifier(fn func()) {
+	if fn == nil {
+		modelWorkNotifier.Store(nil)
+		return
+	}
+	modelWorkNotifier.Store(&fn)
+}
+
+var modelWorkPriority atomic.Pointer[func(int64)]
+
+// SetModelWorkPriority registers the function that asks the model-pass worker to take one vacancy
+// next. Like the notifier it is a package-level hook, because request handlers build a fresh
+// Service per request; passing nil removes it.
+func SetModelWorkPriority(fn func(jobID int64)) {
+	if fn == nil {
+		modelWorkPriority.Store(nil)
+		return
+	}
+	modelWorkPriority.Store(&fn)
+}
+
+// PrioritizeModelWork asks for the model work of one vacancy to be taken next. It does nothing when
+// no worker is registered.
+func PrioritizeModelWork(jobID int64) {
+	if fn := modelWorkPriority.Load(); fn != nil {
+		(*fn)(jobID)
+	}
+}
+
+func notifyModelWork() {
+	if fn := modelWorkNotifier.Load(); fn != nil {
+		(*fn)()
+	}
+}
+
+// SortByFit orders decorated jobs for triage: Fits you descending, then You fit descending, then
+// job id ascending. A vacancy whose You fit is still pending, or states no requirements, sorts as
+// if it were the midpoint; one with no Fits you number (unavailable text, no profile goal to
+// compare, not scored yet) follows every scored one.
+func SortByFit(jobs []*model.Job) {
+	key := func(j *model.Job) (hasFits bool, fits, you float64) {
+		you = matchcontract.DefaultUnknownGoalUtility
+		if j.Fit == nil || j.Fit.Stale {
+			return false, 0, you
+		}
+		r := j.Fit.Result
+		if r.FitsYou.Status == matchcontract.ScoreScored && r.FitsYou.RawScore != nil {
+			hasFits, fits = true, *r.FitsYou.RawScore
+		}
+		if r.YouFit.Status == matchcontract.ScoreScored && r.YouFit.RawScore != nil {
+			you = *r.YouFit.RawScore
+		}
+		return hasFits, fits, you
+	}
+	sort.SliceStable(jobs, func(i, j int) bool {
+		ah, af, ay := key(jobs[i])
+		bh, bf, by := key(jobs[j])
+		switch {
+		case ah != bh:
+			return ah
+		case ah && af != bf:
+			return af > bf
+		case ay != by:
+			return ay > by
+		}
+		return jobs[i].ID < jobs[j].ID
+	})
 }

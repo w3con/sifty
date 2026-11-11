@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"sync"
 
@@ -182,8 +183,90 @@ func (s *Service) UpdateSection(name string, value json.RawMessage) (*Profile, b
 	if err != nil {
 		return nil, false, err
 	}
+	return s.updateSection(section, func(*Profile) (json.RawMessage, error) { return value, nil })
+}
+
+// maxSkillNameRunes bounds a skill name added in one step.
+const maxSkillNameRunes = 80
+
+// AddSkill adds one skill to the confirmed profile in one step, without the profile editor: a
+// requirement the owner sees on a vacancy can be added where it is read. The new row is built from
+// the skills stored inside the same transaction that saves it, so two quick additions never replace
+// each other. A skill that is already there (same name, any case) changes nothing and reports
+// changed=false. An empty level means Proficient. The skill is recorded as entered by hand.
+func (s *Service) AddSkill(name, level string) (*Profile, bool, error) {
+	name = strings.Join(strings.Fields(name), " ")
+	if name == "" {
+		return nil, false, fmt.Errorf("skill name is required")
+	}
+	if len([]rune(name)) > maxSkillNameRunes {
+		return nil, false, fmt.Errorf("skill name is longer than %d characters", maxSkillNameRunes)
+	}
+	if level = strings.TrimSpace(level); level == "" {
+		level = SkillProficient
+	}
+	if !validSkillLevels[level] {
+		return nil, false, fmt.Errorf("unknown skill level %q", level)
+	}
+	return s.updateSection(SectionSkills, func(stored *Profile) (json.RawMessage, error) {
+		rows := append([]Skill(nil), stored.Data.Skills...)
+		for _, have := range rows {
+			if strings.EqualFold(strings.TrimSpace(have.Name), name) || (have.Key != "" && have.Key == skillKeyOf(name)) {
+				return json.Marshal(rows) // already there: neither its level nor anything else changes
+			}
+		}
+		rows = append(rows, Skill{Key: skillKeyOf(name), Name: name, Level: level})
+		return json.Marshal(rows)
+	})
+}
+
+// AddAbsentSkill records that the owner does not have a skill, where a requirement for it is read.
+// It is kept in the profile's skills section beside the skills they have, so it is never offered
+// again, and a requirement for it is answered "no" without a model. A skill that is already among the
+// skills the owner has is refused (it would contradict the profile); one already recorded changes
+// nothing and reports changed=false.
+func (s *Service) AddAbsentSkill(name string) (*Profile, bool, error) {
+	name = strings.Join(strings.Fields(name), " ")
+	if name == "" {
+		return nil, false, fmt.Errorf("skill name is required")
+	}
+	if len([]rune(name)) > maxSkillNameRunes {
+		return nil, false, fmt.Errorf("skill name is longer than %d characters", maxSkillNameRunes)
+	}
+	key := skillKeyOf(name)
+	return s.updateSection(SectionAbsentSkills, func(stored *Profile) (json.RawMessage, error) {
+		for _, have := range stored.Data.Skills {
+			if have.Key == key || strings.EqualFold(strings.TrimSpace(have.Name), name) {
+				return nil, fmt.Errorf("%q is already among your skills", name)
+			}
+		}
+		rows := append([]AbsentSkill(nil), stored.Data.AbsentSkills...)
+		for _, a := range rows {
+			if a.Key == key {
+				return json.Marshal(rows)
+			}
+		}
+		rows = append(rows, AbsentSkill{Key: key, Name: name})
+		return json.Marshal(rows)
+	})
+}
+
+var nonKeyRunes = regexp.MustCompile(`[^a-z0-9]+`)
+
+// skillKeyOf derives a skill's key from its name the way the profile editor does: lower case, every
+// run of other characters one hyphen, none at the ends.
+func skillKeyOf(name string) string {
+	return strings.Trim(nonKeyRunes.ReplaceAllString(strings.ToLower(strings.TrimSpace(name)), "-"), "-")
+}
+
+// updateSection saves one section built from the profile as stored inside the transaction.
+func (s *Service) updateSection(section Section, build func(stored *Profile) (json.RawMessage, error)) (*Profile, bool, error) {
 	saved, changed, err := s.store.MutateProfile(LocalProfileID, func(current *store.ProfileRecord) (string, bool, string, string, error) {
 		stored, err := decodeProfile(current)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		value, err := build(stored)
 		if err != nil {
 			return "", false, "", "", err
 		}

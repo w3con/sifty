@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/store"
 )
@@ -83,6 +84,52 @@ func registerProfileRoutes(mux Router, d *Deps) {
 		if err != nil {
 			writeProfileError(w, err)
 			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
+	})
+
+	// Adds one skill to the confirmed profile from where a requirement is read (a vacancy), in one
+	// step and without the profile editor. jobId, when given, asks the model worker to match that
+	// vacancy first; the rest of the catalogue follows in the usual order.
+	mux.HandleFunc("POST /api/profile/skills", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name  string `json:"name"`
+			Level string `json:"level"`
+			JobID int64  `json:"jobId"`
+		}
+		if err := readBody(r, &body); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		saved, changed, err := d.profileService().AddSkill(body.Name, body.Level)
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		if body.JobID > 0 {
+			matchsvc.PrioritizeModelWork(body.JobID)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
+	})
+
+	// Records that the owner does not have a skill, from where a requirement for it is read. It is
+	// kept in the skills section of the profile; the same jobId rule applies as for adding a skill.
+	mux.HandleFunc("POST /api/profile/absent-skills", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Name  string `json:"name"`
+			JobID int64  `json:"jobId"`
+		}
+		if err := readBody(r, &body); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		saved, changed, err := d.profileService().AddAbsentSkill(body.Name)
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		if body.JobID > 0 {
+			matchsvc.PrioritizeModelWork(body.JobID)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
 	})

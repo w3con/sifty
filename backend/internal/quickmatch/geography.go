@@ -7,24 +7,20 @@ import (
 	"github.com/w3con/sifty/internal/matchcontract"
 )
 
+// evaluateGeography compares preferred locations only. Work authorization is not a goal: it is
+// a requirement the vacancy states and the profile answers, judged in You fit.
 func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts) *groupEval {
 	g := &groupEval{group: matchcontract.GroupGeography, applicability: matchcontract.NotApplicable}
 	locations := sortedProfileLocations(profile.Locations)
-	if len(profile.Locations) > 0 && len(locations) == 0 && len(profile.Authorizations) == 0 {
+	if len(profile.Locations) > 0 && len(locations) == 0 {
 		g.applicability = matchcontract.ApplicabilityUnknown
 		return g
 	}
-	if len(locations) == 0 && len(profile.Authorizations) == 0 {
+	if len(locations) == 0 {
 		return g
 	}
 	g.applicability = matchcontract.Applicable
-
-	if len(locations) > 0 {
-		g.members = append(g.members, evaluateLocations(locations, facts))
-	}
-	if m, ok := evaluateAuthorization(profile, facts); ok {
-		g.members = append(g.members, m)
-	}
+	g.members = append(g.members, evaluateLocations(locations, facts))
 	return g
 }
 
@@ -100,82 +96,6 @@ func evaluateLocations(profileLocs []matchcontract.ProfileLocation, facts matchc
 	}
 	base.reason = matchcontract.ReasonLocationMappingUnsupported
 	return base
-}
-
-func evaluateAuthorization(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts) (member, bool) {
-	base := member{
-		group: matchcontract.GroupGeography, criterion: matchcontract.CriterionGeographyAuthorization,
-		profileField: "geography.workAuthorizations", applicability: matchcontract.Applicable, weight: 1,
-	}
-	jobAuth := facts.Geography.WorkAuthorization
-	hasProfileAuth := len(profile.Authorizations) > 0
-	if jobAuth == nil {
-		if !hasProfileAuth {
-			return member{}, false
-		}
-		base.applicability = matchcontract.NotApplicable
-		base.weight = 0
-		base.reason = matchcontract.ReasonAuthorizationJobMissing
-		base.profileValue = formatAuthorizations(profile.Authorizations)
-		return base, true
-	}
-	if !hasProfileAuth && len(profile.Locations) == 0 {
-		return member{}, false
-	}
-
-	base.jobFact = "workAuthorization"
-	base.jobValue = formatJobAuthorization(jobAuth)
-	base.section = jobAuth.Evidence.Section
-	base.evidenceField = jobAuth.Evidence.Field
-	base.evidenceQuote = jobAuth.Evidence.Quote
-	base.reliability = jobAuth.Evidence.Reliability
-	base.profileValue = formatAuthorizations(profile.Authorizations)
-
-	if jobAuth.Evidence.Reliability != matchcontract.ReliabilityUsable {
-		base.reason = matchcontract.ReasonAuthorizationUnusable
-		return base, true
-	}
-	if strings.TrimSpace(jobAuth.Country) == "" {
-		base.reason = matchcontract.ReasonAuthorizationCountryMissing
-		return base, true
-	}
-	if jobAuth.Requirement != matchcontract.AuthorizationRequired && jobAuth.Requirement != matchcontract.AuthorizationNotRequired {
-		base.reason = matchcontract.ReasonAuthorizationUnusable
-		return base, true
-	}
-
-	status := matchingAuthorization(profile.Authorizations, jobAuth.Country)
-	if status == "" {
-		base.reason = matchcontract.ReasonAuthorizationProfileMissing
-		return base, true
-	}
-	if status == "ambiguous" {
-		base.reason = matchcontract.ReasonAuthorizationAmbiguous
-		return base, true
-	}
-	if status == "missing" {
-		base.reason = matchcontract.ReasonAuthorizationStatusMissing
-		return base, true
-	}
-	if jobAuth.Requirement == matchcontract.AuthorizationNotRequired {
-		utility := 1.0
-		base.utility = &utility
-		base.reason = matchcontract.ReasonAuthorizationCompatible
-		return base, true
-	}
-	switch status {
-	case "eligible":
-		utility := 1.0
-		base.utility = &utility
-		base.reason = matchcontract.ReasonAuthorizationCompatible
-	case "need_visa":
-		utility := 0.0
-		base.utility = &utility
-		base.reason = matchcontract.ReasonAuthorizationDisjoint
-	default:
-		base.reason = matchcontract.ReasonAuthorizationStatusMissing
-	}
-	return base, true
 }
 
 type locationPair struct {
@@ -295,58 +215,4 @@ func formatProfileLocations(locs []matchcontract.ProfileLocation) string {
 		out = append(out, formatProfileLocation(l))
 	}
 	return joinNonEmpty(out)
-}
-
-func formatAuthorizations(in []matchcontract.ProfileAuthorization) string {
-	var out []string
-	for _, a := range in {
-		if strings.TrimSpace(a.Country) == "" {
-			continue
-		}
-		value := strings.ToUpper(strings.TrimSpace(a.Country))
-		if strings.TrimSpace(a.Status) != "" {
-			value += "=" + a.Status
-		}
-		out = append(out, value)
-	}
-	sort.Strings(out)
-	return joinNonEmpty(out)
-}
-
-func formatJobAuthorization(a *matchcontract.AuthorizationFact) string {
-	out := a.Requirement
-	if strings.TrimSpace(a.Country) != "" {
-		out += " " + strings.ToUpper(strings.TrimSpace(a.Country))
-	}
-	return out
-}
-
-// matchingAuthorization returns the status for an exact explicit country, "missing" when the
-// country is present without a status, or "ambiguous" when the saved entries disagree.
-func matchingAuthorization(in []matchcontract.ProfileAuthorization, country string) string {
-	want, _ := normalizeCountry(country)
-	statuses := make(map[string]bool)
-	found := false
-	for _, a := range in {
-		got, _ := normalizeCountry(a.Country)
-		if got != want || got == "" {
-			continue
-		}
-		found = true
-		status := strings.ToLower(strings.TrimSpace(a.Status))
-		if status == "" {
-			status = "missing"
-		}
-		statuses[status] = true
-	}
-	if !found {
-		return ""
-	}
-	if len(statuses) > 1 {
-		return "ambiguous"
-	}
-	for status := range statuses {
-		return status
-	}
-	return "missing"
 }

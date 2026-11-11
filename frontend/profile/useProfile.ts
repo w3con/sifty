@@ -13,6 +13,7 @@ import {
   getProfileCapabilities,
   listProfileDocuments,
   listProfileFacts,
+  putAbsentSkills,
   putProfileSection,
   refreshProfileDerivedContext,
   rejectProfileFact,
@@ -193,6 +194,21 @@ export function useProfileEditor() {
     }
   }, [drafts, applyNewerProfile]);
 
+  // Takes one skill off the list of skills the owner has said they do not have. It saves at once:
+  // the list is not an editor draft, it is filled from vacancies and only trimmed here.
+  const removeAbsentSkill = useCallback(async (key: string) => {
+    const current = profileRef.current;
+    if (!current) return;
+    const rest = (current.data.absentSkills ?? []).filter((skill) => skill.key !== key);
+    try {
+      const result = await putAbsentSkills(rest);
+      applyNewerProfile(result.profile);
+      setNotice('Saved.');
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }, [applyNewerProfile]);
+
   // A fact action can update the stored profile while section drafts are open. The drafts are
   // deliberately not marked stale: version comparison is not part of the editing workflow.
   const applyExternalProfile = useCallback((next: Profile) => {
@@ -220,7 +236,7 @@ export function useProfileEditor() {
 
   return {
     profile, capabilities, loading, error, notice, drafts, derivedRefreshing, derivedError,
-    load, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile, refreshDerived,
+    load, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile, refreshDerived, removeAbsentSkill,
     setError, setNotice,
   };
 }

@@ -47,6 +47,7 @@ var fieldCatalog = []FieldDescriptor{
 	{Key: "targetRoles", Kind: "string_list", Uses: []FieldUse{UseFastRanking, UseDetailedAssessment, UsePreparation, UseDocumentExtraction}},
 	{Key: "targetIndustries", Kind: "string_list", Uses: []FieldUse{UseDetailedAssessment, UsePreparation, UseDocumentExtraction}},
 	{Key: "skills", Kind: "object_list", Uses: []FieldUse{UseFastRanking, UseDetailedAssessment, UsePreparation, UseDocumentExtraction}},
+	{Key: "absentSkills", Kind: "object_list", Uses: []FieldUse{UseProfileDisplay, UseFastRanking}, Note: "Skills the owner has said they do not have: a requirement for one is answered no without a model, and it is not offered for adding again."},
 	{Key: "skills.level", Kind: "enum", Uses: []FieldUse{UseDetailedAssessment, UsePreparation}, Options: "skill_levels"},
 	{Key: "skills.context", Kind: "rich_text_plain", Uses: []FieldUse{UseDetailedAssessment, UsePreparation}, Legacy: true, Note: "Removed from the editor; retained text is not deleted."},
 	{Key: "languages", Kind: "object_list", Uses: []FieldUse{UseDetailedAssessment, UsePreparation, UseDocumentExtraction}},

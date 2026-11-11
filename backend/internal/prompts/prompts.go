@@ -25,3 +25,15 @@ var Extraction string
 //
 //go:embed profile-facts.md
 var ProfileFacts string
+
+// VacancyRequirements is the system prompt of the vacancy-only requirement extraction pass. It
+// never receives the candidate profile.
+//
+//go:embed vacancy-requirements.md
+var VacancyRequirements string
+
+// RequirementMatching is the system prompt of the pass that compares extracted requirements with
+// the confirmed candidate profile.
+//
+//go:embed requirement-matching.md
+var RequirementMatching string

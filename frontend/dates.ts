@@ -31,6 +31,16 @@ export function publicationDate(raw?: string | null): Date | null {
   return date;
 }
 
+// The Newest sort key of a vacancy: rank 0 is a date with a recorded basis, 1 a date without one,
+// 2 no usable date; within ranks 0 and 1 the later date (t) sorts first. The server keeps a copy for
+// the order of the background analysis (backend/internal/background/newestkey.go); both are checked
+// against backend/internal/background/testdata/newest-key.json, and the rule is defined in
+// docs/specs/quick-match.md section 14.3.
+export function newestKey(publishedAt?: string | null, publishedBasis?: string | null): { rank: number; t: number } {
+  const t = publicationDate(publishedAt)?.getTime() ?? null;
+  return { rank: t === null ? 2 : (publishedBasis ? 0 : 1), t: t ?? 0 };
+}
+
 export function publicationAge(raw?: string | null): { date: string; age: string } | null {
   const d = publicationDate(raw);
   if (!d) return null;

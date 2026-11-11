@@ -73,9 +73,13 @@ func (g *groupEval) finish() {
 	}
 }
 
-// Evaluate compares one vacancy's prepared facts with the confirmed demographic-free profile.
-// It returns an error for an incompatible contract, a tampered or missing facts hash, or
-// non-finite/invalid rules; it never invents a score from invalid input.
+// Evaluate computes the goals score (Fits you) from one vacancy's prepared facts and the
+// confirmed demographic-free profile. Only the role, compensation, geography and conditions
+// groups take part; skills and work authorization are requirements, judged by EvaluateFit. A
+// goal group the profile cares about but the vacancy gives no comparable fact for counts as the
+// configured midpoint instead of being dropped. It returns an error for an incompatible
+// contract, a tampered or missing facts hash, or non-finite/invalid rules; it never invents a
+// score from invalid input.
 func Evaluate(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts, rules matchcontract.Rules) (matchcontract.Result, error) {
 	if err := profile.Validate(); err != nil {
 		return matchcontract.Result{}, fmt.Errorf("profile snapshot: %w", err)
@@ -92,7 +96,6 @@ func Evaluate(profile matchcontract.ProfileSnapshot, facts matchcontract.Vacancy
 
 	groups := []*groupEval{
 		evaluateRole(profile, facts),
-		evaluateProfessional(profile, facts, rules),
 		evaluateCompensation(profile, facts),
 		evaluateGeography(profile, facts),
 		evaluateConditions(profile, facts),
@@ -139,18 +142,21 @@ func assemble(profile matchcontract.ProfileSnapshot, facts matchcontract.Vacancy
 			w := rules.Weights[g.group]
 			coverageDen += w
 			coverageNum += w * g.coverage
+			utility, assumed := rules.UnknownGoalUtility, true
 			if g.utility != nil && g.coverage > 0 {
-				scoreDen += w
-				scoreNum += w * *g.utility
-				res.Contributions = append(res.Contributions, matchcontract.Contribution{
-					Group:            g.group,
-					Weight:           w,
-					EvidenceFraction: g.coverage,
-					Utility:          *g.utility,
-					Weighted:         w * *g.utility,
-					Status:           matchcontract.ReliabilityUsable,
-				})
+				utility, assumed = *g.utility, false
 			}
+			scoreDen += w
+			scoreNum += w * utility
+			res.Contributions = append(res.Contributions, matchcontract.Contribution{
+				Group:            g.group,
+				Weight:           w,
+				EvidenceFraction: g.coverage,
+				Utility:          utility,
+				Weighted:         w * utility,
+				Status:           matchcontract.ReliabilityUsable,
+				Assumed:          assumed,
+			})
 		}
 		for _, m := range g.members {
 			res.Comparisons = append(res.Comparisons, m.comparison(g.knownWeight))
@@ -159,19 +165,12 @@ func assemble(profile matchcontract.ProfileSnapshot, facts matchcontract.Vacancy
 			}
 			res.Reasons = append(res.Reasons, m.reason)
 			if m.utility == nil {
-				profileEdit := ""
-				switch m.reason {
-				case matchcontract.ReasonSkillNotEvidenced, matchcontract.ReasonSkillRequirementCompound,
-					matchcontract.ReasonAuthorizationProfileMissing, matchcontract.ReasonAuthorizationStatusMissing:
-					profileEdit = m.profileField
-				}
 				res.Unknowns = append(res.Unknowns, matchcontract.Unknown{
-					Group:       g.group,
-					Fact:        firstNonEmpty(m.jobFact, string(m.criterion)),
-					Section:     m.section,
-					Kind:        m.reason,
-					Quote:       m.evidenceQuote,
-					ProfileEdit: profileEdit,
+					Group:   g.group,
+					Fact:    firstNonEmpty(m.jobFact, string(m.criterion)),
+					Section: m.section,
+					Kind:    m.reason,
+					Quote:   m.evidenceQuote,
 				})
 			}
 		}
@@ -272,11 +271,21 @@ func stabilize(res *matchcontract.Result) {
 	res.Reasons = uniqueStrings(res.Reasons)
 	// The API and persisted JSON must carry empty lists, never null, so presentation can read
 	// lengths and arrays without a nil-slice crash on a fully known or unscored result.
-	if res.Contributions == nil { res.Contributions = []matchcontract.Contribution{} }
-	if res.Comparisons == nil { res.Comparisons = []matchcontract.Comparison{} }
-	if res.Unknowns == nil { res.Unknowns = []matchcontract.Unknown{} }
-	if res.Conflicts == nil { res.Conflicts = []matchcontract.Conflict{} }
-	if res.Reasons == nil { res.Reasons = []string{} }
+	if res.Contributions == nil {
+		res.Contributions = []matchcontract.Contribution{}
+	}
+	if res.Comparisons == nil {
+		res.Comparisons = []matchcontract.Comparison{}
+	}
+	if res.Unknowns == nil {
+		res.Unknowns = []matchcontract.Unknown{}
+	}
+	if res.Conflicts == nil {
+		res.Conflicts = []matchcontract.Conflict{}
+	}
+	if res.Reasons == nil {
+		res.Reasons = []string{}
+	}
 }
 
 func countReliability(f matchcontract.VacancyFacts) matchcontract.ReliabilityCounts {

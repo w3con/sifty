@@ -54,6 +54,12 @@ type Provider struct {
 	// schema-constrained JSON answer and, measured on qwen3.5:9b, alone consumed the whole call
 	// budget before any JSON was emitted.
 	Think *bool
+	// ThinkLevel is the reasoning effort ("low", "medium" or "high") for models that cannot switch
+	// reasoning off, such as gpt-oss. When set it replaces Think in the ollama request.
+	ThinkLevel string
+	// Temperature is the sampling temperature for the ollama and compatible adapters. Nil keeps
+	// the provider's default. The command-line adapters ignore it.
+	Temperature *float64
 }
 
 // RawEvidence, RawMismatch and RawModel are the model's structured output, referencing evidence

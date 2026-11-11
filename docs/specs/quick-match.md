@@ -691,3 +691,27 @@ Status: implemented on the branch `work/ASSESSMENT-3`, not released. Supersedes 
 - **Shortlist re-check on a stronger model**: card ASSESSMENT-6.
 - **Sections**: one splitter in Go, stored with the vacancy, used by the view (By section) and available to the extraction: card INBOX-2 (step L.5).
 - **The research tools stay** on the branch: diagnostic live tests run only with their environment variables; `scripts/model-bench/`.
+
+## 15. Agreed pipeline direction — profile as a fact store, vacancy by sections (owner, 2026-11-11; agreed, not implemented)
+
+Status: agreed direction. It governs the planning of INBOX-2 (L.5), COL-2, ASSESSMENT-5, ASSESSMENT-6 and ASSESSMENT-7. Sections 14.2, 14.12 and 14.14 stay the implemented behaviour until those cards replace them; each card moves its part from "agreed" to "implemented" in this section.
+
+### 15.1 The profile is a store of facts
+
+The profile is a store of accepted facts. A model runs only when a new file or link is added, to propose facts; the owner accepts them. Every comparison afterwards runs on accepted facts only, never on a document. For a requirement of a vacancy there are three outcomes: a fact supports it; a fact says the owner does not have it (the "Skills you do not have" list, ✕); no fact addresses it. The third is shown as "not in your profile" with the action to add it (✓) and counts as not met in You fit; it does not claim the owner lacks it. (This replaces the "complete CV" wording of section 14.12.1; the verdict utilities are unchanged.)
+
+### 15.2 A vacancy, step by step
+
+1. **Keep the original.** The fetched HTML (or feed item) is stored as received, so it can be parsed again when the parser improves, without a new fetch. It is never rendered directly (scripts, inline styles, trackers, broken markup); the view shows the sanitised structured form (INBOX-2), styled only by Sifty's CSS.
+2. **Sections by code.** The parser splits the text into sections by headings and by label lines, using the rules of the vacancy's source (15.3) and a general heading vocabulary (About, Role, Responsibilities, Requirements, Nice to have, Compensation, Benefits, Location, Process, Legal/EEO), including headings glued to the following text ("About UsParity…"). Each section is classified by that vocabulary; an unmatched heading keeps its own text and the class "other". A text without any detectable heading is a parsing failure of its source, not a normal state (15.3).
+3. **Route sections.**
+   - About the company, Compensation, Benefits, Location and Conditions feed Fits you. Code reads labels and numbers first; the model reads only these sections, and only for fields the code did not find.
+   - Requirements and Nice to have feed You fit. Code first: the owner's skills (with the synonym vocabulary) are searched in these sections; a hit is a supported requirement without a model. Then the model splits only these sections into single requirements (required / preferred from the section class).
+   - Legal/EEO and Process are not used for scoring.
+4. **Score.** Fits you by code over goal facts (sections 6 and 14.1). You fit per requirement: code first (skill vocabulary, years from dates, the owner's ✓ / ✕); for the rest, the nearest accepted facts are found by meaning (embeddings, not shared words); no close fact → "not in your profile" without a model; a close fact → a narrow question "does this fact prove this requirement" answered by the chosen pair judge with a confidence threshold calibrated on a labelled set (ASSESSMENT-5, candidates in ASSESSMENT-7).
+5. **Shortlist.** On entering the shortlist, steps 3–4 run again on the model configured for the shortlist, or once more on the same model when none is configured (ASSESSMENT-6).
+6. Preparing an application is out of scope here.
+
+### 15.3 Parsing rules per source and their repair
+
+Each source has its own parsing rules (where the description is: page body block, JSON-LD, feed item; how headings look), stored as configuration with the source, applied to every vacancy of that source. The parser measures its own result per source (share of vacancies with sections, glued or broken text, leftover entities). When a source falls below the threshold, a repair run analyses a few stored originals of that source (a model may propose the rules), the proposed rules are accepted only if they parse a held-out sample of stored originals at least as well as the current ones, and then every stored vacancy of the source is parsed again from its original. Because originals are stored (15.2.1), repair never needs a new fetch. Card: COL-2 (its existing `HintStore` seam).

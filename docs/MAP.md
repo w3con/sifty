@@ -293,6 +293,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/description.md) | R-COL, R-SEARCH | backlog; owner approved the [plan](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) with By section on 2026-11-11 | after ASSESSMENT-3; includes INBOX-3 as L.4b |
 | [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b) | INBOX-2 |
 | [OPS-9](../work/tasks/ops/OPS-9_finish-process-defects/description.md) | R-HARNESS, R-REL | backlog (scope agreed, estimate in the card) | found at the ASSESSMENT-3 finish |
+| [SETTINGS-6](../work/tasks/settings/SETTINGS-6_edit-source-url/description.md) | R-SET, R-COL | backlog (proposed behaviour and estimate in the card) | small; after INBOX-2 |
 | [COL-1](../work/tasks/collection/COL-1_source-abstraction/description.md) | R-COL | [done](../work/tasks/collection/COL-1_source-abstraction/done.md) | GO-2 |
 | [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog (reserved) | COL-1 |
 | [COL-3](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/description.md) | R-COL | [done](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/done.md) | COL-1 |

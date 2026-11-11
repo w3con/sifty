@@ -34,3 +34,7 @@ This card records an incoming bug or idea. It does not authorize implementation,
 ## Estimate (preliminary)
 
 Complexity 5 / AI time 2–3 h (profile field + contract, matcher input, evaluator exclusion, panel actions with undo, profile list UI, spec).
+
+## Note (2026-11-11)
+
+ASSESSMENT-3 Q.7 added ✓ / ✕ icons on panel lines: ✓ adds the skill to the profile, ✕ records it under "Skills you do not have" (an honest `no`). The Dismiss of this card is different: "not important to me", excluded from You fit. Plan it so the two do not look alike on the line.

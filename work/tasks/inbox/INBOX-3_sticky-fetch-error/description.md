@@ -29,3 +29,7 @@ This card records an incoming bug or idea. It does not authorize implementation,
 - An error raised by the poll clears itself on the next successful poll; errors from the owner's own actions stay until the next action or view change.
 - Known cause in `frontend/messages.ts`: network failure to the own server → "Sifty server is not responding. Retrying…", Retry kind; no button needed.
 - Estimate: complexity 2, AI time 20–30 min. Can ride along with INBOX-2 (same screen) if the owner agrees.
+
+## Decision
+
+2026-11-11, owner: «да» — fixed together with INBOX-2 as its step L.4b; INBOX-3 is closed by that card.

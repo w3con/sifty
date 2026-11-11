@@ -7,7 +7,7 @@ version: 1
 # implemented and verified for each site. The app must flag unsupported sources.
 sites:
   - name: Web3 Careers
-    url: https://web3.careers
+    url: https://web3.career
     enabled: true
   - name: Braintrust
     url: https://www.usebraintrust.com/jobs

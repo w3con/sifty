@@ -2,9 +2,11 @@
 
 Single source for the card sequence and current status. Read this first on resume after a context reset. Each card's own folder under `work/tasks/<epic>/<ID>_<slug>/` holds its description, plan and checkpoints; this file only holds the order, dependencies and status across cards.
 
-Updated: 2026-11-10.
+Updated: 2026-11-11.
 
 ## Current planning work
+
+**Sequence after the ASSESSMENT-3 scope split — 2026-11-11:** owner «кажется все это вышло из под контроля. нам нужны новые карточки, обновления specs.» Order: (1) [ASSESSMENT-3](tasks/assessment/ASSESSMENT-3_two-fit-scores/) close-out Q.9 (matching pass off, You fit hidden, spec §14.14), coordinator acceptance, owner approval, finish to main and production; (2) [INBOX-2](tasks/inbox/INBOX-2_listing-markup/) listing markup + By section + one stored section splitter, with INBOX-3 banner fix as L.4b (approved); (3) [ASSESSMENT-5](tasks/assessment/ASSESSMENT-5_matching-quality/) matching quality: gold set and method choice (research; needs the owner's yes for Haiku labelling and small model downloads); (4) [ASSESSMENT-6](tasks/assessment/ASSESSMENT-6_shortlist-recheck/) shortlist re-check on a stronger model (open questions first); (5) [ASSESSMENT-4](tasks/assessment/ASSESSMENT-4_dismiss-requirement/) Dismiss. ASSESSMENT-2 to be closed as rejected (superseded by ASSESSMENT-3); ASM-5 and ASM-6 to be reviewed for cancellation at ASSESSMENT-3 finish.
 
 **Quick Match plan approved; Q.1 next — 2026-11-10:** owner approved the complete six-stage [ASSESSMENT-2 plan](tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md) with «запускай» after the goal-based ranking, requirements interval and bounded configured-provider policy were presented. The whole-task estimate remains 165–290 minutes; remaining implementation/acceptance upper budget is 255 minutes, upper stop 2026-11-11T00:21Z, excluding owner waiting and external delays. The starting policy (goal weights 25/20/15/10 normalized, requirements interval, goal sort, flag priority, bounded configured provider) is approved for implementation but not implemented; released v1 remains current. Next: preparation commit and sanctioned `work-handover`, then Q.1 only. Use one executor at a time. No model call, preview, production release or push is authorized before its stage.
 

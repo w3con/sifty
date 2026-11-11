@@ -33,6 +33,10 @@ The Overview › Original shows the listing with its headings, bulleted and numb
 
 Complexity 8. Required L.1–L.4 + L.6: about 3–4.5 h of AI time. Optional L.5: +45–75 min. Total with L.5: 4–5.5 h; with L.4b (INBOX-3) +20–30 min. No paid model or service; L.1 and L.2 fetch a few pages from job boards.
 
+## Addition (coordinator, 2026-11-11): one section splitter for the view and the extraction
+
+The ASSESSMENT-3 research found that the extraction also needs the text divided into sections (56 of 97 texts split by headings or label lines, 16 glued). There must be one splitter: L.5 builds sections in Go from the structured form, stores them with the vacancy (not only in the frontend) and exposes them through the API; the view uses them for By section. Feeding sections to the extraction is not part of this card; it is available for ASSESSMENT-5 or a later card. Estimate of L.5 unchanged except storing sections (+15–20 min).
+
 ## Approval
 
 2026-11-11, owner: «с ней, утверждаю.» — the plan with the optional L.5 (By section) is approved. Start after ASSESSMENT-3 is merged into main.

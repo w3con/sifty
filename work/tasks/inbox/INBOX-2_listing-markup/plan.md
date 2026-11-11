@@ -30,6 +30,17 @@ The Overview › Original shows the listing with its headings, bulleted and numb
 - [ ] **L.5 — By section (optional)** (45–75 min). Sections come from the headings of the structured form, in original order; a heading matched to a small fixed vocabulary (About, Role, Requirements, Nice to have, Benefits, Process) gets that label, others keep their own text. The toggle is enabled only when a listing has at least two headings; otherwise it stays disabled with the existing tooltip. Presentation only: same typography, each section a heading and its content, sections collapsible. Spec for the listing view updated. Check: screenshots for three vacancies.
 - [ ] **L.6 — Owner review on the review copy (8094)** (20–30 min, owner present).
 
+## Acceptance criteria
+
+Added by the coordinator on 2026-11-11 when work-handover refused the card for lacking this section; every line restates the Outcome or a step's Check above, nothing new is decided here.
+
+- Overview › Original shows headings, bulleted and numbered lists and paragraphs in the page typography; no HTML tags or entities are visible (checked in the browser on Parity, a LinkedIn vacancy with HTML, one with a numbered list, one glued).
+- A fresh collection stores both `description` and `description_html`; the sanitiser removes scripts, attributes and event handlers (targeted test).
+- For vacancies that exist before the change, `description` is byte-identical (hashes unchanged); counts per kind are reported before and after.
+- Search, Quick Match facts and the ASSESSMENT-3 passes still read the plain `description`.
+- Without a stored `description_html` the view falls back to the current line renderer.
+- If L.5 is built: By section is enabled only for listings with at least two headings, and sections are stored with the vacancy and exposed through the API.
+
 ## Estimate
 
 Complexity 8. Required L.1–L.4 + L.6: about 3–4.5 h of AI time. Optional L.5: +45–75 min. Total with L.5: 4–5.5 h; with L.4b (INBOX-3) +20–30 min. No paid model or service; L.1 and L.2 fetch a few pages from job boards.

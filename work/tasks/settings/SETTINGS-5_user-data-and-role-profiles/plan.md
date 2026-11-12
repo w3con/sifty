@@ -146,3 +146,7 @@ Plan ready for the owner's go-ahead; start after INBOX-2 is merged.
 ### Owner, 2026-11-12: search as a section in the centre column
 
 Owner: «не надо делать левую колонку - в центральной надо добавить секцию ... поисковые слова ... Единственная проблема - когнитивно конфликтует со Skills - или нет? но может быть лечится на уровне ДИЗАЙН отличия». Coordinator proposal: a "Search" section in the centre column, placed in the profile's "What I am looking for" group next to Target roles (goals), not among the "About me" facts (Skills, Experience, Languages). The two groups get a group heading each; the difference is made by grouping, order and one explanatory line ("Words Sifty looks for in listings"), not by colour (colours carry state meaning in the design system). Inside: titles, keywords and expressions as chips, using the existing editor logic. Reduces S.5 (no new column).
+
+### Owner, 2026-11-12: keep S.5 small
+
+«S5 - я бы не усложнял. Создание - уже есть. а копировать вроде ничего не надо пока.» S.5 is reduced to: enable the existing "Add new profile" in the header switcher (backed by S.1), switch, rename (the name moves from browser storage to the stored profile), Inbox / Shortlist / Archive per active profile, the Search section and the two group headings in the profile page. No copy, no archive in the interface (the API from S.1 keeps archive for later). S.5 estimate: 45–70 min; total 5–7.5 h.

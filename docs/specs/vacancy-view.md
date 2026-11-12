@@ -1,6 +1,6 @@
 # Vacancy view behavior specification
 
-Status: **agreed with the owner, not implemented** (2026-11-12). Source of the layout: the Overview mockup "B" shown to the owner on 2026-11-09 (`work/tasks/inbox/INBOX-2_listing-markup/overview-b-mockup.png`). Card: INBOX-2 (step L.5 rework). Related: [Quick Match](quick-match.md) §15 (sections by code), [Profiles](profiles.md).
+Status: **agreed with the owner, not implemented** (2026-11-12). Source: the owner's requirements of 2026-11-12 (section 1). The owner says the layout drawn for him earlier is not mockup "B" of 2026-11-09; that drawing was not found in the saved files, and the exact visual layout is to be confirmed with the owner before L.5b. Card: INBOX-2 (step L.5 rework). Related: [Quick Match](quick-match.md) §15 (sections by code), [Profiles](profiles.md).
 
 ## 1. Purpose
 

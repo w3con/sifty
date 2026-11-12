@@ -28,6 +28,10 @@ When the listing has no recognised Requirements or Offer section, the correspond
 Tiles, What they offer and Fits you read the same merged facts, in this order: structured source fields; code reading the classified sections (salary ranges, work mode, location, contract words, the offer vocabulary); the model's extracted conditions (quotes validated). A value stated in the text is never "not stated" in a tile.
 Requirements: the model's extraction (Quick Match §14.5) with verdicts by code and by the owner (§15.1); the model's matching pass stays off.
 
+**Money (owner, 2026-11-12, «Пересчёт по курсу из настроек»):** a vacancy's range is converted to the profile's currency with exchange rates kept in configuration (edited by hand, no network); the tile shows the original range and «≈ €…» and a ✓ / ✕ against the minimum; a range without a tax note counts as gross; a period other than a year is converted (month × 12, hour × 2 080), else not compared. Money is read from the Compensation/Benefits sections and the model's conditions only, not from the whole text.
+**Location:** shown without a verdict colour until the profile holds where the owner may work (SETTINGS-8) and regions can be compared (ASSESSMENT-8).
+**What they ask** lists the model's extracted requirements whether or not a Requirements section was recognised; the card says «not found» only when there is no extraction or it is empty.
+
 Fill rates are measured before building (INBOX-2 L.5r0); the design must hold when most tiles say "not stated".
 
 ## 4. Out of scope

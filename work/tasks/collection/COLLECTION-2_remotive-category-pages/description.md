@@ -30,3 +30,5 @@ This card records an incoming bug or idea. It does not authorize implementation,
 - [ ] **R.3 — Guard for every source:** at collection, a page whose title is a known category name and whose company is "Unknown" is not stored as a vacancy; counted in the per-source quality numbers (link to COL-2). (20–30 min)
 
 Estimate: complexity 3, AI time about 1 h. Can follow INBOX-2 right away (same release mechanics).
+
+- [ ] **R.4 — We Work Remotely foreign salary blocks** (found by INBOX-2 L.5r0): 195 stored texts contain salary blocks of other jobs from the page; keep only the job's own content block (RSS description preferred). (20–30 min)

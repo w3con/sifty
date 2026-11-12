@@ -299,6 +299,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [OPS-10](../work/tasks/ops/OPS-10_production-db-hang/description.md) | R-REL, R-ASM | backlog, urgent: production hang (SQLite driver mutex leak, status polling); plan in the card; ships before INBOX-2 | ASSESSMENT-3 amplifier |
 | [SETTINGS-6](../work/tasks/settings/SETTINGS-6_edit-source-url/description.md) | R-SET, R-COL | backlog (proposed behaviour and estimate in the card) | small; after INBOX-2 |
 | [SETTINGS-7](../work/tasks/settings/SETTINGS-7_profile-file-delete/description.md) | R-SET | [done](../work/tasks/settings/SETTINGS-7_profile-file-delete/done.md); in main `320dbf9`, released to production 2026-11-12 | — |
+| [SETTINGS-8](../work/tasks/settings/SETTINGS-8_cv-fact-extraction/description.md) | R-SET | backlog; bug: CV analysis loses skills, languages, authorization (diagnosis in the card) | before ASSESSMENT-8 |
 | [COL-1](../work/tasks/collection/COL-1_source-abstraction/description.md) | R-COL | [done](../work/tasks/collection/COL-1_source-abstraction/done.md) | GO-2 |
 | [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog; per-source rules and repair (owner, 2026-11-11; spec quick-match §15.3) | COL-1; after INBOX-2 |
 | [COL-3](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/description.md) | R-COL | [done](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/done.md) | COL-1 |

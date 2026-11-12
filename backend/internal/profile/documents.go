@@ -138,6 +138,9 @@ func (s *Service) ListDocuments() ([]*Document, error) {
 	counts := factCountsByDocument(facts)
 	out := make([]*Document, 0, len(docs))
 	for _, rec := range docs {
+		if rec.ProcessingState == store.ProfileDocumentDeleted {
+			continue
+		}
 		out = append(out, documentFromRecord(rec, counts[rec.ID]))
 	}
 	return out, nil
@@ -218,7 +221,7 @@ func (s *Service) CreateDocument(filename string, content []byte) (*Document, er
 		return nil, err
 	}
 	id := uuid.NewString()
-	rel := filepath.Join("evidence", "profile-documents", id, "original."+kind)
+	rel := filepath.Join(managedDocumentDir(id), "original."+kind)
 	abs, err := s.dirs.Under(rel)
 	if err != nil {
 		return nil, err
@@ -400,6 +403,73 @@ func (s *Service) CancelDocumentAnalysis(id string) (*Document, error) {
 		return nil, err
 	}
 	return s.GetDocument(id)
+}
+
+// DocumentDeletion is what DeleteDocument removed, as the API reports it.
+type DocumentDeletion struct {
+	DocumentID       string `json:"documentId"`
+	Deleted          bool   `json:"deleted"`
+	FileRemoved      bool   `json:"fileRemoved"`
+	TextRemoved      bool   `json:"textRemoved"`
+	ProposalsRemoved int    `json:"proposalsRemoved"`
+	FactsKept        int    `json:"factsKept"`
+}
+
+// DeleteDocument removes one document: its extracted text, its unaccepted proposals and, when
+// the application stored it, the original file. Facts the owner already accepted stay in the
+// profile and are listed as coming from a deleted file. A running analysis is cancelled first.
+// A configured file that the owner keeps in the data directory is forgotten but never deleted.
+func (s *Service) DeleteDocument(id string) (*DocumentDeletion, error) {
+	s.startMu.Lock()
+	defer s.startMu.Unlock()
+	if run, ok := s.activeRun(id); ok {
+		run.cancel()
+		s.runsMu.Lock()
+		delete(s.runs, id)
+		s.runsMu.Unlock()
+	}
+	rec, err := s.store.GetProfileDocument(id)
+	if err != nil {
+		return nil, err
+	}
+	managed := managedDocumentDir(id)
+	managedFile := rec.StoragePath != "" &&
+		strings.HasPrefix(filepath.Clean(rec.StoragePath), managed+string(filepath.Separator))
+	// A file the owner configured is remembered as removed so the importer does not bring it back.
+	configured := ""
+	if rec.StoragePath != "" && !managedFile {
+		configured = "file:" + filepath.Clean(rec.StoragePath)
+	}
+	result, err := s.store.DeleteProfileDocument(id, configured)
+	if err != nil {
+		return nil, err
+	}
+	out := &DocumentDeletion{
+		DocumentID:       id,
+		Deleted:          true,
+		TextRemoved:      strings.TrimSpace(result.Removed.ExtractedText) != "",
+		ProposalsRemoved: result.ProposalsRemoved,
+		FactsKept:        result.FactsKept,
+	}
+	if managedFile {
+		dir, err := s.dirs.Under(managed)
+		if err == nil {
+			err = os.RemoveAll(dir)
+		}
+		if err != nil {
+			// The record is already gone; the leftover file is reported, not hidden.
+			fmt.Fprintf(os.Stderr, "profile document %s: remove stored file: %v\n", id, err)
+		} else {
+			out.FileRemoved = true
+		}
+	}
+	return out, nil
+}
+
+// managedDocumentDir is the directory, relative to the data directory, where CreateDocument
+// keeps the original of one uploaded document.
+func managedDocumentDir(id string) string {
+	return filepath.Join("evidence", "profile-documents", id)
 }
 
 func (s *Service) activeRun(documentID string) (activeRun, bool) {

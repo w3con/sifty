@@ -1,5 +1,5 @@
 import {api} from '../api';
-import type {AbsentSkill, Capabilities, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
+import type {AbsentSkill, Capabilities, DocumentDeletion, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
 
 // Typed wrappers over the existing api() transport. Nothing here starts model work; only
 // analyzeDocument is an explicit user action that reaches the extraction provider.
@@ -41,9 +41,10 @@ export const cancelDocumentAnalysis = (id: string): Promise<ProfileDocument> =>
 export const retryDocument = (id: string): Promise<ProfileDocument> =>
   api(`profile/documents/${encodeURIComponent(id)}/retry`, 'POST', {});
 
-// Deletes one uploaded file or link. Server rule (to implement): open proposals from this document
-// are removed with it; facts already accepted into the profile stay and keep a "deleted file" source.
-export const deleteProfileDocument = (id: string): Promise<{deleted: boolean}> =>
+// Deletes one uploaded file or link. Open proposals from this document are removed with it; facts
+// already accepted into the profile stay and are listed as coming from a deleted file. The answer
+// says what was removed.
+export const deleteProfileDocument = (id: string): Promise<DocumentDeletion> =>
   api(`profile/documents/${encodeURIComponent(id)}`, 'DELETE');
 
 export const documentFileUrl = (id: string): string =>

@@ -34,16 +34,22 @@ func (s *Service) ListFacts(documentID string) ([]*Fact, error) {
 		return nil, err
 	}
 	names := map[string]string{}
+	deleted := map[string]bool{}
 	for _, doc := range docs {
 		names[doc.ID] = doc.OriginalName
+		deleted[doc.ID] = doc.ProcessingState == store.ProfileDocumentDeleted
 	}
 	out := make([]*Fact, 0, len(records))
 	for _, rec := range records {
 		name := ""
+		gone := false
 		if rec.DocumentID != nil {
 			name = names[*rec.DocumentID]
+			gone = deleted[*rec.DocumentID]
 		}
-		out = append(out, factFromRecord(rec, name))
+		fact := factFromRecord(rec, name)
+		fact.DocumentDeleted = gone
+		out = append(out, fact)
 	}
 	return out, nil
 }

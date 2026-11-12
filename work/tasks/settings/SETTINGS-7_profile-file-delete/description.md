@@ -2,7 +2,7 @@
 
 **Epic:** settings
 **Created:** 2026-11-12
-**Status:** backlog
+**Status:** in progress
 **Kind:** bug
 
 ## Owner's words
@@ -37,10 +37,10 @@ Complexity 3, AI time 30–45 min: the DELETE route through the existing profile
 
 ## Steps
 
-- [ ] 1.1 — Add `DELETE /api/profile/documents/{id}` through the existing profile service: it removes the stored file, its extracted text and its unaccepted proposals, keeps accepted facts and marks their source as deleted, and answers with what was removed; check: `go test ./internal/profile/... ./internal/server/...` passes.
-- [ ] 1.2 — Add one test in `backend/internal/profile` that proves accepted facts survive while the file and the pending proposals are gone; check: the test fails without the service change and passes with it.
-- [ ] 1.3 — Find why the delete confirmation label is white on white and restyle `.profile-doc-confirm-delete` in `frontend/profile/profile.css` with the `danger-*` tokens, no literal colours and no `!important`; check: the label is readable in light and dark themes.
-- [ ] 1.4 — Check the whole flow in a browser through Playwright against a copy of the data directory (never `data/`) on a free port: confirm, file disappears, accepted facts remain; record the result in the card's comments; check: the run finishes and the copy is removed afterwards.
+- [x] 1.1 — Add `DELETE /api/profile/documents/{id}` through the existing profile service: it removes the stored file, its extracted text and its unaccepted proposals, keeps accepted facts and marks their source as deleted, and answers with what was removed; check: `go test ./internal/profile/... ./internal/server/...` passes.
+- [x] 1.2 — Add one test in `backend/internal/profile` that proves accepted facts survive while the file and the pending proposals are gone; check: the test fails without the service change and passes with it.
+- [x] 1.3 — Find why the delete confirmation label is white on white and restyle `.profile-doc-confirm-delete` in `frontend/profile/profile.css` with the `danger-*` tokens, no literal colours and no `!important`; check: the label is readable in light and dark themes.
+- [x] 1.4 — Check the whole flow in a browser through Playwright against a copy of the data directory (never `data/`) on a free port: confirm, file disappears, accepted facts remain; record the result in the card's comments; check: the run finishes and the copy is removed afterwards.
 
 ## Acceptance criteria
 

@@ -375,7 +375,7 @@
 /* each file / link is its own tile: separated by tone and a gap, not by a line */
 .profile-document-list{gap:6px!important}
 .profile-document{background:#f4f4f5!important;border-radius:10px!important;padding:10px 12px!important}
-.profile-document .profile-document-actions button{background:#fff!important}
+.profile-document .profile-document-actions button:not(.profile-doc-confirm-delete){background:#fff!important}
 .profile-document .profile-state{background:#fff}
 .profile-document-error{background:#fde8e4!important}
 .profile-tabs-seg .profile-new{color:#15803d!important;font-size:14px!important;font-weight:600;padding:8px 14px!important;background:transparent!important}
@@ -387,9 +387,10 @@
 .profile-document:hover .profile-doc-delete,.profile-doc-delete:focus-visible{opacity:1}
 .profile-doc-delete:hover{background:#fde8e4!important;color:#b23a22!important}
 @media(hover:none){.profile-doc-delete{opacity:1}}
-.profile-doc-confirm{background:#fde8e4;border-radius:8px;padding:10px 12px;margin:8px 0 4px;font-size:12px;line-height:1.5}
+.profile-doc-confirm{background:var(--danger-bg);border-radius:8px;padding:10px 12px;margin:8px 0 4px;font-size:12px;line-height:1.5}
 .profile-doc-confirm p{margin:0 0 8px}
-.profile-doc-confirm-delete{background:#b23a22!important;color:#fff!important}
+.profile-document-actions .profile-doc-confirm-delete{background:var(--danger-solid);color:var(--danger-on-solid)}
+.profile-document-actions .profile-doc-confirm-delete:hover:not(:disabled){background:var(--danger-solid-hover)}
 /* tag editor */
 .profile-tag-input{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:42px;padding:6px 8px;border-radius:8px;background:#fff;cursor:text}
 .profile-card:not(.editing) .profile-tag-input{background:#f4f4f5}

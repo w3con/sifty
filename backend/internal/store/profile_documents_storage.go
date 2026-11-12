@@ -16,6 +16,11 @@ var ErrProfileFactNotFound = errors.New("profile fact not found")
 // ErrProfileFactResolved is returned when a fact has already been accepted or rejected.
 var ErrProfileFactResolved = errors.New("profile fact already resolved")
 
+// ProfileDocumentDeleted is the processing state of the marker row that outlives a deleted
+// document. The row keeps only the file name, so facts the owner already accepted from it can
+// still say which file they came from and that it is gone.
+const ProfileDocumentDeleted = "deleted"
+
 // ProfileDocumentRecord is one row of profile_documents. StoragePath is relative to the data
 // directory when it names a local original; AnalysisMetadata is a JSON object maintained by the
 // profile service.
@@ -96,7 +101,8 @@ func (s *Store) CreateProfileDocument(rec *ProfileDocumentRecord) error {
 	return nil
 }
 
-// ListProfileDocuments returns all documents for one profile, newest first.
+// ListProfileDocuments returns all document rows for one profile, oldest first, including the
+// marker rows of deleted documents (processing state ProfileDocumentDeleted).
 func (s *Store) ListProfileDocuments(profileID string) ([]*ProfileDocumentRecord, error) {
 	rows, err := s.DB.Query(
 		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE profile_id=? ORDER BY created_at, id`,
@@ -116,10 +122,12 @@ func (s *Store) ListProfileDocuments(profileID string) ([]*ProfileDocumentRecord
 	return out, rows.Err()
 }
 
-// GetProfileDocument returns one document or ErrProfileDocumentNotFound.
+// GetProfileDocument returns one document or ErrProfileDocumentNotFound. A deleted document's
+// remaining marker row is not a document any more, so it is reported as not found.
 func (s *Store) GetProfileDocument(id string) (*ProfileDocumentRecord, error) {
 	rec, err := scanProfileDocument(s.DB.QueryRow(
-		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE id=?`, id))
+		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE id=? AND processing_state<>?`,
+		id, ProfileDocumentDeleted))
 	if err == sql.ErrNoRows {
 		return nil, ErrProfileDocumentNotFound
 	}
@@ -561,4 +569,90 @@ func nullStringPtr(v *string) any {
 		return nil
 	}
 	return *v
+}
+
+// ProfileDocumentDeletion describes what DeleteProfileDocument removed.
+type ProfileDocumentDeletion struct {
+	// Removed is the document row as it was before the deletion.
+	Removed *ProfileDocumentRecord
+	// ProposalsRemoved counts the facts of this document that were not accepted (proposed,
+	// rejected or in conflict) and were removed with it.
+	ProposalsRemoved int
+	// FactsKept counts the accepted facts that stay in the profile.
+	FactsKept int
+}
+
+// DeleteProfileDocument removes one document's stored text and every fact from it that was not
+// accepted, in one transaction. Accepted facts stay: while any exists, or while the row carries
+// the identity of a configured source that would otherwise be imported again, the row remains as
+// a marker (state ProfileDocumentDeleted) holding only the name, the configured link and the
+// legacy source id. Otherwise the row is deleted. configuredSource is the legacy source id of a
+// configured file the document was read from, or "" for an upload; it is recorded when the row
+// does not carry one already. The original file is the caller's to remove.
+func (s *Store) DeleteProfileDocument(id, configuredSource string) (*ProfileDocumentDeletion, error) {
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	rec, err := scanProfileDocument(tx.QueryRow(
+		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE id=? AND processing_state<>?`,
+		id, ProfileDocumentDeleted))
+	if err == sql.ErrNoRows {
+		return nil, ErrProfileDocumentNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read profile document: %w", err)
+	}
+	res, err := tx.Exec(`DELETE FROM profile_facts WHERE document_id=? AND state<>'accepted'`, id)
+	if err != nil {
+		return nil, fmt.Errorf("remove document proposals: %w", err)
+	}
+	removed, _ := res.RowsAffected()
+	var kept int
+	if err := tx.QueryRow(`SELECT COUNT(*) FROM profile_facts WHERE document_id=?`, id).Scan(&kept); err != nil {
+		return nil, fmt.Errorf("count accepted facts: %w", err)
+	}
+	legacy := legacySourceMetadata(rec.AnalysisMetadata, configuredSource)
+	if kept == 0 && legacy == "" && rec.SourceURL == "" {
+		if _, err := tx.Exec(`DELETE FROM profile_documents WHERE id=?`, id); err != nil {
+			return nil, fmt.Errorf("delete profile document: %w", err)
+		}
+	} else {
+		if _, err := tx.Exec(
+			`UPDATE profile_documents SET processing_state=?, storage_path=NULL, content_hash=NULL,
+				extracted_text=NULL, analysis_metadata=?, error=NULL, updated_at=? WHERE id=?`,
+			ProfileDocumentDeleted, nullString(legacy), now(), id); err != nil {
+			return nil, fmt.Errorf("mark profile document deleted: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	tx = nil
+	return &ProfileDocumentDeletion{Removed: rec, ProposalsRemoved: int(removed), FactsKept: kept}, nil
+}
+
+// legacySourceMetadata returns a metadata object carrying only the legacy source id of a
+// configured source (the one in metadata, else fallback), or "" when there is none. It is what
+// lets the importer recognise a deleted configured source instead of importing it a second time.
+func legacySourceMetadata(metadata, fallback string) string {
+	var m struct {
+		LegacySource string `json:"legacySource"`
+	}
+	if metadata != "" {
+		_ = json.Unmarshal([]byte(metadata), &m)
+	}
+	if m.LegacySource == "" {
+		m.LegacySource = fallback
+	}
+	if m.LegacySource == "" {
+		return ""
+	}
+	out, _ := json.Marshal(map[string]string{"legacySource": m.LegacySource})
+	return string(out)
 }

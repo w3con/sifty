@@ -24,11 +24,13 @@ func FactStates() []string {
 
 // Fact is the API-facing attributed assertion. Value is the exact typed JSON that would be
 // applied to the profile when accepted. Quote is an exact excerpt of the source document.
+// DocumentDeleted is true when that document has been deleted; an accepted fact stays.
 type Fact struct {
 	ID              string          `json:"factId"`
 	ProfileID       string          `json:"profileId"`
 	DocumentID      *string         `json:"documentId,omitempty"`
 	DocumentName    string          `json:"documentName,omitempty"`
+	DocumentDeleted bool            `json:"documentDeleted,omitempty"`
 	FieldKey        string          `json:"fieldKey"`
 	Value           json.RawMessage `json:"value"`
 	Quote           string          `json:"quote"`

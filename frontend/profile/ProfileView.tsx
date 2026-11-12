@@ -932,7 +932,7 @@ function FactRow({fact, facts, profile, onEditCompensation, leaving = false}: {f
       </div> : null}
     </>}
     {fact.quote ? <blockquote>{fact.quote}</blockquote> : null}
-    <p className="profile-fact-source">{fact.documentName || fact.origin}{readableReference(fact.sourceReference) ? ` · ${readableReference(fact.sourceReference)}` : ''}</p>
+    <p className="profile-fact-source">{fact.documentName || fact.origin}{fact.documentDeleted ? ' (file deleted)' : ''}{readableReference(fact.sourceReference) ? ` · ${readableReference(fact.sourceReference)}` : ''}</p>
     {error ? <div className="banner error" data-kind={needsCompensation ? 'broken' : messageKind(error)} role="alert">{error}{needsCompensation ? <button type="button" onClick={onEditCompensation}>Edit compensation</button> : null}</div> : null}
     {needsCompensation ? <p className="profile-hint">This amount needs its currency and period to be valid. Set a complete cash compensation in the Compensation section first, or correct it manually there.</p> : null}
   </article>;

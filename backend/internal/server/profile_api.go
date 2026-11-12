@@ -346,6 +346,17 @@ func registerProfileRoutes(mux Router, d *Deps) {
 		http.ServeFile(w, r, path)
 	})
 
+	// Removes the file, its text and its unaccepted proposals; accepted facts stay and show that
+	// their source was deleted. The answer says what was removed.
+	mux.HandleFunc("DELETE /api/profile/documents/{id}", func(w http.ResponseWriter, r *http.Request) {
+		deletion, err := d.profileService().DeleteDocument(r.PathValue("id"))
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, deletion)
+	})
+
 	mux.HandleFunc("POST /api/profile/documents/{id}/analyze", func(w http.ResponseWriter, r *http.Request) {
 		doc, err := d.profileService().AnalyzeDocument(r.PathValue("id"))
 		if err != nil {

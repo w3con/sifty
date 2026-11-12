@@ -547,19 +547,15 @@ export function useProfileDocuments(capabilities: Capabilities | null) {
     clearActionError();
     setNotice('');
     try {
-      await deleteProfileDocument(id);
+      const removed = await deleteProfileDocument(id);
       setDocuments((current) => current.filter((document) => document.documentId !== id));
-      setNotice(`${name} deleted.`);
+      const kept = removed.factsKept > 0
+        ? ` ${removed.factsKept} accepted ${removed.factsKept === 1 ? 'fact stays' : 'facts stay'} in your profile.`
+        : '';
+      setNotice(`${name} deleted.${kept}`);
       return true;
     } catch (cause) {
-      // Until the server implements DELETE, say so plainly instead of a raw HTTP error.
-      if (cause instanceof ApiError && [404, 405, 501].includes(cause.status)) {
-        setError('Deleting files is not supported by the server yet.');
-        setErrorAction('');
-        setErrorTechnical(cause.message);
-      } else {
-        showActionError(cause);
-      }
+      showActionError(cause);
       return false;
     } finally {
       setBusy('');

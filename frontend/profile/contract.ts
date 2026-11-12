@@ -231,11 +231,23 @@ export interface ProfileDocument {
   factCounts: Record<string, number>;
 }
 
+// What the server removed when a document was deleted.
+export interface DocumentDeletion {
+  documentId: string;
+  deleted: boolean;
+  fileRemoved: boolean;
+  textRemoved: boolean;
+  proposalsRemoved: number;
+  factsKept: number;
+}
+
 export interface Fact {
   factId: string;
   profileId: string;
   documentId?: string;
   documentName?: string;
+  // True when the document this fact came from was deleted; an accepted fact stays.
+  documentDeleted?: boolean;
   fieldKey: string;
   value: unknown;
   quote: string;

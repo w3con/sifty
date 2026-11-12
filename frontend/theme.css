@@ -1,5 +1,5 @@
 /* Sifty theme: black header, graphite list, light reading area. Imported last in main.tsx; design only. */
-:root{--paper:#f4f4f5;--card:#fff;--ink:#18181b;--ink-2:#55555b;--ink-3:#6b6b72;--ink-4:#85858c;--well:#e8e8eb;--well-2:#dcdce0;--soft:#efeff1;--lift:none;--accent-ink:#2f6fe0}
+:root{--paper:#f4f4f5;--card:#fff;--ink:#18181b;--ink-2:#55555b;--ink-3:#6b6b72;--ink-4:#85858c;--well:#e8e8eb;--well-2:#dcdce0;--soft:#efeff1;--lift:none;--accent-ink:#2f6fe0;--danger-bg:#fde8e4;--danger-solid:#b23a22;--danger-solid-hover:#962e19;--danger-on-solid:#fff}
 
 /* ---------- header ---------- */
 @media(min-width:768px){.sift-app{grid-template-rows:64px minmax(0,1fr)}}

@@ -11,3 +11,16 @@ Diagnosis and agreed fixes: description.md. Headline: owner «а нужно ли
 - [ ] **F.7 — Check** (20–30 min): re-run analysis on a copy for the owner's CV (the PDF of 2026-11-12) and LinkedIn; table before/after (skills, languages, authorization, location, invented items, duplicates); one targeted test for F.4 (equal value is not a decision) and one for F.1 (bare skill name kept). Spec `docs/specs/profiles.md` §2: how facts are proposed.
 
 Estimate: complexity 5, AI time 2.75–4 h, local model only. Must not touch: production data (copies only), INBOX-2, SETTINGS-5.
+
+## Acceptance criteria (coordinator, 2026-11-12; taken from the diagnosis and the owner's words in description.md)
+
+- On a copy of the data, with the local model only, a re-run of the analysis of the owner's CV (the PDF of 2026-11-12) proposes the skills, the languages and the work mode that the earlier run lost to validation; a bare skill name is kept as {name, level: unstated}; "Remote" is read as "remote".
+- The same run proposes work authorization ("New Zealand citizen · EU resident") and the current location, each with its quote, and proposes no headline.
+- The run does not propose the invented limit "Team size < 10" and sends no empty fields.
+- A proposal equal to the current value (name; any other field) is recorded as "matches your profile" and is not shown as a decision; a different value is a proposed change with both values; an experience proposal for a company and period already in the profile is matched to that entry, not added again.
+- The LinkedIn source no longer stops with "context overflow"; its proposals are merged from the parts.
+- The matcher's profile facts no longer carry the headline; stored headline values are not changed or deleted.
+- One targeted test for F.4 (an equal value is not a decision) and one for F.1 (a bare skill name is kept); `go build ./...` and `go vet ./...` pass; no test that was green before turns red (the known red ones are reported unchanged).
+- `docs/specs/profiles.md` §2 states how facts are proposed.
+- The check table (F.7) shows before and after for skills, languages, authorization, location, invented items and duplicates.
+- Production data, production build and release, INBOX-2 and SETTINGS-5 are untouched; every run uses a copy of the data and the local model.

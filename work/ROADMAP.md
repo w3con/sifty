@@ -6,7 +6,7 @@ Updated: 2026-11-11.
 
 ## Current planning work
 
-**SETTINGS-7 released — 2026-11-12:** profile files can be deleted (accepted facts stay), main `320dbf9`, production 8080. Next in order: INBOX-2 (in progress) ‖ ASSESSMENT-7; then SETTINGS-5 (profiles, spec [profiles](../docs/specs/profiles.md), plan approved pending), SETTINGS-6, ASSESSMENT-5, COL-2, ASSESSMENT-6, ASSESSMENT-4, OPS-9.
+**SETTINGS-7 released — 2026-11-12:** profile files can be deleted (accepted facts stay), main `320dbf9`, production 8080. Next in order: INBOX-2 (in progress) ‖ ASSESSMENT-7; then SETTINGS-5 (profiles, spec [profiles](../docs/specs/profiles.md), plan approved 2026-11-12), SETTINGS-6, ASSESSMENT-5, COL-2, ASSESSMENT-6, ASSESSMENT-4, OPS-9.
 
 **Pipeline direction agreed — 2026-11-11:** spec [quick-match §15](../docs/specs/quick-match.md): profile is a fact store; a vacancy is kept as received, split into classified sections by code, routed (company/conditions → Fits you; requirements → You fit, code first), judged per requirement by a calibrated pair judge. Order now: INBOX-2 (adds original storage L.2c and section classes in L.5) ‖ ASSESSMENT-7 (Laya trial, separate agent) → SETTINGS-6 → ASSESSMENT-5 → COL-2 (per-source rules and repair) → ASSESSMENT-6 → ASSESSMENT-4; OPS-9 when convenient. COL-5 cancelled as a duplicate of INBOX-2.
 

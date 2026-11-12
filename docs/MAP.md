@@ -292,6 +292,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [ASSESSMENT-5](../work/tasks/assessment/ASSESSMENT-5_matching-quality/description.md) | R-ASM | backlog ([plan](../work/tasks/assessment/ASSESSMENT-5_matching-quality/plan.md); not approved) | after ASSESSMENT-3; old Q.8 |
 | [ASSESSMENT-6](../work/tasks/assessment/ASSESSMENT-6_shortlist-recheck/description.md) | R-ASM | backlog (draft; open questions) | after ASSESSMENT-3 |
 | [ASSESSMENT-7](../work/tasks/assessment/ASSESSMENT-7_pair-judge-trial/description.md) | R-ASM | backlog; plan in the card; for a separate agent in parallel with INBOX-2 | feeds ASSESSMENT-5; spec [quick-match §15](specs/quick-match.md) |
+| [ASSESSMENT-8](../work/tasks/assessment/ASSESSMENT-8_restricted-remote/description.md) | R-ASM | backlog; bug: restricted remote counted as a match (diagnosis in the card) | small; can follow INBOX-2 |
 | [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/description.md) | R-COL, R-SEARCH | backlog; owner approved the [plan](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) with By section on 2026-11-11 | after ASSESSMENT-3; includes INBOX-3 as L.4b |
 | [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b) | INBOX-2 |
 | [OPS-9](../work/tasks/ops/OPS-9_finish-process-defects/description.md) | R-HARNESS, R-REL | backlog (scope agreed, estimate in the card) | found at the ASSESSMENT-3 finish |

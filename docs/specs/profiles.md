@@ -11,7 +11,7 @@ One person looks for more than one kind of work (for example blockchain roles an
 | My data (shared, one per person) | Profile (one per kind of work) |
 |---|---|
 | Identity, contacts, photo | Name (for example "Blockchain", "General engineering") |
-| Skills and levels; "Skills you do not have" (✓ / ✕) | Target roles and industries |
+| Skills and levels; "Skills you do not have"; "Confirmed by you" (requirements answered with ✓ / ✕ on vacancies) | Target roles and industries |
 | Experience; computed facts (years, leadership, founder, current role) | Compensation, engagement, hours, work modes, wanted places, dealbreakers |
 | Languages; current location and work authorization | Search: titles, keywords, expressions |
 | Library of documents (CV files, links) and the facts accepted from them | Fits you, Triage, Shortlist, rejections and their reasons |

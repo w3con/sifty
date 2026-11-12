@@ -150,3 +150,7 @@ Owner: «не надо делать левую колонку - в центра�
 ### Owner, 2026-11-12: keep S.5 small
 
 «S5 - я бы не усложнял. Создание - уже есть. а копировать вроде ничего не надо пока.» S.5 is reduced to: enable the existing "Add new profile" in the header switcher (backed by S.1), switch, rename (the name moves from browser storage to the stored profile), Inbox / Shortlist / Archive per active profile, the Search section and the two group headings in the profile page. No copy, no archive in the interface (the API from S.1 keeps archive for later). S.5 estimate: 45–70 min; total 5–7.5 h.
+
+### Owner, 2026-11-12: copy skills to search
+
+«у "я знаю / скиллы " - нужна кнопка "скопировать в поиск"». S.5: in the Skills section ("About me"), an action "Copy to search" adds the chosen skills (one, a selection, or all) to the active profile's Search keywords, skipping ones already there; the skill stays a fact, the search word is the profile's copy (removing it from search does not touch the skill). +10–15 min.

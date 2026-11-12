@@ -35,3 +35,10 @@ Also found: `bin/work-finish --reject` run outside the owner's machine fails on 
 ## Estimate (preliminary)
 
 Complexity 5, AI time 2–3 h (1–4 in the work tooling with one targeted test each; 5 fixture and constant updates). Touches `bin/` and `backend` tests only; no product behaviour, no release needed except for the tooling itself.
+
+## Added 2026-11-12
+
+6. `bin/work-note --check` records "Exit: 0" for a command line with a pipe even when the tests failed (the pipe's last command decides); executors have to correct it by hand. Use `set -o pipefail` or record the first failing status.
+7. Executors used `git stash` on the shared stack of the main repository (SETTINGS-7); the owner keeps two entries there. Work tooling should not need the shared stash; say so in the executor rules or give `work-*` a private checkpoint.
+8. A build from a worktree (`make build` / `sift-deploy --env prod`) writes the main checkout's production artifacts (`bin/sifty`, `frontend/dist`); this happened from INBOX-2 on 2026-11-11/12 (INBOX-2 attention.md). A worktree must not be able to build into production paths.
+9. Production started by hand with `make run` is not recorded in `.local/deploy/prod/server.pid`; the release adapter then sees a foreign process on 8080 (related to item 2).

@@ -15,11 +15,14 @@ const (
 	FactAccepted      = "accepted"
 	FactRejected      = "rejected"
 	FactStateConflict = "conflict"
+	// FactMatches is set when the extracted value is already present in the confirmed profile.
+	// It is informational: the fact is stored and listed, but not shown as a pending decision.
+	FactMatches = "profile_match"
 )
 
 // FactStates returns the visible fact states.
 func FactStates() []string {
-	return []string{FactProposed, FactAccepted, FactRejected, FactStateConflict}
+	return []string{FactProposed, FactAccepted, FactRejected, FactStateConflict, FactMatches}
 }
 
 // Fact is the API-facing attributed assertion. Value is the exact typed JSON that would be
@@ -85,6 +88,7 @@ const (
 	factSkill
 	factLanguage
 	factExperience
+	factAuthorization
 )
 
 type factField struct {
@@ -95,7 +99,6 @@ type factField struct {
 
 var factFields = map[string]factField{
 	"identity.displayName":           {kind: factString},
-	"identity.headline":              {kind: factString},
 	"targetRoles":                    {kind: factStringList},
 	"targetIndustries":               {kind: factStringList},
 	"skills":                         {kind: factSkill},
@@ -123,6 +126,7 @@ var factFields = map[string]factField{
 	"geography.willingToRelocate":    {kind: factBool},
 	"geography.sponsorship":          {kind: factString, enum: validSponsor},
 	"geography.timezones":            {kind: factStringList},
+	"geography.workAuthorizations":   {kind: factAuthorization},
 	"availability.noticePeriod":      {kind: factString},
 	"availability.startDate":         {kind: factString},
 	"availability.timezone":          {kind: factString},
@@ -238,6 +242,20 @@ func ValidateFactValue(fieldKey string, raw json.RawMessage) (json.RawMessage, e
 			v.Skills = []string{}
 		}
 		return json.Marshal(v)
+	case factAuthorization:
+		var v WorkAuthorization
+		if err := json.Unmarshal(raw, &v); err != nil {
+			return nil, fmt.Errorf("geography.workAuthorizations must be an object with country and optional status")
+		}
+		v.Country = strings.ToUpper(strings.TrimSpace(v.Country))
+		v.Status = strings.TrimSpace(v.Status)
+		if v.Country == "" {
+			return nil, fmt.Errorf("geography.workAuthorizations: country is required")
+		}
+		if v.Status != "" && !validAuthorizations[v.Status] {
+			return nil, fmt.Errorf("geography.workAuthorizations: status %q must be eligible, need_visa or empty", v.Status)
+		}
+		return json.Marshal(v)
 	}
 	return nil, fmt.Errorf("unsupported field %q", fieldKey)
 }
@@ -315,6 +333,8 @@ func ApplyFact(data *ProfileData, fieldKey string, value json.RawMessage, force 
 		return applyLanguage(fieldKey, &data.Languages, value, force)
 	case "experience":
 		return applyExperience(fieldKey, &data.Experience, value, force)
+	case "geography.workAuthorizations":
+		return applyWorkAuthorization(fieldKey, &data.Geography.WorkAuthorizations, value, force)
 	}
 	return false, nil, fmt.Errorf("unsupported field %q", fieldKey)
 }
@@ -461,6 +481,31 @@ func applyExperience(fieldKey string, dst *[]Experience, raw json.RawMessage, fo
 				return false, &FactConflict{
 					FieldKey: fieldKey, Current: cur, Proposed: proposed,
 					Message: fmt.Sprintf("experience %q at %q already has different confirmed details", proposed.Title, proposed.Company),
+				}, nil
+			}
+			(*dst)[i] = proposed
+			return true, nil, nil
+		}
+	}
+	*dst = append(*dst, proposed)
+	return true, nil, nil
+}
+
+func applyWorkAuthorization(fieldKey string, dst *[]WorkAuthorization, raw json.RawMessage, force bool) (bool, *FactConflict, error) {
+	var proposed WorkAuthorization
+	if err := json.Unmarshal(raw, &proposed); err != nil {
+		return false, nil, err
+	}
+	for i := range *dst {
+		cur := (*dst)[i]
+		if strings.EqualFold(cur.Country, proposed.Country) {
+			if cur.Status == proposed.Status {
+				return false, nil, nil
+			}
+			if !force {
+				return false, &FactConflict{
+					FieldKey: fieldKey, Current: cur, Proposed: proposed,
+					Message: fmt.Sprintf("work authorization for %q already has a different confirmed status", proposed.Country),
 				}, nil
 			}
 			(*dst)[i] = proposed

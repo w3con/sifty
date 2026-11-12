@@ -11,6 +11,8 @@ import (
 // Profile fields offered to the requirement-matching pass. They are the evidence names a verdict
 // may cite.
 const (
+	// MatchFieldHeadline is retained for reference; the headline is no longer included in the
+	// matching facts (it was removed to avoid overriding role-specific application titles).
 	MatchFieldHeadline = "headline"
 	MatchFieldSkills   = "skills"
 	// MatchFieldSkillsAbsent carries a skill the owner has said they do not have.
@@ -47,7 +49,6 @@ func MatchFactsAt(p *Profile, now time.Time) []matchcontract.ProfileFact {
 			out = append(out, matchcontract.ProfileFact{Field: field, Value: value})
 		}
 	}
-	add(MatchFieldHeadline, d.Identity.Headline)
 	for _, s := range d.Skills {
 		name := strings.TrimSpace(s.Name)
 		if name == "" {

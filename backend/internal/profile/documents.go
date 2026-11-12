@@ -508,6 +508,18 @@ func (s *Service) runAnalysis(ctx context.Context, rec *store.ProfileDocumentRec
 	if facts == nil {
 		facts = []*store.ProfileFactRecord{}
 	}
+	// Mark facts whose value is already present in the confirmed profile. The user does not
+	// need to act on those; they are stored as profile_match and not shown as decisions.
+	if len(facts) > 0 {
+		if current, getErr := s.Get(); getErr == nil {
+			for _, f := range facts {
+				if matchFactToProfile(current.Data, f) {
+					f.State = FactMatches
+				}
+			}
+		}
+		// If Get() fails the facts remain "proposed"; the matching step is best-effort.
+	}
 	metaJSON, _ := json.Marshal(metadata)
 	published, err := s.store.CompleteProfileDocumentAnalysis(rec.ID, runID, DocumentAnalyzed, string(metaJSON), "", facts)
 	if err != nil {

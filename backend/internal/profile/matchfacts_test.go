@@ -25,7 +25,6 @@ func TestMatchFactsProjectCapabilityAndNothingElse(t *testing.T) {
 	}}
 	got := profile.MatchFactsAt(p, time.Date(2026, 11, 11, 0, 0, 0, 0, time.UTC))
 	want := []matchcontract.ProfileFact{
-		{Field: "headline", Value: "CTO and engineering leader"},
 		{Field: "skills", Value: "Go (expert)"},
 		{Field: "skills", Value: "Rust"},
 		{Field: "experience", Value: "CTO at Acme, 2019 to present: Led four engineering teams. Shipped payments."},

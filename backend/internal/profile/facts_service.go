@@ -100,7 +100,7 @@ func (s *Service) acceptFact(factID string, expected int, force bool) (*FactDeci
 	if rec.ProfileID != current.ID {
 		return nil, fmt.Errorf("fact belongs to another profile")
 	}
-	if rec.State != FactProposed && rec.State != FactStateConflict {
+	if rec.State != FactProposed && rec.State != FactStateConflict && rec.State != FactMatches {
 		return nil, store.ErrProfileFactResolved
 	}
 	canonical, err := ValidateFactValue(rec.FieldKey, json.RawMessage(rec.ValueJSON))
@@ -115,13 +115,13 @@ func (s *Service) acceptFact(factID string, expected int, force bool) (*FactDeci
 	if conflict != nil {
 		conflict.FactID = factID
 		conflict.CurrentRevision = expected
-		if _, err := s.store.SetProfileFactStateCAS(factID, expected, []string{FactProposed, FactStateConflict}, FactStateConflict); err != nil {
+		if _, err := s.store.SetProfileFactStateCAS(factID, expected, []string{FactProposed, FactStateConflict, FactMatches}, FactStateConflict); err != nil {
 			return nil, mapFactCASError(err, expected)
 		}
 		return nil, &FactConflictError{Conflict: conflict}
 	}
 	if !changed {
-		updated, err := s.store.SetProfileFactStateCAS(factID, expected, []string{FactProposed, FactStateConflict}, FactAccepted)
+		updated, err := s.store.SetProfileFactStateCAS(factID, expected, []string{FactProposed, FactStateConflict, FactMatches}, FactAccepted)
 		if err != nil {
 			return nil, mapFactCASError(err, expected)
 		}
@@ -190,9 +190,10 @@ func setAcceptedSkillProvenance(data *ProfileData, value json.RawMessage, rec *s
 	}
 }
 
-// RejectFact marks a proposal rejected without touching the profile.
+// RejectFact marks a proposal rejected without touching the profile. It also accepts facts in
+// the profile_match state so the user can dismiss a "already in profile" notification.
 func (s *Service) RejectFact(factID string) (*FactDecision, error) {
-	rec, err := s.store.RejectProfileFact(factID)
+	rec, err := s.store.UpdateProfileFactState(factID, []string{FactProposed, FactStateConflict, FactMatches}, FactRejected)
 	if err != nil {
 		return nil, err
 	}

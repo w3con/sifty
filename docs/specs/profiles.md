@@ -23,6 +23,24 @@ One person looks for more than one kind of work (for example blockchain roles an
 
 - No headline for now (owner, 2026-11-12): role matching uses target roles and experience; a CV title may return per profile with application preparation.
 
+**How facts are proposed from documents (implemented SETTINGS-8, 2026-11-12)**
+
+One fact record is created per extracted item. Skills and languages each produce one fact per item (not a combined list fact). Work authorizations produce one fact per citizenship or residency statement. Each fact carries an exact verbatim quote from the source document.
+
+A fact goes through four possible states:
+- `proposed` — a new value the user has not yet seen; shown as a pending decision.
+- `profile_match` — the extracted value is already present in the confirmed profile (same field, same canonical value); shown as "already in your profile" and not a pending decision.
+- `accepted` — the user confirmed the value; it has been written into the profile.
+- `rejected` — the user dismissed the proposal; the profile is unchanged.
+- `conflict` — a different confirmed value already exists for a single-value field; the user must choose.
+
+Before storing facts, the extraction pipeline compares each proposed value against the current confirmed profile:
+- For single-value fields (name, location, etc.): trimmed-equal values → `profile_match`.
+- For list fields (skills, languages, target roles): value already in the list → `profile_match`.
+- For experience entries: same company name and either same title or overlapping date span → `profile_match`.
+
+A document that exceeds the model's context budget is split into chunks; proposals from all chunks are merged and de-duplicated before storage.
+
 ## 3. Search belongs to the profile
 
 - Each profile has its own search (titles, keywords, expressions). The search editor lives on the profile page, not in Settings.

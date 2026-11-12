@@ -34,6 +34,11 @@ const (
 	SkillProduction = "Production"
 	SkillFamiliar   = "Familiar"
 	SkillLearning   = "Learning"
+
+	// SkillUnstated is set by document extraction when a CV mentions a skill without stating a
+	// level. It differs from an empty level (which means the user has not yet decided). The
+	// current editor never offers it; it is not user-selectable.
+	SkillUnstated = "unstated"
 )
 
 // canonicalSkillLevel maps clear case variants of a known level to its canonical spelling. It
@@ -49,7 +54,7 @@ func canonicalSkillLevel(level string) string {
 }
 
 func allSkillLevels() []string {
-	return []string{SkillBeginner, SkillProficient, SkillExpert, SkillProduction, SkillFamiliar, SkillLearning}
+	return []string{SkillBeginner, SkillProficient, SkillExpert, SkillProduction, SkillFamiliar, SkillLearning, SkillUnstated}
 }
 
 // SkillLevels returns the legacy explicit levels exposed by the pre-existing capabilities field.
@@ -527,6 +532,7 @@ var (
 	validSkillLevels = map[string]bool{
 		SkillBeginner: true, SkillProficient: true, SkillExpert: true,
 		SkillProduction: true, SkillFamiliar: true, SkillLearning: true,
+		SkillUnstated: true,
 	}
 	validEngagementTypes = map[string]bool{
 		EngagementEmployment: true, EngagementContract: true,

@@ -246,7 +246,7 @@ func (s *Store) CompleteProfileDocumentAnalysis(id, runID, state, metadata, errM
 
 	if facts != nil {
 		if _, err := tx.Exec(
-			`DELETE FROM profile_facts WHERE document_id=? AND state='proposed'`, id); err != nil {
+			`DELETE FROM profile_facts WHERE document_id=? AND state IN ('proposed', 'profile_match')`, id); err != nil {
 			return false, fmt.Errorf("replace proposed facts: %w", err)
 		}
 		for _, fact := range facts {
@@ -492,7 +492,7 @@ func (s *Store) AcceptProfileFact(factID string, expected int, data, reason, ori
 	if fact.ProfileID != current.ID {
 		return nil, nil, fmt.Errorf("fact belongs to another profile")
 	}
-	if fact.State != "proposed" && fact.State != "conflict" {
+	if fact.State != "proposed" && fact.State != "conflict" && fact.State != "profile_match" {
 		return nil, nil, ErrProfileFactResolved
 	}
 
@@ -533,9 +533,9 @@ func (s *Store) AcceptProfileFact(factID string, expected int, data, reason, ori
 	return current, fact, nil
 }
 
-// RejectProfileFact marks a proposed/conflict fact rejected without touching the profile.
+// RejectProfileFact marks a proposed/conflict/profile_match fact rejected without touching the profile.
 func (s *Store) RejectProfileFact(id string) (*ProfileFactRecord, error) {
-	return s.UpdateProfileFactState(id, []string{"proposed", "conflict"}, "rejected")
+	return s.UpdateProfileFactState(id, []string{"proposed", "conflict", "profile_match"}, "rejected")
 }
 
 func insertProfileFact(tx *sql.Tx, rec *ProfileFactRecord) error {

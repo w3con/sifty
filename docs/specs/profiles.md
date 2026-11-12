@@ -10,7 +10,7 @@ One person looks for more than one kind of work (for example blockchain roles an
 
 | My data (shared, one per person) | Profile (one per kind of work) |
 |---|---|
-| Identity, contacts, photo | Name (for example "Blockchain", "General engineering") |
+| Identity, contacts, photo | Name (for example "Blockchain", "General engineering") and headline ("Senior Blockchain Engineer") |
 | Skills and levels; "Skills you do not have" (✓ / ✕) | Target roles and industries |
 | Experience; computed facts (years, leadership, founder, current role) | Compensation, engagement, hours, work modes, wanted places, dealbreakers |
 | Languages; current location and work authorization | Search: titles, keywords, expressions |

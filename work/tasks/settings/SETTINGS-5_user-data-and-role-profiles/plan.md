@@ -162,3 +162,7 @@ Agreed behaviour is in `docs/specs/profiles.md` (2026-11-12); this plan keeps th
 ## Approval
 
 2026-11-12, owner: «SETTINGS-5 (профили) ждёт вашего «утверждаю». Старт после слияния INBOX-2. - утвердил уже.» — the re-planned stages S.1–S.6 (section 10 with the later owner additions: search as a profile section, smaller S.5, copy skills to search) are approved; spec docs/specs/profiles.md. Start after INBOX-2 is merged.
+
+### Owner, 2026-11-12: headline per profile
+
+The headline (today `identity.headline`, re-enabled for editing in SETTINGS-8) belongs to the profile: each profile has its own. S.1 moves it from My data to Profile.

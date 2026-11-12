@@ -44,3 +44,12 @@ Spec: profile spec `docs/specs/profiles.md` §2 (facts) to state how facts are p
 ## Estimate (preliminary)
 
 Complexity 5, AI time 2–3 h, local model only, re-run on this CV and on LinkedIn as the check. Related: ASSESSMENT-8 needs item 2; SETTINGS-5 S.1 moves these facts to "My data".
+
+## Owner, 2026-11-12 (after the diagnosis)
+
+«да, и не только. например, у меня уже задано имя, но предлагается его задать еще раз. Это наверное нормально? А вот поменять Headline руками я не могу.»
+
+- **Same value proposed again** (name, and any field): a proposal equal to the current value (after trimming and case for names) is recorded as "matches your profile" and not shown as a decision; a different value is a proposed change with both values side by side. Item 5 above becomes this general rule, experience entries included.
+- **Headline cannot be edited:** `backend/internal/profile/contract.go` keeps `identity.headline` as "legacy data … the current editor no longer offers it", yet the extractor proposes it and the matcher uses it (MatchFacts). Restore an editable Headline field in the identity section now (+10–15 min). In SETTINGS-5 the headline becomes a profile field (each profile has its own: "Senior Blockchain Engineer", "Engineering leader") — noted there.
+
+Estimate now 2.25–3.25 h.

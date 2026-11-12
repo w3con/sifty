@@ -154,3 +154,7 @@ Owner: «не надо делать левую колонку - в центра�
 ### Owner, 2026-11-12: copy skills to search
 
 «у "я знаю / скиллы " - нужна кнопка "скопировать в поиск"». S.5: in the Skills section ("About me"), an action "Copy to search" adds the chosen skills (one, a selection, or all) to the active profile's Search keywords, skipping ones already there; the skill stays a fact, the search word is the profile's copy (removing it from search does not touch the skill). +10–15 min.
+
+### Specification
+
+Agreed behaviour is in `docs/specs/profiles.md` (2026-11-12); this plan keeps the stages and estimates.

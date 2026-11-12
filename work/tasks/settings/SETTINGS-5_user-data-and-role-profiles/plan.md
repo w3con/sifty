@@ -98,3 +98,35 @@ POST       /api/jobs/{id}/prepare      { profileId }
 ## 9. Возобновление
 
 Не начинать сейчас. Предварительная complexity13/130–220min в description.md — дизайн-оценка, не утверждённая стоимость исполнения. При возврате сверить с уже интегрированным кодом, разбить на ограниченные полезные результаты, дать полный план/время владельцу и получить отдельное разрешение. Текущий дизайн DESIGN-3 сохранить и переиспользовать.
+
+## 10. Re-plan against the current code (coordinator, 2026-11-12)
+
+Owner, 2026-11-12: «и еще - пора сделать возможность использовать несколько профилей, что думаешь? запустим еще одного агента параллельно?» and «да» to re-planning now. Implementation starts **after INBOX-2 is merged** (both change the schema and collection; parallel migrations would collide). Sections 1–8 above stay the design; this section adapts it to what landed since 2026-11-09.
+
+### What changed in the code since the design
+
+- Two scores (ASSESSMENT-3): `match_fit_results` holds one result per **job**; Fits you is computed from the single profile `local`; You fit is hidden (spec quick-match §14.14). Model extraction (`match_vacancy_extractions`) is per vacancy text and does not depend on the profile — it stays shared across profiles. Requirement matching is per profile when it returns (ASSESSMENT-5).
+- The profile is a fact store (spec quick-match §15.1); ✓ / ✕ skills and "Skills you do not have" are facts.
+- Search: one `search.yaml` (sites + expressions). The owner has just narrowed it to blockchain work; the previous broad engineering queries are in `data/config-backups/search-20261110-*.yaml`.
+- Worker order follows the Inbox toggle; the model lock is machine-wide.
+
+### Proposed stages (each a separately checkable result)
+
+- [ ] **S.1 — User, profiles, migration** (60–90 min). Tables/records for User (facts: identity, skills, experience, languages, documents, ✓/✕ lists, answers) and Profile (name, target roles and industries, compensation, engagement, hours, work modes, wanted places, dealbreakers, selected skills/experience/documents, search expressions). Migration turns `local` into User + first Profile, preserving ids, revisions, quotes and history. API: list / create / rename / copy / archive profiles, get/patch User. Targeted tests: migration preserves the profile byte-for-byte in meaning; two profiles do not see each other's goals.
+- [ ] **S.2 — Search per profile** (45–75 min). Each profile has its own search expressions; sources (sites) stay shared. A collection run uses the union of active (non-archived) profiles' expressions and records which profile's expression matched each vacancy. One shared catalogue; a vacancy is not copied per profile.
+- [ ] **S.3 — Scores per profile** (60–90 min). `match_fit_results` keyed by (profile, job); Fits you per profile from that profile's goals and the shared User facts; extraction shared; the worker works for all profiles, ordering by the active profile's toggle; switching profiles reads stored results and never calls a model. Targeted test: switching does not call the model; a profile change marks only that profile's results stale.
+- [ ] **S.4 — Triage and decisions per profile** (60–90 min). Per (profile, job): stage, rejection reason, history of manual moves; the fact of an application stays User-level and is visible in every profile (design §6). Migration puts today's states into the first profile.
+- [ ] **S.5 — Interface** (60–90 min). The existing header switcher (`frontend/profile/ProfileSwitcher.tsx`, "Add new profile" disabled today) creates / renames / copies / archives; Inbox, Shortlist and Archive show the active profile's vacancies and scores; the profile page separates "My data" (User) from the profile's own sections (DESIGN-3 components).
+- [ ] **S.6 — Owner review on a copy** (30 min): two profiles (Blockchain — today's; General engineering — seeded from the 2026-11-10 search backup), switching, scores, decisions.
+
+Out of this card: detailed assessment and application preparation per profile (the detailed queue is off; design §5–6 kept for later); You fit per profile (ASSESSMENT-5).
+
+### Estimate
+
+Complexity 13 (unchanged). AI time about 5.5–8 h for S.1–S.6. No paid services.
+
+### Questions for the owner before approval
+
+1. A vacancy found only by the engineering profile's queries — shown in the blockchain profile's Inbox too (with that profile's low Fits you), or only in the profile whose queries found it? Coordinator: only in the profile whose queries found it; the others reach it through search.
+2. Sources: one shared list (coordinator's recommendation) or a separate list per profile?
+3. The second profile "General engineering" seeded from the old queries at S.6 — yes?

@@ -10,7 +10,7 @@ One person looks for more than one kind of work (for example blockchain roles an
 
 | My data (shared, one per person) | Profile (one per kind of work) |
 |---|---|
-| Identity, contacts, photo | Name (for example "Blockchain", "General engineering") and headline ("Senior Blockchain Engineer") |
+| Identity, contacts, photo | Name (for example "Blockchain", "General engineering") |
 | Skills and levels; "Skills you do not have" (✓ / ✕) | Target roles and industries |
 | Experience; computed facts (years, leadership, founder, current role) | Compensation, engagement, hours, work modes, wanted places, dealbreakers |
 | Languages; current location and work authorization | Search: titles, keywords, expressions |
@@ -20,6 +20,8 @@ One person looks for more than one kind of work (for example blockchain roles an
 - My data is a fact store (Quick Match §15.1): a model runs only when a file or link is added, to propose facts; accepted facts are the only input of comparisons.
 - A profile refers to shared facts; it never holds its own copy of a skill or an experience entry.
 - The active profile is the context of the whole application (header switcher). Background work never reads "the active profile" implicitly: every scoring task carries the profile it is for.
+
+- No headline for now (owner, 2026-11-12): role matching uses target roles and experience; a CV title may return per profile with application preparation.
 
 ## 3. Search belongs to the profile
 

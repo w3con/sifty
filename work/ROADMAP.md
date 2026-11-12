@@ -6,7 +6,7 @@ Updated: 2026-11-11.
 
 ## Current planning work
 
-**OPS-10 urgent — 2026-11-12:** production hang (SQLite driver mutex leak under status polling); ships on its own before INBOX-2.
+**OPS-10 released — 2026-11-12:** production hang fixed (SQLite driver/libc update, status from cache, reader pool, health 503), main `f7190bf`. Next in parallel with INBOX-2: SETTINGS-8 (CV facts), then ASSESSMENT-8; check production health over the next days.
 
 **SETTINGS-7 released — 2026-11-12:** profile files can be deleted (accepted facts stay), main `320dbf9`, production 8080. Next in order: INBOX-2 (in progress) ‖ ASSESSMENT-7; then SETTINGS-5 (profiles, spec [profiles](../docs/specs/profiles.md), plan approved 2026-11-12), SETTINGS-6, ASSESSMENT-5, COL-2, ASSESSMENT-6, ASSESSMENT-4, OPS-9.
 

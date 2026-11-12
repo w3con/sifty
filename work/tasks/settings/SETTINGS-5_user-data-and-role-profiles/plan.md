@@ -166,3 +166,7 @@ Agreed behaviour is in `docs/specs/profiles.md` (2026-11-12); this plan keeps th
 ### Owner, 2026-11-12: headline per profile
 
 The headline (today `identity.headline`, re-enabled for editing in SETTINGS-8) belongs to the profile: each profile has its own. S.1 moves it from My data to Profile.
+
+### Owner, 2026-11-12: headline not needed for now
+
+«а нужно ли это поле? может и не нужно.» — dropped for now (SETTINGS-8 F.5); it may return as a per-profile field with application preparation. The note above about moving it to Profile is superseded.

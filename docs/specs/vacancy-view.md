@@ -1,6 +1,6 @@
 # Vacancy view behavior specification
 
-Status: **agreed with the owner, not implemented** (2026-11-12). Source: the owner's requirements of 2026-11-12 (section 1). The owner says the layout drawn for him earlier is not mockup "B" of 2026-11-09; that drawing was not found in the saved files, and the exact visual layout is to be confirmed with the owner before L.5b. Card: INBOX-2 (step L.5 rework). Related: [Quick Match](quick-match.md) §15 (sections by code), [Profiles](profiles.md).
+Status: **agreed with the owner, not implemented** (2026-11-12; design approved). Source: the owner's requirements of 2026-11-12 (section 1). The owner says the layout drawn for him earlier is not mockup "B" of 2026-11-09; that drawing was not found in the saved files, and the exact visual layout is to be confirmed with the owner before L.5b. Card: INBOX-2 (step L.5 rework). Related: [Quick Match](quick-match.md) §15 (sections by code), [Profiles](profiles.md).
 
 ## 1. Purpose
 
@@ -8,23 +8,27 @@ The owner scans many vacancies quickly. The eye looks for two things: **what the
 
 Owner, 2026-11-12: «Не было идеи вытащить все секции из вакансии. Было важно 2 секции: что хотят от кандидата, и что предлагают. Это то, на что ложится глаз когда пользователь быстро просмотривает вакансию. Разбивка по секциям - это как для того, чтобы быстро посмотреть. Для этой же цели делался блок Key Facts.»
 
-## 2. Listing text: Original and By section
+## 2. Layout (agreed design, 2026-11-12)
 
-- **Original** shows the whole listing in its own order with its headings, lists, numbering, bold and italics, styled only by Sifty's CSS (sanitised structured form).
-- **By section** shows a fixed set of groups, not one block per heading:
-  1. **What they ask** — the listing's Requirements and Nice to have sections merged, in their original order; preferred items keep their marker.
-  2. **What they offer** — Compensation, Benefits, Perks, Conditions (location, work mode, hours, contract) merged.
-  3. **What you'll do** — Role / Responsibilities merged. *(Open: the owner named two groups; the mockup had this third one. Kept third until the owner decides.)*
-  4. **Other text** — everything else, in original order, collapsed by default, labelled "not classified · shown in full".
-- Each group carries a small state label: "recognised" (found by headings) or "not found in listing" with "Not stated". Two source headings of the same class never produce two groups.
-- By section is available when at least one of the first two groups is recognised; otherwise only Original.
-- Sections and their classes come from code (Quick Match §15.2 step 2); no model is needed to show this view.
+The approved design is the canvas "Sifty — vacancy view" (https://claude.ai/artifact/NV9n28fNGjTVruEqPsoRkp, artboard "Vacancy — quick look"); owner: «Мне нравится этот дизайн.» Built with the Sifty design system. Read it before building; this section states its rules.
 
-## 3. Key facts
+Top to bottom in the work area:
 
-The Key facts card lists: Compensation, Work mode, Location, Employment type, Seniority, Posted, Expires, Source; each value with its origin in small text ("from listing data", "from the Compensation section", "read by the model", "applicant location requirement"); a missing value is "Not stated".
+1. **Header**: company label, title, meta line (published, age, source, original listing), actions Block company / Dismiss / Select.
+2. **Fits you band** (one card): the Fits you number with its bucket pill on the left; on the right one **tile per goal of the active profile** (owner: seniority only where a profile has that goal — «сеньорность надо убрать - это не для всех профилей нужно»). Today: Money, Location, Work mode, Contract. A tile = icon, the vacancy's value large, one short line comparing it with the goal; the tile's fill is the verdict: matches (`ok-bg`, ✓), does not match (`warn-bg`, ✕), not stated (neutral, ?). This band **replaces** the separate Key facts and Quick match cards.
+3. **Two cards side by side**:
+   - **What they ask**: header with counts ✓ / ✕ / ?; groups Required and Nice to have; each requirement a row with its mark: ✓ in your profile (code: skill vocabulary, years from dates, your ✓), ✕ in "Skills you do not have", ? not in your profile with ✓ / ✕ buttons; evidence in small text on the right ("17 years", "Go · Rust").
+   - **What they offer**: tiles with icons for what the listing offers: salary range, equity, benefits, time off, and further items from a small vocabulary; a stated value or "not stated" under each.
+4. **Full listing**: open, no Show button, the whole text as written with its headings, lists and emphasis (the sanitised structured form). There is no By section / Original switch any more: the two cards above are the section view, the full listing is the original.
 
-Values come from, in this order: structured source fields; code reading the classified sections (for example a salary range in What they offer: "$150,000 and $250,000" → Compensation USD 150k–250k / year); the model's extracted conditions (Quick Match §14.5, quotes validated). Key facts and Fits you use the same merged facts, so a salary stated in the text is never "Not stated" in Key facts while the text shows it.
+When the listing has no recognised Requirements or Offer section, the corresponding card says so in one line and the full listing stays below.
+
+## 3. Where the values come from
+
+Tiles, What they offer and Fits you read the same merged facts, in this order: structured source fields; code reading the classified sections (salary ranges, work mode, location, contract words, the offer vocabulary); the model's extracted conditions (quotes validated). A value stated in the text is never "not stated" in a tile.
+Requirements: the model's extraction (Quick Match §14.5) with verdicts by code and by the owner (§15.1); the model's matching pass stays off.
+
+Fill rates are measured before building (INBOX-2 L.5r0); the design must hold when most tiles say "not stated".
 
 ## 4. Out of scope
 

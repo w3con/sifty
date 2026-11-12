@@ -138,3 +138,7 @@ Complexity 13 (unchanged). AI time about 5.5–8 h for S.1–S.6. No paid servic
 3. «Да» — S.6 seeds a second profile "General engineering" from the 2026-11-10 search backup.
 
 Plan ready for the owner's go-ahead; start after INBOX-2 is merged.
+
+### Owner, 2026-11-12: search belongs to the profile
+
+«Ну кстати - сейчас у нас поиск (какие поисковые запросы/слова искать в вакансиях) - относится к Settings. А должен видимо быть в профиле.» Agreed: the search editor (titles, keywords, expressions) moves from Settings to the profile page as a profile section (S.2 stores it per profile, S.5 moves the editor; the existing editor components from NAVIGATION-3 are reused). Settings keeps the shared parts only: sources (sites), stop words, providers, schedule. +15–20 min in S.5.

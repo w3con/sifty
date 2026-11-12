@@ -130,3 +130,11 @@ Complexity 13 (unchanged). AI time about 5.5–8 h for S.1–S.6. No paid servic
 1. A vacancy found only by the engineering profile's queries — shown in the blockchain profile's Inbox too (with that profile's low Fits you), or only in the profile whose queries found it? Coordinator: only in the profile whose queries found it; the others reach it through search.
 2. Sources: one shared list (coordinator's recommendation) or a separate list per profile?
 3. The second profile "General engineering" seeded from the old queries at S.6 — yes?
+
+### Owner answers (2026-11-12)
+
+1. «Только в нашедшем профиле» — a vacancy appears in the Inbox of the profile whose queries found it; other profiles reach it through search.
+2. «Общий список» — sources are shared; profiles differ by search expressions.
+3. «Да» — S.6 seeds a second profile "General engineering" from the 2026-11-10 search backup.
+
+Plan ready for the owner's go-ahead; start after INBOX-2 is merged.

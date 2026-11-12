@@ -142,3 +142,7 @@ Plan ready for the owner's go-ahead; start after INBOX-2 is merged.
 ### Owner, 2026-11-12: search belongs to the profile
 
 «Ну кстати - сейчас у нас поиск (какие поисковые запросы/слова искать в вакансиях) - относится к Settings. А должен видимо быть в профиле.» Agreed: the search editor (titles, keywords, expressions) moves from Settings to the profile page as a profile section (S.2 stores it per profile, S.5 moves the editor; the existing editor components from NAVIGATION-3 are reused). Settings keeps the shared parts only: sources (sites), stop words, providers, schedule. +15–20 min in S.5.
+
+### Owner, 2026-11-12: search as a section in the centre column
+
+Owner: «не надо делать левую колонку - в центральной надо добавить секцию ... поисковые слова ... Единственная проблема - когнитивно конфликтует со Skills - или нет? но может быть лечится на уровне ДИЗАЙН отличия». Coordinator proposal: a "Search" section in the centre column, placed in the profile's "What I am looking for" group next to Target roles (goals), not among the "About me" facts (Skills, Experience, Languages). The two groups get a group heading each; the difference is made by grouping, order and one explanatory line ("Words Sifty looks for in listings"), not by colour (colours carry state meaning in the design system). Inside: titles, keywords and expressions as chips, using the existing editor logic. Reduces S.5 (no new column).

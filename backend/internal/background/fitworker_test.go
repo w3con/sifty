@@ -263,6 +263,7 @@ func TestProfileChangeRunsOnlyTheMatchingPass(t *testing.T) {
 	if _, err := f.s.SaveProfile("local", 1, strings.Replace(profileJSON, `"level":"expert"`, `"level":"proficient"`, 1), "update", "manual"); err != nil {
 		t.Fatalf("save profile: %v", err)
 	}
+	f.w.Step(context.Background()) // Status serves the counts of the last planning pass; plan again
 	if st := f.w.Status(); st.PendingMatch != 2 || st.PendingExtract != 0 {
 		t.Fatalf("after the profile save: %+v; want two matchings owed and no extraction", st)
 	}
@@ -462,6 +463,32 @@ func TestPlanWorkOrder(t *testing.T) {
 	}
 }
 
+// Status is polled by the owner's page every few seconds. It must answer from memory: when the
+// database is stuck, a status that reads it stops every other request that waits for the same
+// connection. Closing the store after a planning pass stands for a stuck database: a Status that
+// still read it would return zero counts (the read fails), not the cached ones.
+func TestStatusAnswersWithoutTheDatabase(t *testing.T) {
+	f := newFit(t, nil)
+	f.job("Rust Engineer", ruleDesc, "available structured description")
+	f.job("Rust Developer", otherDoc, "available structured description")
+	f.drain()
+	want := f.w.Status()
+	if want.Usable != 2 || want.Matched != 2 {
+		t.Fatalf("status before closing the store = %+v", want)
+	}
+	f.s.Close()
+	done := make(chan FitStatus, 1)
+	go func() { done <- f.w.Status() }()
+	select {
+	case got := <-done:
+		if got != want {
+			t.Fatalf("status after the store was closed = %+v, want %+v", got, want)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("Status did not answer")
+	}
+}
+
 func TestProviderDownBacksOffAndKeepsTheWorkWithoutSettingItAside(t *testing.T) {
 	f := newFit(t, nil)
 	f.job("Rust Engineer", ruleDesc, "available structured description")
@@ -492,6 +519,7 @@ func TestUnusableAnswerSetsOnlyThatVacancyAside(t *testing.T) {
 	f.w.Infer = f.infer
 	f.job("Rust Engineer", ruleDesc, "available structured description")
 	f.w.Step(context.Background())
+	f.w.Step(context.Background()) // the second planning pass sees the vacancy set aside
 	st := f.w.Status()
 	if st.Cooling != 1 || st.PendingExtract != 0 {
 		t.Fatalf("status = %+v; the vacancy whose answer could not be used must be set aside, not retried forever", st)

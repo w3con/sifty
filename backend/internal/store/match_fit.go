@@ -50,7 +50,7 @@ func (s *Store) SaveFitResult(jobID int64, r matchcontract.FitResult, key FitKey
 
 // GetFitResult returns the stored two-score result of one vacancy, or nil when there is none.
 func (s *Store) GetFitResult(jobID int64) (*StoredFit, error) {
-	row := s.DB.QueryRow(`SELECT profile_revision, rules_identity, description_hash, record, computed_at
+	row := s.Read.QueryRow(`SELECT profile_revision, rules_identity, description_hash, record, computed_at
 		FROM match_fit_results WHERE job_id=?`, jobID)
 	f, err := scanFit(row)
 	if err == sql.ErrNoRows {
@@ -101,7 +101,7 @@ type ModelWorkRow struct {
 // ModelWorkRows lists every vacancy with its retained text and the state of its stored model-pass
 // output, in one read and without writing. Deciding what to do with a row is the caller's job.
 func (s *Store) ModelWorkRows() ([]ModelWorkRow, error) {
-	rows, err := s.DB.Query(`
+	rows, err := s.Read.Query(`
 		SELECT j.id, j.title, j.company, j.description, j.description_status, j.tags, COALESCE(j.published_at,''), COALESCE(j.published_basis,''),
 		       f.fits_raw,
 		       e.job_id IS NOT NULL, COALESCE(e.source_hash,''), COALESCE(e.extractor_version,''), COALESCE(e.requirement_count,0),

@@ -28,6 +28,13 @@ import (
 	"github.com/w3con/sifty/internal/version"
 )
 
+const (
+	// healthTimeout is how long GET /api/health waits for the database before it answers 503.
+	healthTimeout = 2 * time.Second
+	// healthDownMessage is the error text of that 503.
+	healthDownMessage = "database not responding"
+)
+
 // Deps holds the dependencies shared across all route handlers.
 type Deps struct {
 	Store *store.Store
@@ -425,9 +432,22 @@ func RegisterRoutes(mux Router, d *Deps) {
 		return nil
 	}))
 
+	// Health answers whether the process can still read its database. A process whose database
+	// does not answer must say so within healthTimeout rather than hold the request open.
 	mux.HandleFunc("GET /api/health", safeHandler(func(w http.ResponseWriter, r *http.Request) error {
-		list, err := d.Store.HealthList()
+		ctx, cancel := context.WithTimeout(r.Context(), healthTimeout)
+		defer cancel()
+		if err := d.Store.Ping(ctx); err != nil {
+			log.Printf("health: database ping failed: %v", err)
+			writeError(w, http.StatusServiceUnavailable, healthDownMessage)
+			return nil
+		}
+		list, err := d.Store.HealthListContext(ctx)
 		if err != nil {
+			if ctx.Err() != nil {
+				writeError(w, http.StatusServiceUnavailable, healthDownMessage)
+				return nil
+			}
 			return err
 		}
 		writeJSON(w, http.StatusOK, list)

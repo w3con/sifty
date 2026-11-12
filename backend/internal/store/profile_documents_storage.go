@@ -104,7 +104,7 @@ func (s *Store) CreateProfileDocument(rec *ProfileDocumentRecord) error {
 // ListProfileDocuments returns all document rows for one profile, oldest first, including the
 // marker rows of deleted documents (processing state ProfileDocumentDeleted).
 func (s *Store) ListProfileDocuments(profileID string) ([]*ProfileDocumentRecord, error) {
-	rows, err := s.DB.Query(
+	rows, err := s.Read.Query(
 		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE profile_id=? ORDER BY created_at, id`,
 		profileID)
 	if err != nil {
@@ -125,7 +125,7 @@ func (s *Store) ListProfileDocuments(profileID string) ([]*ProfileDocumentRecord
 // GetProfileDocument returns one document or ErrProfileDocumentNotFound. A deleted document's
 // remaining marker row is not a document any more, so it is reported as not found.
 func (s *Store) GetProfileDocument(id string) (*ProfileDocumentRecord, error) {
-	rec, err := scanProfileDocument(s.DB.QueryRow(
+	rec, err := scanProfileDocument(s.Read.QueryRow(
 		`SELECT `+profileDocumentColumns+` FROM profile_documents WHERE id=? AND processing_state<>?`,
 		id, ProfileDocumentDeleted))
 	if err == sql.ErrNoRows {
@@ -329,7 +329,7 @@ func (s *Store) ListProfileFacts(profileID, documentID string) ([]*ProfileFactRe
 		args = append(args, documentID)
 	}
 	query += ` ORDER BY created_at, id`
-	rows, err := s.DB.Query(query, args...)
+	rows, err := s.Read.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("list profile facts: %w", err)
 	}
@@ -347,7 +347,7 @@ func (s *Store) ListProfileFacts(profileID, documentID string) ([]*ProfileFactRe
 
 // GetProfileFact returns one fact or ErrProfileFactNotFound.
 func (s *Store) GetProfileFact(id string) (*ProfileFactRecord, error) {
-	rec, err := scanProfileFact(s.DB.QueryRow(
+	rec, err := scanProfileFact(s.Read.QueryRow(
 		`SELECT `+profileFactColumns+` FROM profile_facts WHERE id=?`, id))
 	if err == sql.ErrNoRows {
 		return nil, ErrProfileFactNotFound

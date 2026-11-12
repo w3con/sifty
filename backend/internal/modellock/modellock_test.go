@@ -44,7 +44,7 @@ func TestTwoStoresWithDifferentDataDirsCannotHoldItAtOnce(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		t.Cleanup(func() { _ = s.DB.Close() })
+		t.Cleanup(func() { _ = s.Close() })
 	}
 	if dirs.ModelLockPath() != filepath.Join(root, "locks", "model.lock") {
 		t.Fatalf("the lock path must not depend on a data directory: %s", dirs.ModelLockPath())

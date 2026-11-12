@@ -9,7 +9,7 @@ import (
 
 // Assessment records a successful fit-assessment result for a role.
 func (s *Store) Assessment(id int64, data any) error {
-	job, err := s.Get(id)
+	job, err := s.getW(id)
 	if err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (s *Store) Assessment(id int64, data any) error {
 
 // AssessmentFailure records a failed assessment attempt.
 func (s *Store) AssessmentFailure(id int64, message string, metadata map[string]any) error {
-	job, err := s.Get(id)
+	job, err := s.getW(id)
 	if err != nil {
 		return err
 	}
@@ -83,10 +83,10 @@ func (s *Store) AssessmentFailure(id int64, message string, metadata map[string]
 // Context returns the most recent candidate context snapshot, or nil if none.
 func (s *Store) Context() (map[string]any, error) {
 	var data string
-	err := s.DB.QueryRow(
+	err := s.Read.QueryRow(
 		"SELECT data FROM context_refreshes ORDER BY id DESC LIMIT 1").Scan(&data)
 	if err == sql.ErrNoRows {
-		err = s.DB.QueryRow(
+		err = s.Read.QueryRow(
 			"SELECT data FROM contexts ORDER BY created DESC LIMIT 1").Scan(&data)
 	}
 	if err == sql.ErrNoRows {
@@ -157,7 +157,7 @@ type QueueRow struct {
 
 // EnqueueJob inserts or updates an assessment queue row for the given role.
 func (s *Store) EnqueueJob(jobID int64, fingerprint, provider string, priority int) (*QueueRow, error) {
-	_, err := s.Get(jobID)
+	_, err := s.getW(jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -234,11 +234,15 @@ type QueueState struct {
 	Paused  bool `json:"paused"`
 }
 
-// GetQueueState reads the queue enabled/paused flags.
+// GetQueueState reads the queue enabled/paused flags through the read pool.
 func (s *Store) GetQueueState() (QueueState, error) {
+	return queueStateOn(s.Read)
+}
+
+func queueStateOn(q queryer) (QueueState, error) {
 	state := QueueState{Enabled: true}
 	var data string
-	if err := s.DB.QueryRow("SELECT data FROM queue_state WHERE key='config'").Scan(&data); err == nil {
+	if err := q.QueryRow("SELECT data FROM queue_state WHERE key='config'").Scan(&data); err == nil {
 		var m map[string]any
 		if err := json.Unmarshal([]byte(data), &m); err == nil {
 			if v, ok := m["enabled"].(bool); ok {
@@ -258,7 +262,7 @@ func (s *Store) GetQueueState() (QueueState, error) {
 // stored string is returned verbatim and never decoded here.
 func (s *Store) GetQueueRuntime() (map[string]any, error) {
 	var data string
-	err := s.DB.QueryRow("SELECT data FROM queue_state WHERE key='runtime'").Scan(&data)
+	err := s.Read.QueryRow("SELECT data FROM queue_state WHERE key='runtime'").Scan(&data)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -270,7 +274,7 @@ func (s *Store) GetQueueRuntime() (map[string]any, error) {
 
 // SetQueueEnabled enables or disables background assessment.
 func (s *Store) SetQueueEnabled(enabled bool) error {
-	state, err := s.GetQueueState()
+	state, err := queueStateOn(s.DB) // the value written back is built from what the writer sees
 	if err != nil {
 		return err
 	}
@@ -284,7 +288,7 @@ func (s *Store) SetQueueEnabled(enabled bool) error {
 
 // QueueCounts returns the per-status counts for the assessment queue.
 func (s *Store) QueueCounts() (map[string]int, error) {
-	rows, err := s.DB.Query(
+	rows, err := s.Read.Query(
 		"SELECT status, COUNT(*) FROM assessment_queue GROUP BY status")
 	if err != nil {
 		return nil, err
@@ -308,7 +312,7 @@ func (s *Store) QueueCounts() (map[string]int, error) {
 
 // AllQueueRows returns all non-done assessment queue rows.
 func (s *Store) AllQueueRows() ([]*QueueRow, error) {
-	rows, err := s.DB.Query(`
+	rows, err := s.Read.Query(`
 		SELECT job_id,fingerprint,provider,status,priority,attempts,next_at,
 		       started,finished,error,owner,override_provider,routing
 		FROM assessment_queue WHERE status != 'done' ORDER BY priority DESC, job_id`)
@@ -355,7 +359,7 @@ func (s *Store) AllQueueRows() ([]*QueueRow, error) {
 
 // WorkflowHistory returns all workflow transitions for a role.
 func (s *Store) WorkflowHistory(jobID int64) ([]map[string]any, error) {
-	rows, err := s.DB.Query(`
+	rows, err := s.Read.Query(`
 		SELECT id, job_id, created, from_stage, to_stage, confirmed
 		FROM workflow_history WHERE job_id=? ORDER BY id`, jobID)
 	if err != nil {
@@ -445,7 +449,7 @@ func (s *Store) CollectionRunByID(runID int64) (map[string]any, error) {
 	var finished sql.NullString
 	var status, mode, configHash string
 	var pid int
-	err := s.DB.QueryRow(`
+	err := s.Read.QueryRow(`
 		SELECT id, started, finished, status, pid, mode, config_hash
 		FROM collection_runs WHERE id=?`, runID).
 		Scan(&id, &started, &finished, &status, &pid, &mode, &configHash)
@@ -468,14 +472,27 @@ func (s *Store) CollectionRunByID(runID int64) (map[string]any, error) {
 // LatestCollectionRun returns the most recent collection run across both on-demand/auto runs
 // (collection_runs) and daily scheduler runs (runs), together with source runs and events where
 // available. Daily runs carry mode="daily" and no source or event detail.
+//
+// It reads through the read pool. A caller that decides a write from the answer (the collection
+// cooldown) uses LatestCollectionRunOnWriter.
 func (s *Store) LatestCollectionRun() (map[string]any, error) {
+	return latestCollectionRunOn(s.Read)
+}
+
+// LatestCollectionRunOnWriter is LatestCollectionRun read on the write connection, for the
+// collection cooldown gate that follows taking the cross-process lock on that same connection.
+func (s *Store) LatestCollectionRunOnWriter() (map[string]any, error) {
+	return latestCollectionRunOn(s.DB)
+}
+
+func latestCollectionRunOn(q queryer) (map[string]any, error) {
 	var origin string
 	var id int64
 	var started string
 	var finished sql.NullString
 	var status, mode, configHash string
 	var pid int
-	err := s.DB.QueryRow(`
+	err := q.QueryRow(`
 		SELECT origin, id, started, finished, status, pid, mode, config_hash FROM (
 		  SELECT 'collection' AS origin, id, started, finished, status, pid, mode, config_hash
 		  FROM collection_runs
@@ -501,7 +518,7 @@ func (s *Store) LatestCollectionRun() (map[string]any, error) {
 	// Source runs and events are only available for collection_runs rows.
 	// For daily runs (origin == "daily") we set empty slices so callers never see nil.
 	if origin == "collection" {
-		sRows, err := s.DB.Query(
+		sRows, err := q.Query(
 			"SELECT source, status, coverage FROM source_runs WHERE run_id=? ORDER BY source", id)
 		if err == nil {
 			var sources []map[string]any
@@ -522,7 +539,7 @@ func (s *Store) LatestCollectionRun() (map[string]any, error) {
 			run["sources"] = sources
 		}
 
-		eRows, err := s.DB.Query(
+		eRows, err := q.Query(
 			"SELECT created, source, message FROM collection_events WHERE run_id=? ORDER BY id", id)
 		if err == nil {
 			var events []map[string]any
@@ -729,7 +746,7 @@ func (s *Store) EnqueueAll() error {
 	}
 	rows.Close()
 	for _, id := range ids {
-		job, err := s.Get(id)
+		job, err := s.getW(id)
 		if err != nil {
 			continue
 		}

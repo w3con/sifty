@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -12,8 +13,12 @@ import (
 )
 
 // ResolveID follows the job_aliases chain to return the current canonical id.
-// Returns an error if a cycle is detected.
+// Returns an error if a cycle is detected. It reads through the read pool.
 func (s *Store) ResolveID(id int64) (int64, error) {
+	return resolveID(s.Read, id)
+}
+
+func resolveID(q queryer, id int64) (int64, error) {
 	seen := make(map[int64]bool)
 	for {
 		if seen[id] {
@@ -21,7 +26,7 @@ func (s *Store) ResolveID(id int64) (int64, error) {
 		}
 		seen[id] = true
 		var newID int64
-		err := s.DB.QueryRow("SELECT new_id FROM job_aliases WHERE old_id=?", id).Scan(&newID)
+		err := q.QueryRow("SELECT new_id FROM job_aliases WHERE old_id=?", id).Scan(&newID)
 		if err == sql.ErrNoRows {
 			return id, nil
 		}
@@ -41,16 +46,16 @@ type derivedState struct {
 	contextVersion  string
 }
 
-func (s *Store) derivedState() derivedState {
+func derivedStateOn(q queryer) derivedState {
 	var d derivedState
-	_ = s.DB.QueryRow(
+	_ = q.QueryRow(
 		"SELECT id, revision FROM user_profiles ORDER BY id LIMIT 1").
 		Scan(&d.profileID, &d.profileRevision)
-	err := s.DB.QueryRow(
+	err := q.QueryRow(
 		"SELECT version FROM context_refreshes ORDER BY id DESC LIMIT 1").
 		Scan(&d.contextVersion)
 	if err == sql.ErrNoRows {
-		_ = s.DB.QueryRow(
+		_ = q.QueryRow(
 			"SELECT version FROM contexts ORDER BY created DESC LIMIT 1").
 			Scan(&d.contextVersion)
 	}
@@ -58,18 +63,25 @@ func (s *Store) derivedState() derivedState {
 }
 
 // Get returns the full role record for id, resolving aliases transparently. Returns
-// a not-found error (contains "not found") when the role does not exist.
+// a not-found error (contains "not found") when the role does not exist. It reads through the
+// read pool; the store's own write paths use getW so that what they decide on is read on the
+// write connection.
 func (s *Store) Get(id int64) (*model.Job, error) {
-	return s.get(id, s.derivedState())
+	return getOn(s.Read, id, derivedStateOn(s.Read))
 }
 
-func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
-	id, err := s.ResolveID(id)
+// getW is Get on the write connection, for the store's own write paths.
+func (s *Store) getW(id int64) (*model.Job, error) {
+	return getOn(s.DB, id, derivedStateOn(s.DB))
+}
+
+func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
+	id, err := resolveID(q, id)
 	if err != nil {
 		return nil, err
 	}
 
-	row := s.DB.QueryRow(`
+	row := q.QueryRow(`
 		SELECT id, identity, title, company, original_url, apply_url, description,
 		       description_status, location, published_at, published_basis, expires_at, status,
 		       first_seen, last_seen, assessment, assessment_error,
@@ -159,7 +171,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 
 	// Load sources. Close explicitly (not deferred) before returning the job,
 	// so the single database connection is not held open for the caller.
-	srows, err := s.DB.Query(
+	srows, err := q.Query(
 		"SELECT source, url, seen FROM sightings WHERE job_id=? ORDER BY seen", r.idInt)
 	if err != nil {
 		return nil, fmt.Errorf("query sightings for job %d: %w", r.idInt, err)
@@ -268,13 +280,13 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 	}
 
 	// Compute block status. Failure to load rules is non-fatal: the job is returned unblocked.
-	if rules, err2 := s.ListBlockRules(); err2 == nil {
+	if rules, err2 := listBlockRulesOn(q); err2 == nil {
 		job.Blocked, job.BlockedBy = blockMatch(job, rules)
 	}
 
 	// Compute stop-word status from the active stop-words. Derived on every read, so removing
 	// a stop-word reverses it with no stored role mutated. Failure to load is non-fatal.
-	if words, err2 := s.ListStopWords(); err2 == nil {
+	if words, err2 := listStopWordsOn(q); err2 == nil {
 		job.Stopped, job.StoppedBy = stopMatch(job, words)
 	}
 
@@ -284,7 +296,7 @@ func (s *Store) get(id int64, derived derivedState) (*model.Job, error) {
 // List returns all roles, optionally filtered by status and query text, sorted by
 // assessment score descending (unassessed roles sort last).
 func (s *Store) List(status, query string) ([]*model.Job, error) {
-	rows, err := s.DB.Query("SELECT id FROM jobs ORDER BY first_seen DESC")
+	rows, err := s.Read.Query("SELECT id FROM jobs ORDER BY first_seen DESC")
 	if err != nil {
 		return nil, fmt.Errorf("list jobs: %w", err)
 	}
@@ -308,11 +320,11 @@ func (s *Store) List(status, query string) ([]*model.Job, error) {
 		}
 	}
 	normQuery := normalizeText(query)
-	derived := s.derivedState()
+	derived := derivedStateOn(s.Read)
 
 	var out []*model.Job
 	for _, id := range ids {
-		job, err := s.get(id, derived)
+		job, err := getOn(s.Read, id, derived)
 		if err != nil {
 			continue // skip deleted/missing
 		}
@@ -687,7 +699,7 @@ func (s *Store) refreshFTS(id int64) {
 
 // Seen marks the role as seen (sets seen_at on first call; subsequent calls are no-ops).
 func (s *Store) Seen(id int64) (*model.Job, error) {
-	job, err := s.Get(id)
+	job, err := s.getW(id)
 	if err != nil {
 		return nil, err
 	}
@@ -695,7 +707,7 @@ func (s *Store) Seen(id int64) (*model.Job, error) {
 		"UPDATE jobs SET seen_at=COALESCE(seen_at,?) WHERE id=?", now(), job.ID); err != nil {
 		return nil, fmt.Errorf("mark seen: %w", err)
 	}
-	return s.Get(job.ID)
+	return s.getW(job.ID)
 }
 
 // Status moves the role to the given workflow status. Moving to applied requires the
@@ -737,7 +749,7 @@ func (s *Store) StatusWithReason(id int64, status string, confirmed bool, reason
 	if reason != "" && stage != "no" {
 		return nil, fmt.Errorf("an outcome reason is valid only for a negative outcome")
 	}
-	job, err := s.Get(id)
+	job, err := s.getW(id)
 	if err != nil {
 		return nil, err
 	}
@@ -802,21 +814,21 @@ func (s *Store) StatusWithReason(id int64, status string, confirmed bool, reason
 	// Enqueue for LLM assessment when the role is moved to preselected. This is the only
 	// point where automatic enqueueing happens; collection no longer calls EnqueueAll.
 	if stage == "preselected" {
-		updated, gerr := s.Get(id)
+		updated, gerr := s.getW(id)
 		if gerr == nil {
 			fp := jobVersionHash(updated.Title, updated.Company, updated.Description, updated.DescriptionStatus, updated.Location)
 			_, _ = s.EnqueueJob(id, fp, "", 0)
 		}
 	}
 
-	return s.Get(id)
+	return s.getW(id)
 }
 
 // Delete permanently deletes a role. Returns an error when the role is in triage
 // or when collection/assessment/preparation is currently active.
 // All reads are performed before the write transaction to avoid single-connection deadlocks.
 func (s *Store) Delete(id int64) (int64, []string, error) {
-	job, err := s.Get(id)
+	job, err := s.getW(id)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -1046,7 +1058,13 @@ func (s *Store) Health(source, status, message string, count int) error {
 
 // HealthList returns all source health records sorted by source name.
 func (s *Store) HealthList() ([]map[string]any, error) {
-	rows, err := s.DB.Query("SELECT source, status, message, checked, count FROM health ORDER BY source")
+	return s.HealthListContext(context.Background())
+}
+
+// HealthListContext is HealthList that gives up when ctx ends, so a caller with a deadline is not
+// held by a database that does not answer.
+func (s *Store) HealthListContext(ctx context.Context) ([]map[string]any, error) {
+	rows, err := s.Read.QueryContext(ctx, "SELECT source, status, message, checked, count FROM health ORDER BY source")
 	if err != nil {
 		return nil, err
 	}

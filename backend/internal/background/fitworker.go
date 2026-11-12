@@ -76,6 +76,10 @@ type FitWorker struct {
 
 	mu     sync.Mutex
 	status FitStatus
+	// counts are the plan statistics of the last planning pass (Step). Status serves them from
+	// memory so that a status request never reads the database; they lag the stored state by at most
+	// one planning pass.
+	counts PlanStats
 	failed map[int64]string // job id -> description hash that failed validation
 	// priority holds the vacancies the owner is looking at right now: their work is taken before
 	// the configured order, once.
@@ -184,21 +188,47 @@ func (w *FitWorker) Stop() {
 	}
 }
 
-// Status returns the worker's state with the current counts.
+// Status returns the worker's state with the counts of the last planning pass. It never touches
+// the database: the owner's page polls it every few seconds, and a database read per poll made a
+// stuck read stop every other request. Before the first planning the counts are zero.
 func (w *FitWorker) Status() FitStatus {
 	w.mu.Lock()
+	defer w.mu.Unlock()
 	st := w.status
+	c := w.counts
+	st.Usable, st.Extracted, st.NoRequirements = c.Usable, c.Extracted, c.NoRequirements
+	st.WithRequires, st.Matched = c.WithRequires, c.Matched
+	st.PendingExtract, st.PendingMatch, st.Cooling = c.PendingExtract, c.PendingMatch, c.Cooling
+	return st
+}
+
+// setCounts caches the statistics of a planning pass for Status.
+func (w *FitWorker) setCounts(c PlanStats) {
+	w.mu.Lock()
+	w.counts = c
+	w.mu.Unlock()
+}
+
+// refreshCounts plans without working, for the states in which Step does no work (paused) but the
+// counts must still follow the catalogue. A failed read leaves the previous counts in place.
+func (w *FitWorker) refreshCounts() {
+	prof, err := profile.Current(w.store)
+	if err != nil {
+		return
+	}
+	if prof == nil {
+		w.setCounts(PlanStats{})
+		return
+	}
+	rows, err := w.store.ModelWorkRows()
+	if err != nil {
+		return
+	}
+	w.mu.Lock()
 	skip := copySkip(w.failed)
 	w.mu.Unlock()
-	if rows, err := w.store.ModelWorkRows(); err == nil {
-		if p, perr := profile.Current(w.store); perr == nil && p != nil {
-			_, stats := PlanWork(rows, w.planParams(p.Revision, skip))
-			st.Usable, st.Extracted, st.NoRequirements = stats.Usable, stats.Extracted, stats.NoRequirements
-			st.WithRequires, st.Matched = stats.WithRequires, stats.Matched
-			st.PendingExtract, st.PendingMatch, st.Cooling = stats.PendingExtract, stats.PendingMatch, stats.Cooling
-		}
-	}
-	return st
+	_, stats := PlanWork(rows, w.planParams(prof.Revision, skip))
+	w.setCounts(stats)
 }
 
 func copySkip(in map[int64]string) map[int64]string {
@@ -230,6 +260,7 @@ func (w *FitWorker) Step(ctx context.Context) time.Duration {
 	cfg := w.cfg.Get()
 	mp := cfg.Runtime.EffectiveQuickMatch().ModelPasses
 	if mp.Paused {
+		w.refreshCounts()
 		w.set(FitStatePaused, "Analysis is paused in settings", true)
 		return w.IdleWait
 	}
@@ -239,6 +270,7 @@ func (w *FitWorker) Step(ctx context.Context) time.Duration {
 		return w.IdleWait
 	}
 	if prof == nil {
+		w.setCounts(PlanStats{})
 		w.set(FitStateNoProf, "No confirmed profile", true)
 		return w.IdleWait
 	}
@@ -250,7 +282,8 @@ func (w *FitWorker) Step(ctx context.Context) time.Duration {
 	w.mu.Lock()
 	skip := copySkip(w.failed)
 	w.mu.Unlock()
-	plan, _ := PlanWork(rows, w.planParams(prof.Revision, skip))
+	plan, stats := PlanWork(rows, w.planParams(prof.Revision, skip))
+	w.setCounts(stats)
 	if len(plan) == 0 {
 		w.mu.Lock()
 		w.priority = map[int64]bool{}

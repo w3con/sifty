@@ -36,9 +36,14 @@ func (s *Store) AddBlockRule(kind, value string) (*BlockRule, error) {
 	return &r, nil
 }
 
-// ListBlockRules returns all block rules ordered by creation time descending.
+// ListBlockRules returns all block rules ordered by creation time descending. It reads through
+// the read pool.
 func (s *Store) ListBlockRules() ([]*BlockRule, error) {
-	rows, err := s.DB.Query(
+	return listBlockRulesOn(s.Read)
+}
+
+func listBlockRulesOn(q queryer) ([]*BlockRule, error) {
+	rows, err := q.Query(
 		`SELECT id, kind, value, created_at FROM block_rules ORDER BY created_at DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list block rules: %w", err)
@@ -80,7 +85,7 @@ func (s *Store) RemoveBlockRule(id int64) error {
 // The domain rule kind exists in blockMatch for a future explicit block-domain action but is
 // never derived here.
 func (s *Store) BlockJob(jobID int64, dimension string) (*BlockRule, error) {
-	job, err := s.Get(jobID)
+	job, err := s.getW(jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +147,7 @@ type SourceCount struct {
 // number of distinct roles seen on it and a blocked flag from the active source rules,
 // ordered by name.
 func (s *Store) ListSources() ([]*SourceCount, error) {
-	rules, err := s.ListBlockRules()
+	rules, err := listBlockRulesOn(s.Read)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +157,7 @@ func (s *Store) ListSources() ([]*SourceCount, error) {
 			blocked[r.Value] = true
 		}
 	}
-	rows, err := s.DB.Query(
+	rows, err := s.Read.Query(
 		`SELECT source, COUNT(DISTINCT job_id) FROM sightings GROUP BY source ORDER BY source`)
 	if err != nil {
 		return nil, fmt.Errorf("list sources: %w", err)

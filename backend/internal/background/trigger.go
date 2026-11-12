@@ -77,7 +77,7 @@ func TriggerCollection(s *store.Store, d dirs.Dirs, cfg *config.Config, opts Tri
 
 	// Cooldown gate: skip if unforced and a recent run exists.
 	if !opts.Force {
-		last, err := s.LatestCollectionRun()
+		last, err := s.LatestCollectionRunOnWriter()
 		if err != nil {
 			return TriggerResult{}, fmt.Errorf("latest collection run: %w", err)
 		}
@@ -149,7 +149,7 @@ func TriggerAsync(s *store.Store, d dirs.Dirs, cfg *config.Config, opts TriggerO
 	// Lock is released in the goroutine (or immediately on skip/error below).
 
 	if !opts.Force {
-		last, err := s.LatestCollectionRun()
+		last, err := s.LatestCollectionRunOnWriter()
 		if err != nil {
 			_ = s.ReleaseLock(collectionLockName, pid)
 			return 0, "", fmt.Errorf("latest collection run: %w", err)

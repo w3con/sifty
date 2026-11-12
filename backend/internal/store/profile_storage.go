@@ -32,10 +32,15 @@ type ProfileRecord struct {
 	UpdatedAt string
 }
 
-// CurrentProfile returns the single stored profile, or nil when none exists yet.
+// CurrentProfile returns the single stored profile, or nil when none exists yet. It reads through
+// the read pool; write paths read the row inside their own transaction.
 func (s *Store) CurrentProfile() (*ProfileRecord, error) {
+	return currentProfileOn(s.Read)
+}
+
+func currentProfileOn(q queryer) (*ProfileRecord, error) {
 	rec := &ProfileRecord{}
-	err := s.DB.QueryRow(
+	err := q.QueryRow(
 		`SELECT id, revision, data, created_at, updated_at FROM user_profiles ORDER BY id LIMIT 1`).
 		Scan(&rec.ID, &rec.Revision, &rec.Data, &rec.CreatedAt, &rec.UpdatedAt)
 	if err == sql.ErrNoRows {
@@ -87,7 +92,7 @@ func (s *Store) CreateProfile(id, data string) (*ProfileRecord, error) {
 	}
 	tx = nil
 
-	rec, err := s.CurrentProfile()
+	rec, err := currentProfileOn(s.DB)
 	if err != nil {
 		return nil, err
 	}

@@ -2,7 +2,7 @@
 
 **Epic:** ops
 **Created:** 2026-11-12
-**Status:** backlog
+**Status:** in progress
 **Kind:** bug
 
 ## Owner's words
@@ -34,12 +34,12 @@ This card records an incoming bug or idea. It does not authorize implementation,
 
 ## Plan (coordinator, 2026-11-12)
 
-- [ ] **H.1 — Driver** (10–15 min; owner questioned 20–40): `modernc.org/sqlite` v1.62.0 and an explicit `modernc.org/libc` v1.81.0 in `go.mod` (the executor checked the 1.81.0 source); build; existing store/background tests. No automated test for the leak (it needs fault injection in the driver).
-- [ ] **H.2 — Status without the database** (45–75 min): the worker caches the counts it already computes in `Step` (PlanWork stats, including early exits: empty queue, paused, no profile) under its mutex; `Status` returns the cache and never touches the store. One targeted test: after a `Step`, close the store and `Status` still answers.
-- [ ] **H.2b — Several readers, one writer** (45–75 min; owner «ok», 2026-11-12): one stuck or slow read must not block every other request. Keep a single write connection and add a small pool of read-only connections (WAL allows concurrent readers), or equivalent. Every connection must get the same settings: `busy_timeout`, `foreign_keys` and WAL are today applied once with `Exec` on the single connection, so they must move into the connection string (per-connection pragmas) or a connection hook. Write transactions start as IMMEDIATE so two writers never deadlock on upgrade. Route plain reads (lists, status, profile) to readers; everything in a transaction and every write stays on the writer. One targeted test: while a read transaction is held open on one connection, another read and a write complete. Note in the report that a lock inside the driver (the libc case of H.1) would still stop all connections; H.2b is against ordinary slow or stuck queries.
-- [ ] **H.3 — Health that cannot hang** (20–30 min, coordinator's decision on the executor's question): `GET /api/health` checks the database with a short timeout (e.g. 2 s) on a context and answers 503 "database not responding" instead of waiting; the UI's existing server-down banner shows it. No automatic exit or restart: there is no supervisor, so exiting would leave production down until a manual start.
-- [ ] **H.4 — Measure the polling** (15–20 min, measure only): what the UI requests every 2.5 s on production (jobs list included or not, sizes, times). If `/api/jobs` is refetched on every poll, record it for a follow-up in INBOX-2 or a new card — do not change `frontend/main.tsx` here (INBOX-2 is changing the same poll loop).
-- [ ] **H.5 — Release** (owner's approval): this card ships on its own, before INBOX-2. Before the release, clear the stale pid record the documented way (OPS-9 items 2 and 9 — hit twice on 2026-11-12).
+- [x] **H.1 — Driver** (10–15 min; owner questioned 20–40): `modernc.org/sqlite` v1.62.0 and an explicit `modernc.org/libc` v1.81.0 in `go.mod` (the executor checked the 1.81.0 source); build; existing store/background tests. No automated test for the leak (it needs fault injection in the driver).
+- [x] **H.2 — Status without the database** (45–75 min): the worker caches the counts it already computes in `Step` (PlanWork stats, including early exits: empty queue, paused, no profile) under its mutex; `Status` returns the cache and never touches the store. One targeted test: after a `Step`, close the store and `Status` still answers.
+- [x] **H.2b — Several readers, one writer** (45–75 min; owner «ok», 2026-11-12): one stuck or slow read must not block every other request. Keep a single write connection and add a small pool of read-only connections (WAL allows concurrent readers), or equivalent. Every connection must get the same settings: `busy_timeout`, `foreign_keys` and WAL are today applied once with `Exec` on the single connection, so they must move into the connection string (per-connection pragmas) or a connection hook. Write transactions start as IMMEDIATE so two writers never deadlock on upgrade. Route plain reads (lists, status, profile) to readers; everything in a transaction and every write stays on the writer. One targeted test: while a read transaction is held open on one connection, another read and a write complete. Note in the report that a lock inside the driver (the libc case of H.1) would still stop all connections; H.2b is against ordinary slow or stuck queries.
+- [x] **H.3 — Health that cannot hang** (20–30 min, coordinator's decision on the executor's question): `GET /api/health` checks the database with a short timeout (e.g. 2 s) on a context and answers 503 "database not responding" instead of waiting; the UI's existing server-down banner shows it. No automatic exit or restart: there is no supervisor, so exiting would leave production down until a manual start.
+- [x] **H.4 — Measure the polling** (15–20 min, measure only): what the UI requests every 2.5 s on production (jobs list included or not, sizes, times). If `/api/jobs` is refetched on every poll, record it for a follow-up in INBOX-2 or a new card — do not change `frontend/main.tsx` here (INBOX-2 is changing the same poll loop).
+- [x] **H.5 — Release** (owner's approval): this card ships on its own, before INBOX-2. Before the release, clear the stale pid record the documented way (OPS-9 items 2 and 9 — hit twice on 2026-11-12).
 
 ## Estimate
 

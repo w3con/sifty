@@ -42,9 +42,14 @@ func (s *Store) AddStopWord(word string) (*StopWord, error) {
 	return &sw, nil
 }
 
-// ListStopWords returns all stop-words ordered by creation time descending.
+// ListStopWords returns all stop-words ordered by creation time descending. It reads through
+// the read pool.
 func (s *Store) ListStopWords() ([]*StopWord, error) {
-	rows, err := s.DB.Query(
+	return listStopWordsOn(s.Read)
+}
+
+func listStopWordsOn(q queryer) ([]*StopWord, error) {
+	rows, err := q.Query(
 		`SELECT id, word, created_at FROM stop_words ORDER BY created_at DESC, id DESC`)
 	if err != nil {
 		return nil, fmt.Errorf("list stop words: %w", err)
@@ -130,7 +135,7 @@ func (s *Store) StopWordMatchCount(word string) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	rows, err := s.DB.Query(`SELECT title, company FROM jobs`)
+	rows, err := s.Read.Query(`SELECT title, company FROM jobs`)
 	if err != nil {
 		return 0, fmt.Errorf("count stop word matches: %w", err)
 	}

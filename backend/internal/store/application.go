@@ -20,7 +20,7 @@ type ApplicationDraft struct {
 
 // GetDraft returns the current application draft for a role, or an empty draft if none exists.
 func (s *Store) GetDraft(jobID int64) (*ApplicationDraft, error) {
-	job, err := s.Get(jobID)
+	job, err := s.getW(jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +48,7 @@ func (s *Store) GetDraft(jobID int64) (*ApplicationDraft, error) {
 
 // WriteDraft saves a new revision of the draft and appends to application_revisions.
 func (s *Store) WriteDraft(draft *ApplicationDraft, reason string) (*ApplicationDraft, error) {
-	if _, err := s.Get(draft.JobID); err != nil {
+	if _, err := s.getW(draft.JobID); err != nil {
 		return nil, err
 	}
 	draft.Revision++
@@ -171,7 +171,7 @@ func (s *Store) PreparationOperations(jobID int64) ([]map[string]any, error) {
 // this job is already queued or running, it is returned unchanged. The returned row is the
 // operation as it exists in the database, with all columns, in the shape used by the API.
 func (s *Store) QueuePreparation(jobID int64, request any) (map[string]any, error) {
-	if _, err := s.Get(jobID); err != nil {
+	if _, err := s.getW(jobID); err != nil {
 		return nil, err
 	}
 	// Return any already-active operation.

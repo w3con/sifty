@@ -82,7 +82,7 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "sifty serve: open store: %v\n", err)
 		return 1
 	}
-	defer func() { _ = s.DB.Close() }()
+	defer func() { _ = s.Close() }()
 
 	resolvedWorkersDir, _ := filepath.Abs(*workersDir)
 	profiles := profile.NewService(

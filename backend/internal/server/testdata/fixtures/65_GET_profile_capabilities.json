@@ -1,0 +1,16 @@
+{
+  "description": "GET /api/profile/capabilities — read-only document/fact UI capabilities",
+  "method": "GET",
+  "path": "/api/profile/capabilities",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "documentTypes",
+    "maxDocumentBytes",
+    "maxUploadBodyBytes",
+    "skillLevels",
+    "factFieldKeys"
+  ],
+  "source": "synthetic"
+}

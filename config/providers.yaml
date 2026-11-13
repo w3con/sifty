@@ -1,0 +1,36 @@
+version: 1
+# Credentials remain with each CLI; no tokens are copied into this app.
+stages:
+  # Working subscription-backed small model; local adapters remain selectable.
+  assessment: luna
+  extraction: luna
+  preparation: luna
+providers:
+  luna:
+    type: opencode
+    model: openai/gpt-6-luna
+    timeout_ms: 120000
+    context_chars: 32000
+  openai:
+    type: opencode
+    model: openai/gpt-6.1-sol
+    timeout_ms: 120000
+    context_chars: 50000
+  claude:
+    type: claude
+    model: haiku
+    timeout_ms: 120000
+    context_chars: 50000
+  ollama:
+    type: ollama
+    model: configure-installed-model
+    endpoint: http://127.0.0.1:11434
+    timeout_ms: 120000
+    context_chars: 24000
+  local:
+    type: compatible
+    model: configure-installed-model
+    endpoint: http://127.0.0.1:1234/v1
+    timeout_ms: 120000
+    context_chars: 24000
+# No automatic cross-provider fallback or paid API fallback.

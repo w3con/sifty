@@ -1,0 +1,60 @@
+#!/usr/bin/env python3
+"""sift-deploy — build, publish and smoke-check an isolated sifty environment.
+
+Usage: sift-deploy --env staging|prod [--source REVISION] [--build-only]
+                   [--refresh-data] [--adopt-legacy] [--recover DIR] [--help]
+
+Production and staging own separate binaries, frontend bundles, worker trees,
+data directories and pid/state files. Builds are staged in fresh candidate
+directories and published only after they succeed. A normal deploy never
+refreshes staging data; --refresh-data is the explicit staging-only snapshot
+operation. --source builds the exact committed revision with git archive, never
+the checkout HEAD. --adopt-legacy is the explicit first-transition operation
+for a pre-isolation process. See docs/architecture/preview-and-environments.md.
+"""
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _deploy_lib as d
+
+
+def main():
+    if "--help" in sys.argv[1:] or "-h" in sys.argv[1:]:
+        print(__doc__.strip())
+        print("""
+Per-environment settings (bin/work.config or environment variables):
+  SIFTY_PROD_PORT / SIFTY_STAGING_PORT              HTTP port
+  SIFTY_PROD_DATA_DIR / SIFTY_STAGING_DATA_DIR      data directory
+  SIFTY_PROD_BINARY / SIFTY_STAGING_BINARY          binary path
+  SIFTY_PROD_DIST / SIFTY_STAGING_DIST              frontend bundle path
+  SIFTY_PROD_WORKERS_DIR / SIFTY_STAGING_WORKERS_DIR worker tree path
+  SIFTY_PROD_LOG / SIFTY_STAGING_LOG                server log path
+
+Shared build settings:
+  SIFTY_WORKERS_SOURCE        source worker tree (default <checkout>/backend/workers)
+  SIFTY_DEPLOY_STATE_DIR      candidates/recovery/pid state (default <main>/.local/deploy)
+  SIFTY_WORKERS_CACHE_DIR     locked worker dependency cache
+  SIFTY_FRONTEND_CACHE_DIR    reserved frontend dependency cache root
+
+Relative destinations resolve against the main checkout, never the linked
+worktree. A busy port or a pid file that does not match the expected binary is
+refused, never killed by port.
+
+  --source REVISION  build exactly that committed tree, not a moving checkout
+  --adopt-legacy     verify and adopt the current pre-isolation process on the
+                     target port, capture the assets it actually serves, then
+                     deploy normally. Refuses an ambiguous or unverified owner.
+  --recover DIR      standalone: restore the captured recovery point, including
+                     the previous server's exact argv, and report ROLLBACK.
+""".rstrip())
+        return 0
+    try:
+        return d.deploy_main(__file__, sys.argv[1:])
+    except d.DeployError as exc:
+        print("sift-deploy: ERROR: %s" % exc, file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

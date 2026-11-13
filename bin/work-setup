@@ -1,0 +1,107 @@
+#!/usr/bin/env bash
+# work-setup — wire a fresh clone for the work-management harness.
+#
+# core.hooksPath is local git config and is never cloned, so every clone runs
+# this once. It is set to the RELATIVE path .githooks so it resolves correctly
+# in the main checkout and in every linked worktree. Idempotent.
+#
+# The setup verifies what it installed rather than only printing success: the
+# effective hooksPath must be the relative value, and every hook, pre-commit
+# step, harness command and leak-scanner adapter must exist and be executable.
+# The optional knowledge-base integration is not required: a public clone with
+# no kb/ directory and no tools/shared submodule still sets up the core harness.
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+git config core.hooksPath .githooks
+
+chmod_executable() {
+    if [ -f "$1" ]; then
+        chmod +x "$1"
+    fi
+}
+
+REQUIRED_HOOKS="pre-commit commit-msg pre-push post-checkout post-merge post-rewrite"
+REQUIRED_STEPS="10-kb-relation-build 20-work-selfcheck 30-leak-check"
+COMMANDS="work-new work-plan work-handover work-note work-commit work-resume work-accept work-finish work-status work-list work-capture work-cancel work-setup work-test"
+SCANNER_DIR="backend/scripts/leakcheck"
+SCANNERS="commit-diff-check commit-msg-check range-check tree-check leakcheck-selftest leak_census.py leak_git.py"
+
+# Make the required adapters executable. Extra files are not part of the
+# contract and do not make a broken installation pass below.
+for hook in $REQUIRED_HOOKS; do
+    chmod_executable ".githooks/$hook"
+done
+for step in $REQUIRED_STEPS; do
+    chmod_executable ".githooks/pre-commit.d/$step"
+done
+for command in $COMMANDS; do
+    chmod_executable "bin/$command"
+done
+if [ -d "$SCANNER_DIR" ]; then
+    for scanner in $SCANNERS; do
+        chmod_executable "$SCANNER_DIR/$scanner"
+    done
+fi
+
+# ── Verification ────────────────────────────────────────────────────────────
+# Check the required files explicitly. A clone that is missing an entire
+# directory, one hook, one pre-commit step, one command or one scanner adapter
+# must fail instead of printing ready.
+fail=0
+effective="$(git config --get core.hooksPath || true)"
+if [ "$effective" != ".githooks" ]; then
+    echo "work-setup: ERROR effective core.hooksPath is '$effective', not the relative '.githooks'" >&2
+    fail=1
+fi
+
+check_adapter() {
+    # $1 = path, $2 = description
+    if [ ! -f "$1" ]; then
+        echo "work-setup: ERROR required $2 missing: $1" >&2
+        fail=1
+    elif [ ! -x "$1" ]; then
+        echo "work-setup: ERROR required $2 not executable: $1" >&2
+        fail=1
+    fi
+}
+
+if [ ! -d .githooks ]; then
+    echo "work-setup: ERROR required hook directory missing: .githooks" >&2
+    fail=1
+fi
+for hook in $REQUIRED_HOOKS; do
+    check_adapter ".githooks/$hook" "hook"
+done
+if [ ! -d .githooks/pre-commit.d ]; then
+    echo "work-setup: ERROR required pre-commit directory missing: .githooks/pre-commit.d" >&2
+    fail=1
+fi
+for step in $REQUIRED_STEPS; do
+    check_adapter ".githooks/pre-commit.d/$step" "pre-commit step"
+done
+for command in $COMMANDS; do
+    check_adapter "bin/$command" "harness command"
+done
+if [ ! -d "$SCANNER_DIR" ]; then
+    echo "work-setup: ERROR required leak scanner directory missing: $SCANNER_DIR" >&2
+    fail=1
+else
+    for scanner in $SCANNERS; do
+        check_adapter "$SCANNER_DIR/$scanner" "leak scanner"
+    done
+fi
+if [ "$fail" -ne 0 ]; then
+    echo "work-setup: setup incomplete" >&2
+    exit 1
+fi
+
+echo "set core.hooksPath = .githooks (relative, effective: $(git config --get core.hooksPath))"
+echo "hooks, pre-commit steps, harness commands and leak scanners are executable"
+echo
+echo "The optional knowledge-base integration is not required for a public clone."
+echo "If this checkout uses the optional shared tooling, run: git submodule update --init tools/shared"
+echo
+echo "harness ready. Run bin/work-test to verify."

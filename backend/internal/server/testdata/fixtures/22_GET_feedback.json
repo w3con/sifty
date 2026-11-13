@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/jobs/:id/feedback \u2014 feedback records",
+  "method": "GET",
+  "path": "/api/jobs/1/feedback",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic"
+}

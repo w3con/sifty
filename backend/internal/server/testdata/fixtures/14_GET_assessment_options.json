@@ -1,0 +1,13 @@
+{
+  "description": "GET /api/assessment-options \u2014 provider options",
+  "method": "GET",
+  "path": "/api/assessment-options",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "selected",
+    "providers"
+  ],
+  "source": "synthetic"
+}

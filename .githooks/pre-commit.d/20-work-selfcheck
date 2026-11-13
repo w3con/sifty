@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Harness self-check: refuse to commit a syntactically broken work-* script.
+# Only looks at staged harness files, so it is a no-op for every other commit.
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+STAGED=$(git diff --cached --name-only --diff-filter=ACM -- 'bin/work-*' 'bin/_work_lib.py')
+[ -z "$STAGED" ] && exit 0
+cd "$PROJECT_ROOT" || exit 0
+rc=0
+while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -f "$f" ] || continue
+    # Only python scripts: match a python shebang or a .py extension. The bash
+    # commands (e.g. work-setup) are skipped.
+    case "$f" in
+        *.py) : ;;
+        *) head -1 "$f" | grep -q 'python' || continue ;;
+    esac
+    if ! python3 -m py_compile "$f" 2>/dev/null; then
+        echo "[work] py_compile failed: $f — fix it or commit with --no-verify" >&2
+        rc=1
+    fi
+done <<< "$STAGED"
+exit $rc

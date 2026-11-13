@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/context \u2014 refresh candidate context",
+  "method": "POST",
+  "path": "/api/context",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object|null",
+  "requiredFields": [],
+  "source": "synthetic"
+}

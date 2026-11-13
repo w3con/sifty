@@ -1,0 +1,12 @@
+{
+  "description": "POST /api/profile/facts/{id}/accept — confirm a proposal with expectedRevision (unknown id)",
+  "method": "POST",
+  "path": "/api/profile/facts/fact-1/accept",
+  "requestBody": {
+    "expectedRevision": 2
+  },
+  "responseStatus": 404,
+  "responseBodyShape": "object",
+  "requiredFields": [],
+  "source": "synthetic"
+}

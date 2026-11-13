@@ -1,0 +1,133 @@
+#!/usr/bin/env python3
+"""work-handover — the gate between a finished plan and the executor.
+
+Usage:
+    work-handover <id>
+
+Enforces every refusal inside this command (not an external hook):
+  * plan not fit
+  * unanswered attention
+  * a terminal file present (done/rejected/cancelled/question)
+  * the declared estimate exceeds the ceiling
+  * nothing left to brief (no open steps)
+  * the card has uncommitted changes
+
+Then cuts a linked git worktree on branch work/<id> and hands the executor
+brief to the live session (or to the configured headless dispatch command).
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def card_has_uncommitted_changes(card_rel):
+    cp = w.run(["git", "status", "--porcelain", "--", card_rel],
+               cwd=w.repo_root())
+    return bool(cp.stdout.strip())
+
+
+def build_brief(card_id, card_dir, worktree, state, state_context=""):
+    steps = w.open_steps(card_dir)
+    open_block = "\n".join("- [ ] %s" % s for s in steps) or "(none)"
+    rel_card = os.path.relpath(card_dir, worktree)
+    rel_steps = os.path.relpath(w.steps_file(card_dir), worktree)
+    next_step = state["next_step"] or (
+        "none — all steps closed" if state["steps_closed"] else
+        "none — no steps prepared")
+    return w.render_template(
+        "executor-brief.md",
+        id=card_id,
+        card_dir=rel_card,
+        worktree=worktree,
+        steps_file=rel_steps,
+        open_steps=open_block,
+        state=state["state"],
+        blocker="; ".join(state["blockers"]) or "none",
+        next_step=next_step,
+        state_context=state_context,
+    )
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-handover")
+    ap.add_argument("id")
+    args = ap.parse_args()
+
+    card_dir = w.require_card_dir(args.id)
+    card_rel = os.path.relpath(card_dir, w.repo_root())
+
+    # ── Refusals (all inside the command) ────────────────────────────────────
+    reasons = []
+    reasons += w.plan_fitness_problems(card_dir)
+    state = w.card_state(card_dir)
+    reasons += state["errors"]
+    reasons += ["unresolved blocker: %s" % b for b in state["blockers"]]
+    att = w.open_attention(card_dir)
+    if att:
+        reasons.append("unanswered attention (%d open item(s))" % len(att))
+    term = w.terminal_file_present(card_dir)
+    if term:
+        reasons.append("terminal file present: %s" % term)
+    ceiling = int(w.config_get("WORK_ESTIMATE_CEILING", "25"))
+    est = w.read_estimate(card_dir)
+    if est is not None and est > ceiling:
+        reasons.append("estimate %d exceeds ceiling %d (split the card or raise "
+                       "WORK_ESTIMATE_CEILING)" % (est, ceiling))
+    if not w.open_steps(card_dir):
+        reasons.append("nothing left to brief (no open steps)")
+    if card_has_uncommitted_changes(card_rel):
+        reasons.append("card has uncommitted changes — commit the plan first")
+    if reasons:
+        w.refuse(["cannot hand over %s:" % args.id] + reasons)
+
+    # ── Cut the worktree on branch work/<id> ─────────────────────────────────
+    branch = "work/%s" % args.id
+    worktree = os.path.join(w.repo_root(), ".worktrees", args.id)
+    if os.path.exists(worktree):
+        w.refuse(["worktree already exists at %s — use work-resume %s"
+                  % (worktree, args.id)])
+    os.makedirs(os.path.dirname(worktree), exist_ok=True)
+    add = w.run(["git", "worktree", "add", "-b", branch, worktree, "HEAD"],
+                cwd=w.repo_root())
+    if add.returncode != 0:
+        w.die("git worktree add failed: %s" % add.stderr.strip())
+    w.info("cut worktree %s on branch %s" % (worktree, branch))
+
+    # State lives on the work branch, not on the base copy. Mark the card in
+    # progress there before the brief is rendered, without asking the owner for
+    # a separate technical approval.
+    wt_card = w.find_card_dir(args.id, root=worktree)
+    if not wt_card:
+        w.refuse(["worktree %s was cut but the card is missing from it; "
+                  "preserved for work-resume %s" % (worktree, args.id)])
+    wt_state = w.card_state(wt_card)
+    if wt_state["errors"]:
+        w.refuse(["cannot start %s: card state is contradictory in the "
+                  "worktree: %s" % (args.id, "; ".join(wt_state["errors"]))])
+    if wt_state["terminal"]:
+        w.refuse(["cannot start %s: worktree card already has terminal "
+                  "outcome %s" % (args.id, wt_state["state"])])
+    if wt_state["state"] != "in progress":
+        changed = w.rewrite_status_metadata(wt_card, state="in progress")
+        if changed:
+            w.commit_paths(
+                [os.path.join(wt_card, "description.md")],
+                "chore(work): start %s" % args.id, cwd=worktree)
+            wt_state = w.card_state(wt_card)
+
+    # ── Hand off the brief through the cross-tool seam ────────────────────────
+    base_state = w.card_state(card_dir)
+    context = ""
+    if base_state["state"] != wt_state["state"]:
+        context = ("- Base checkout still records: %s (state changes for active "
+                   "work belong to `work/%s`)\n"
+                   % (base_state["state"], args.id))
+    brief = build_brief(args.id, wt_card, worktree, wt_state, context)
+    w.dispatch(brief)
+
+
+if __name__ == "__main__":
+    main()

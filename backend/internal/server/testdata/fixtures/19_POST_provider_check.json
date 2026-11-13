@@ -1,0 +1,12 @@
+{
+  "description": "POST /api/providers/:name/check \u2014 smoke check",
+  "method": "POST",
+  "path": "/api/providers/p/check",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "score"
+  ],
+  "source": "synthetic"
+}

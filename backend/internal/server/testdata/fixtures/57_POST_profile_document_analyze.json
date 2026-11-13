@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/profile/documents/{id}/analyze — explicit extraction-provider run (unknown id)",
+  "method": "POST",
+  "path": "/api/profile/documents/doc-1/analyze",
+  "requestBody": {},
+  "responseStatus": 404,
+  "responseBodyShape": "object",
+  "requiredFields": [],
+  "source": "synthetic"
+}

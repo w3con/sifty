@@ -1,0 +1,15 @@
+{
+  "description": "POST /api/jobs/:id/application/questions \u2014 add question",
+  "method": "POST",
+  "path": "/api/jobs/1/application/questions",
+  "requestBody": {
+    "label": "Why do you want this role?"
+  },
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "jobId",
+    "fields"
+  ],
+  "source": "synthetic"
+}

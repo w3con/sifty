@@ -1,0 +1,10 @@
+{
+  "description": "GET /api/health \u2014 per-source health",
+  "method": "GET",
+  "path": "/api/health",
+  "requestBody": null,
+  "responseStatus": 200,
+  "responseBodyShape": "array",
+  "requiredFields": [],
+  "source": "synthetic"
+}

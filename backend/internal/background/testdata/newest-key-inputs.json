@@ -1,0 +1,90 @@
+[
+ {
+  "raw": "2026-10-01T20:22:29.000Z",
+  "basis": false
+ },
+ {
+  "raw": "",
+  "basis": false
+ },
+ {
+  "raw": "2026-10-27",
+  "basis": true
+ },
+ {
+  "raw": "2026-10-06T00:00:00Z",
+  "basis": false
+ },
+ {
+  "raw": "2026-11-04T16:53:35+00:00",
+  "basis": false
+ },
+ {
+  "raw": "2026-10-28 05:10:29+07:00",
+  "basis": false
+ },
+ {
+  "raw": "2026-11-03",
+  "basis": false
+ },
+ {
+  "raw": "Sat, 10 Oct 2026 07:31:08 +0000",
+  "basis": false
+ },
+ {
+  "raw": "2026-10-28T20:54:24.887712Z",
+  "basis": false
+ },
+ {
+  "raw": "2026-10-27T12:56:13",
+  "basis": false
+ },
+ {
+  "raw": "2026-05-06 18:04:24 UTC",
+  "basis": false
+ },
+ {
+  "raw": "2026-10-27T06:44:06Z",
+  "basis": true
+ },
+ {
+  "raw": "Sun, 23 Aug 2026 23:00:01 GMT",
+  "basis": false
+ },
+ {
+  "raw": "2026-02-31",
+  "basis": false
+ },
+ {
+  "raw": "2026-02-31T10:00:00Z",
+  "basis": false
+ },
+ {
+  "raw": "2027-01-01",
+  "basis": false
+ },
+ {
+  "raw": "2027-01-01T00:00:00Z",
+  "basis": true
+ },
+ {
+  "raw": "not a date",
+  "basis": false
+ },
+ {
+  "raw": "  2026-10-27  ",
+  "basis": false
+ },
+ {
+  "raw": "2026-11-11",
+  "basis": false
+ },
+ {
+  "raw": "2026-11-12",
+  "basis": false
+ },
+ {
+  "raw": "2026-11-11T12:00:00Z",
+  "basis": false
+ }
+]

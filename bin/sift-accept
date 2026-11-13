@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# bin/sift-accept — acceptance check for a sifty card.
+#
+# Run by work-accept / work-finish as the WORK_ACCEPT_CMD. During rapid
+# prototyping automated tests are opt-in (WORK_TEST_MODE=full). Builds run
+# when the card changed application
+# source (backend/**, frontend/** or legacy/app/**) or build/deploy/configuration inputs:
+#
+#   bin/sift-*  bin/work.config  Makefile  config/**  .github/**
+#
+#   Harness self-test       → bin/work-test --full (explicit opt-in only)
+#   Application builds      → go build ./...  +  npm ci  +  npm run build
+#                             (tsc --noEmit + vite build)
+#
+# A card is app/build-touching when any committed file on this branch (relative
+# to the merge base with the base branch) matches those paths. The base branch
+# defaults to WORK_BASE_BRANCH, then SIFTY_BASE_BRANCH, then main.
+#
+# npm ci is required; a failure fails acceptance rather than silently falling
+# back to npm install. The frontend build writes to a temporary directory so the
+# scratch copy stays removable without force.
+#
+# Exit 0 means the selected checks passed; it does not mean skipped tests ran.
+
+set -euo pipefail
+
+log()  { echo "sift-accept: $*"; }
+die()  { echo "sift-accept: FAIL: $*" >&2; exit 1; }
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_HOME="$(git -C "$SCRIPT_DIR" rev-parse --show-toplevel 2>/dev/null)" \
+    || die "not inside a git repository"
+
+BASE_BRANCH="${WORK_BASE_BRANCH:-${SIFTY_BASE_BRANCH:-main}}"
+
+# Find the merge base between HEAD and the base branch.
+MERGE_BASE="$(git -C "$APP_HOME" merge-base "$BASE_BRANCH" HEAD 2>/dev/null \
+    || git -C "$APP_HOME" merge-base origin/"$BASE_BRANCH" HEAD 2>/dev/null \
+    || echo "")"
+
+APP_TOUCHING=0
+BUILD_TOUCHING=0
+
+if [[ -z "$MERGE_BASE" ]]; then
+    log "Cannot find merge base with $BASE_BRANCH; running application checks to be safe."
+    APP_TOUCHING=1
+    BUILD_TOUCHING=1
+else
+    CHANGED="$(git -C "$APP_HOME" diff --name-only "$MERGE_BASE" HEAD 2>/dev/null || true)"
+    if echo "$CHANGED" | grep -qE '^(backend|frontend|legacy/app)/'; then
+        APP_TOUCHING=1
+    fi
+    if echo "$CHANGED" | grep -qE '^(bin/sift-[^/]+|bin/work\.config|Makefile|config/|\.github/)'; then
+        BUILD_TOUCHING=1
+    fi
+    if [[ "$APP_TOUCHING" -eq 1 || "$BUILD_TOUCHING" -eq 1 ]]; then
+        log "Application/build files changed; running application checks."
+    else
+        log "No application/build files changed."
+    fi
+fi
+
+# 1. Tests are explicit opt-in while the product is being prototyped.
+if [[ "${WORK_TEST_MODE:-off}" == "full" ]]; then
+    log "--- Explicit harness self-test ---"
+    python3 "$APP_HOME/bin/work-test" --full || die "Harness self-test failed"
+    log "Harness self-test: PASS"
+else
+    log "SKIPPED: automated tests are paused; acceptance is build-only plus owner review."
+fi
+
+# 2. Application checks when source, build, deploy or configuration inputs changed.
+if [[ "$APP_TOUCHING" -eq 1 || "$BUILD_TOUCHING" -eq 1 ]]; then
+    log "--- Go build ---"
+    (cd "$APP_HOME/backend" && go build ./...) || die "Go build failed"
+    log "Go build: PASS"
+
+    if [[ "${WORK_TEST_MODE:-off}" == "full" ]]; then
+        log "--- Explicit Go tests ---"
+        (cd "$APP_HOME/backend" && go test -race ./...) || die "Go tests failed"
+        log "Go tests: PASS"
+    fi
+
+    log "--- Frontend dependencies (npm ci) ---"
+    (cd "$APP_HOME/frontend" && npm ci --silent) \
+        || die "frontend dependency install failed (npm ci); not falling back to npm install"
+    log "Frontend dependencies: PASS"
+
+    BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/sifty-accept-build.XXXXXX")"
+    trap 'rm -rf "$BUILD_DIR"' EXIT
+    log "--- TypeScript check + Vite build (BUILD_OUTDIR=$BUILD_DIR) ---"
+    (cd "$APP_HOME/frontend" && BUILD_OUTDIR="$BUILD_DIR" npm run build) \
+        || die "tsc --noEmit or vite build failed"
+    log "tsc + vite build: PASS"
+fi
+
+log "Selected acceptance checks passed. Owner staging review remains required."

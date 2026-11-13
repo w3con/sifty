@@ -1,0 +1,22 @@
+[
+  {
+    "title": "Senior Go Engineer",
+    "company": "Acme Labs",
+    "originalUrl": "https://acme.test/jobs/go",
+    "applyUrl": null,
+    "description": "Work on distributed systems",
+    "descriptionStatus": "feed description; may be excerpt",
+    "publishedAt": "2026-10-01T00:00:00Z",
+    "publishedBasis": "pubDate",
+    "source": "Test Feed"
+  },
+  {
+    "title": "Platform Lead",
+    "company": "Beta Inc",
+    "originalUrl": "https://beta.test/jobs/platform",
+    "applyUrl": null,
+    "description": "A much longer and more detailed role description goes here with specifics",
+    "descriptionStatus": "feed description; may be excerpt",
+    "source": "Test Feed"
+  }
+]

@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""work-new — found a new card folder and commit it.
+
+Usage:
+    work-new <epic> <slug> [--prefix PREFIX] [--title TITLE] [--short]
+
+Allocates the next ID for the prefix (default: the epic, upper-cased), writes
+the file set from the templates, and commits the founded folder.
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-new")
+    ap.add_argument("epic")
+    ap.add_argument("slug")
+    ap.add_argument("--prefix", default=None,
+                    help="ID prefix (default: epic upper-cased)")
+    ap.add_argument("--title", default=None, help="human title for the card")
+    ap.add_argument("--short", action="store_true",
+                    help="short card: description + comments only")
+    args = ap.parse_args()
+
+    if not w.EPIC_RE.match(args.epic):
+        w.die("epic must be lowercase, dash-separated: %r" % args.epic)
+    if not w.SLUG_RE.match(args.slug):
+        w.die("slug must be lowercase, dash-separated: %r" % args.slug)
+
+    prefix = (args.prefix or args.epic.replace("-", "")).upper()
+    if not prefix.isalnum():
+        w.die("prefix must be alphanumeric: %r" % prefix)
+
+    card_id = w.allocate_id(prefix)
+    title = args.title or args.slug.replace("-", " ")
+    date = w.today()
+
+    card_dir = os.path.join(w.tasks_dir(), args.epic,
+                            "%s_%s" % (card_id, args.slug))
+    if os.path.exists(card_dir):
+        w.die("card folder already exists: %s" % card_dir)
+    os.makedirs(card_dir)
+
+    def write(name, template):
+        with open(os.path.join(card_dir, name), "w", encoding="utf-8") as fh:
+            fh.write(w.render_template(template, id=card_id, slug=args.slug,
+                                       epic=args.epic, title=title, date=date))
+
+    files = []
+    if args.short:
+        files = ["description.md", "comments.md"]
+    else:
+        files = ["description.md", "plan.md", "log.md", "comments.md",
+                 "attention.md"]
+    for name in files:
+        write(name, "short-description.md" if name == "description.md"
+              and args.short else name)
+
+    rel = os.path.relpath(card_dir, w.repo_root())
+    w.commit_paths([os.path.join(card_dir, name) for name in files],
+                   "chore(work): found card %s" % card_id, cwd=w.repo_root())
+
+    sys.stdout.write("%s\n" % card_id)
+    w.info("founded %s at %s" % (card_id, rel))
+
+    # Keep the queue in sync from the moment a card is born, not only when it finishes.
+    roadmap = os.path.join(w.repo_root(), "work", "ROADMAP.md")
+    if os.path.exists(roadmap):
+        w.info("ROADMAP — now add %s to work/ROADMAP.md: place it in the queue with its order "
+               "and dependencies. Not automatic; the sequence there is curated prose." % card_id)
+
+
+if __name__ == "__main__":
+    main()

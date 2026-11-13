@@ -1,0 +1,12 @@
+{
+  "description": "POST /api/jobs/:id/read \u2014 enrich description",
+  "method": "POST",
+  "path": "/api/jobs/1/read",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "id"
+  ],
+  "source": "synthetic"
+}

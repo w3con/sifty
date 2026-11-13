@@ -1,0 +1,847 @@
+{
+  "extractorVersion": "vacancyai.extract/2+d9df4c7197",
+  "jobs": [
+    {
+      "id": 84,
+      "title": "Tech Lead | Parity",
+      "seconds": 21.019754834,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "Background as Software Engineer, Tech Lead, or Engineering Manager",
+          "kind": "experience",
+          "level": "required",
+          "quote": "Strong background as a Software Engineer, Tech Lead, or Engineering Manager with a proven ability to write production-level code and architect complex systems."
+        },
+        {
+          "text": "Experience managing or leading engineering teams",
+          "kind": "experience",
+          "level": "required",
+          "quote": "Experience managing or leading engineering teams, with a track record of supporting engineer growth, team culture, and delivery predictable execution."
+        },
+        {
+          "text": "Experience as a founder, co-founder, or early-stage startup lead",
+          "kind": "experience",
+          "level": "preferred",
+          "quote": "Prior experience as a founder, co-founder, or early-stage startup lead is highly desirable."
+        },
+        {
+          "text": "Background in Web3, blockchain infrastructure, distributed systems, or low-level systems programming",
+          "kind": "skill",
+          "level": "preferred",
+          "quote": "Strong interest or background in Web3, blockchain infrastructure, distributed systems, or low-level systems programming (e.g., Rust, Substrate, Go, or C++).",
+          "alternatives": [
+            "Rust",
+            "Substrate",
+            "Go",
+            "C++"
+          ]
+        },
+        {
+          "text": "Excellent asynchronous communication skills",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Excellent asynchronous communication skills, operating comfortably in European or closely aligned time zones."
+        }
+      ],
+      "conditions": {
+        "engagement": {
+          "value": "contract",
+          "quote": "Team members will be taken on as a contractor via our UK entity."
+        },
+        "location": {
+          "value": "global",
+          "quote": "Our remote-first, global team develop open-source software"
+        },
+        "timezone": {
+          "value": "European or closely aligned time zones",
+          "quote": "operating comfortably in European or closely aligned time zones"
+        }
+      },
+      "skipped": [
+        "conditions.workMode \"remote\": the quote does not speak about the place of work"
+      ],
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": {
+            "quote": "Team members will be taken on as a contractor via our UK entity.",
+            "value": "contract"
+          },
+          "hours": null,
+          "location": {
+            "quote": "Our remote-first, global team develop open-source software",
+            "value": "global"
+          },
+          "timezone": {
+            "quote": "operating comfortably in European or closely aligned time zones",
+            "value": "European or closely aligned time zones"
+          },
+          "workMode": {
+            "quote": "This is a 50/50 hybrid role designed for an engineering leader who still loves writing code",
+            "value": "remote"
+          }
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "Strong background as a Software Engineer, Tech Lead, or Engineering Manager with a proven ability to write production-level code and architect complex systems.",
+            "text": "Background as Software Engineer, Tech Lead, or Engineering Manager"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "Experience managing or leading engineering teams, with a track record of supporting engineer growth, team culture, and delivery predictable execution.",
+            "text": "Experience managing or leading engineering teams"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "preferred",
+            "quote": "Prior experience as a founder, co-founder, or early-stage startup lead is highly desirable.",
+            "text": "Experience as a founder, co-founder, or early-stage startup lead"
+          },
+          {
+            "alternatives": [
+              "Rust",
+              "Substrate",
+              "Go",
+              "C++"
+            ],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Strong interest or background in Web3, blockchain infrastructure, distributed systems, or low-level systems programming (e.g., Rust, Substrate, Go, or C++).",
+            "text": "Background in Web3, blockchain infrastructure, distributed systems, or low-level systems programming"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Excellent asynchronous communication skills, operating comfortably in European or closely aligned time zones.",
+            "text": "Excellent asynchronous communication skills"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2616,
+      "title": "Software Engineer - Applied AI | Deepgram",
+      "seconds": 10.609923417,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "Experience building backend services",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Experience building and shipping backend services that run in production in the cloud."
+        },
+        {
+          "text": "Backend language",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Our stack is mainly Kotlin and Python, with TypeScript on the front end.",
+          "alternatives": [
+            "Kotlin",
+            "Python"
+          ]
+        },
+        {
+          "text": "Experience training models",
+          "kind": "skill",
+          "level": "preferred",
+          "quote": "Hands-on experience training, fine-tuning, or adapting models, through work, research, or substantial projects."
+        },
+        {
+          "text": "Experience building evaluation",
+          "kind": "skill",
+          "level": "preferred",
+          "quote": "Experience building evaluation or scoring for models or agents."
+        },
+        {
+          "text": "Experience with audio technologies",
+          "kind": "skill",
+          "level": "preferred",
+          "quote": "Experience with audio, speech-to-text, or text-to-speech.",
+          "alternatives": [
+            "audio",
+            "speech-to-text",
+            "text-to-speech"
+          ]
+        },
+        {
+          "text": "2+ years engineering experience",
+          "kind": "experience",
+          "level": "required",
+          "quote": "Typically 2+ years of engineering experience, or equivalent demonstrated experience."
+        }
+      ],
+      "conditions": {
+        "workMode": {
+          "value": "office",
+          "quote": "We’re a small team that works in person in San Francisco"
+        },
+        "location": {
+          "value": "San Francisco",
+          "quote": "We’re a small team that works in person in San Francisco"
+        }
+      },
+      "skipped": [
+        "conditions.engagement \"employment\": the quote names no kind of agreement"
+      ],
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": {
+            "quote": "All legitimate Deepgram recruiting communication comes from an @deepgram.com email address.",
+            "value": "employment"
+          },
+          "hours": null,
+          "location": {
+            "quote": "We're a small team that works in person in San Francisco",
+            "value": "San Francisco"
+          },
+          "timezone": null,
+          "workMode": {
+            "quote": "We're a small team that works in person in San Francisco",
+            "value": "office"
+          }
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Experience building and shipping backend services that run in production in the cloud.",
+            "text": "Experience building backend services"
+          },
+          {
+            "alternatives": [
+              "Kotlin",
+              "Python"
+            ],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Our stack is mainly Kotlin and Python, with TypeScript on the front end.",
+            "text": "Backend language"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Hands-on experience training, fine-tuning, or adapting models, through work, research, or substantial projects.",
+            "text": "Experience training models"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Experience building evaluation or scoring for models or agents.",
+            "text": "Experience building evaluation"
+          },
+          {
+            "alternatives": [
+              "audio",
+              "speech-to-text",
+              "text-to-speech"
+            ],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Experience with audio, speech-to-text, or text-to-speech.",
+            "text": "Experience with audio technologies"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "Typically 2+ years of engineering experience, or equivalent demonstrated experience.",
+            "text": "2+ years engineering experience"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2520,
+      "title": "Backend Product Software Engineer | Unknown",
+      "seconds": 8.940255,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "5+ years software engineering experience",
+          "kind": "experience",
+          "level": "required",
+          "quote": "5+ years of software engineering or related industry experience."
+        },
+        {
+          "text": "BS degree or equivalent experience",
+          "kind": "qualification",
+          "level": "required",
+          "quote": "BS degree in Computer Science or related technical field involving coding(e.g., physics or mathematics), or equivalent technical experience.",
+          "alternatives": [
+            "BS degree in Computer Science",
+            "related technical field involving coding(e.g., physics or mathematics)",
+            "equivalent technical experience"
+          ]
+        },
+        {
+          "text": "Building user-facing software",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Proficiency in building user-facing software and supporting systems and libraries for web and/or desktop platforms."
+        },
+        {
+          "text": "Backend technologies",
+          "kind": "skill",
+          "level": "preferred",
+          "quote": "Technologies: MySQL, Python, Go, Java, Rust",
+          "alternatives": [
+            "MySQL",
+            "Python",
+            "Go",
+            "Java",
+            "Rust"
+          ]
+        },
+        {
+          "text": "On-call work",
+          "kind": "other",
+          "level": "required",
+          "quote": "On-call work may be necessary occasionally to help address bugs, outages, or other operational issues"
+        }
+      ],
+      "conditions": {
+        "engagement": {
+          "value": "employment",
+          "quote": "Job type Full-Time"
+        },
+        "location": {
+          "value": "Anywhere in the World",
+          "quote": "Anywhere in the World"
+        },
+        "hours": {
+          "value": "full-time",
+          "quote": "Job type Full-Time"
+        }
+      },
+      "skipped": [
+        "conditions.workMode \"remote\": the quote does not speak about the place of work"
+      ],
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": {
+            "quote": "Job type Full-Time",
+            "value": "employment"
+          },
+          "hours": {
+            "quote": "Job type Full-Time",
+            "value": "full-time"
+          },
+          "location": {
+            "quote": "Anywhere in the World",
+            "value": "Anywhere in the World"
+          },
+          "timezone": null,
+          "workMode": {
+            "quote": "Anywhere in the World",
+            "value": "remote"
+          }
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "5+ years of software engineering or related industry experience.",
+            "text": "5+ years software engineering experience"
+          },
+          {
+            "alternatives": [
+              "BS degree in Computer Science",
+              "related technical field involving coding(e.g., physics or mathematics)",
+              "equivalent technical experience"
+            ],
+            "kind": "qualification",
+            "level": "required",
+            "quote": "BS degree in Computer Science or related technical field involving coding(e.g., physics or mathematics), or equivalent technical experience.",
+            "text": "BS degree or equivalent experience"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Proficiency in building user-facing software and supporting systems and libraries for web and/or desktop platforms.",
+            "text": "Building user-facing software"
+          },
+          {
+            "alternatives": [
+              "MySQL",
+              "Python",
+              "Go",
+              "Java",
+              "Rust"
+            ],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Technologies: MySQL, Python, Go, Java, Rust",
+            "text": "Backend technologies"
+          },
+          {
+            "alternatives": [],
+            "kind": "other",
+            "level": "required",
+            "quote": "On-call work may be necessary occasionally to help address bugs, outages, or other operational issues",
+            "text": "On-call work"
+          }
+        ]
+      }
+    },
+    {
+      "id": 834,
+      "title": "Software Engineer | Chalk",
+      "seconds": 11.075281459,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "4+ years backend software engineering",
+          "kind": "experience",
+          "level": "required",
+          "quote": "4+ years experience of professional backend software engineering experience"
+        },
+        {
+          "text": "Backend language",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Write C++, Python and Rust",
+          "alternatives": [
+            "C++",
+            "Python",
+            "Rust"
+          ]
+        },
+        {
+          "text": "Computer science fundamentals",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Strong working knowledge of computer science fundamentals"
+        },
+        {
+          "text": "Leading development of new components",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Comfort with leading development of new components of existing systems, and with taking ownership of existing software"
+        },
+        {
+          "text": "Learning new concepts quickly",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Track record of learning new concepts quickly"
+        },
+        {
+          "text": "Work autonomously",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Ability to work autonomously \u0026 to make pragmatic tradeoffs with an eye towards business outcomes"
+        },
+        {
+          "text": "Communication skills",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Strong communication skills"
+        },
+        {
+          "text": "Bachelor's degree in Computer Science",
+          "kind": "qualification",
+          "level": "required",
+          "quote": "Bachelor's degree in Computer Science or equivalent"
+        }
+      ],
+      "conditions": {
+        "workMode": {
+          "value": "office",
+          "quote": "We're in the office 5 days a week."
+        }
+      },
+      "skipped": [
+        "requirements[8] \"Data infrastructure experience\": quote is not an exact excerpt of the vacancy text",
+        "conditions.engagement \"employment\": the quote names no kind of agreement"
+      ],
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": {
+            "quote": "We are hiring Software Engineers to join our team.",
+            "value": "employment"
+          },
+          "hours": null,
+          "location": null,
+          "timezone": null,
+          "workMode": {
+            "quote": "We're in the office 5 days a week.",
+            "value": "office"
+          }
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "4+ years experience of professional backend software engineering experience",
+            "text": "4+ years backend software engineering"
+          },
+          {
+            "alternatives": [
+              "C++",
+              "Python",
+              "Rust"
+            ],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Write C++, Python and Rust",
+            "text": "Backend language"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Strong working knowledge of computer science fundamentals",
+            "text": "Computer science fundamentals"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Comfort with leading development of new components of existing systems, and with taking ownership of existing software",
+            "text": "Leading development of new components"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Track record of learning new concepts quickly",
+            "text": "Learning new concepts quickly"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Ability to work autonomously \u0026 to make pragmatic tradeoffs with an eye towards business outcomes",
+            "text": "Work autonomously"
+          },
+          {
+            "alternatives": [],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Strong communication skills",
+            "text": "Communication skills"
+          },
+          {
+            "alternatives": [],
+            "kind": "qualification",
+            "level": "required",
+            "quote": "Bachelor's degree in Computer Science or equivalent",
+            "text": "Bachelor's degree in Computer Science"
+          },
+          {
+            "alternatives": [
+              "Experience implementing data infrastructure",
+              "Experience with distributed systems/compilers/query planners",
+              "Experience with Rust",
+              "Experience with developing PaaS-like software"
+            ],
+            "kind": "skill",
+            "level": "preferred",
+            "quote": "Bonus points: Experience implementing data infrastructure; Experience with distributed systems/compilers/query planners; Experience with Rust; Experience with developing PaaS-like software",
+            "text": "Data infrastructure experience"
+          }
+        ]
+      }
+    },
+    {
+      "id": 32,
+      "title": "Principal Engineer, Agent Infrastructure \u0026 Memory Architecture | Okx",
+      "seconds": 10.893058167,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "Right to work in Singapore",
+          "kind": "authorization",
+          "level": "required",
+          "quote": "OKX will be prioritising applicants who have a current right to work in Singapore, and do not require OKX s sponsorship of a visa."
+        },
+        {
+          "text": "PhD or Master's in Computer Science, AI, Machine Learning, Robotics",
+          "kind": "qualification",
+          "level": "required",
+          "quote": "PhD or Master s in Computer Science, AI, Machine Learning, Robotics or related field"
+        },
+        {
+          "text": "10+ years industry experience",
+          "kind": "experience",
+          "level": "required",
+          "quote": "at least 10 years of industry experience"
+        },
+        {
+          "text": "Expertise in long-term memory, knowledge graphs, or context management",
+          "kind": "skill",
+          "level": "required",
+          "quote": "deep expertise in at least one of the following areas: long-term memory, knowledge graphs, or context management",
+          "alternatives": [
+            "long-term memory",
+            "knowledge graphs",
+            "context management"
+          ]
+        },
+        {
+          "text": "Experience in top-tier AI labs or Tech industry leaders",
+          "kind": "experience",
+          "level": "preferred",
+          "quote": "Nice to Haves Experience in top-tier AI labs or Tech industry leaders",
+          "alternatives": [
+            "Experience in top-tier AI labs",
+            "Tech industry leaders"
+          ]
+        },
+        {
+          "text": "Experience in high-frequency trading, fintech, Web3, or crypto platforms",
+          "kind": "experience",
+          "level": "preferred",
+          "quote": "Experience in high-frequency trading, fintech, Web3, or crypto platforms is a strong advantage",
+          "alternatives": [
+            "high-frequency trading",
+            "fintech",
+            "Web3",
+            "crypto platforms"
+          ]
+        },
+        {
+          "text": "Experience in Startups or research-intensive environments",
+          "kind": "experience",
+          "level": "preferred",
+          "quote": "Startups or research-intensive environments preferred",
+          "alternatives": [
+            "Startups",
+            "research-intensive environments"
+          ]
+        }
+      ],
+      "conditions": {
+        "location": {
+          "value": "Singapore",
+          "quote": "OKX will be prioritising applicants who have a current right to work in Singapore"
+        }
+      },
+      "skipped": null,
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": null,
+          "hours": null,
+          "location": {
+            "quote": "OKX will be prioritising applicants who have a current right to work in Singapore",
+            "value": "Singapore"
+          },
+          "timezone": null,
+          "workMode": null
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "authorization",
+            "level": "required",
+            "quote": "OKX will be prioritising applicants who have a current right to work in Singapore, and do not require OKX s sponsorship of a visa.",
+            "text": "Right to work in Singapore"
+          },
+          {
+            "alternatives": [],
+            "kind": "qualification",
+            "level": "required",
+            "quote": "PhD or Master s in Computer Science, AI, Machine Learning, Robotics or related field",
+            "text": "PhD or Master's in Computer Science, AI, Machine Learning, Robotics"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "at least 10 years of industry experience",
+            "text": "10+ years industry experience"
+          },
+          {
+            "alternatives": [
+              "long-term memory",
+              "knowledge graphs",
+              "context management"
+            ],
+            "kind": "skill",
+            "level": "required",
+            "quote": "deep expertise in at least one of the following areas: long-term memory, knowledge graphs, or context management",
+            "text": "Expertise in long-term memory, knowledge graphs, or context management"
+          },
+          {
+            "alternatives": [
+              "Experience in top-tier AI labs",
+              "Tech industry leaders"
+            ],
+            "kind": "experience",
+            "level": "preferred",
+            "quote": "Nice to Haves Experience in top-tier AI labs or Tech industry leaders",
+            "text": "Experience in top-tier AI labs or Tech industry leaders"
+          },
+          {
+            "alternatives": [
+              "high-frequency trading",
+              "fintech",
+              "Web3",
+              "crypto platforms"
+            ],
+            "kind": "experience",
+            "level": "preferred",
+            "quote": "Experience in high-frequency trading, fintech, Web3, or crypto platforms is a strong advantage",
+            "text": "Experience in high-frequency trading, fintech, Web3, or crypto platforms"
+          },
+          {
+            "alternatives": [
+              "Startups",
+              "research-intensive environments"
+            ],
+            "kind": "experience",
+            "level": "preferred",
+            "quote": "Startups or research-intensive environments preferred",
+            "text": "Experience in Startups or research-intensive environments"
+          }
+        ]
+      }
+    },
+    {
+      "id": 29,
+      "title": "Staff Software Development Engineer | Zscaler",
+      "seconds": 9.531901791,
+      "attempts": 1,
+      "requirements": [
+        {
+          "text": "5+ years software development experience",
+          "kind": "experience",
+          "level": "required",
+          "quote": "5+ years of experience in software development and/or sustenance engineering"
+        },
+        {
+          "text": "Programming languages proficiency",
+          "kind": "skill",
+          "level": "required",
+          "quote": "Proficient in programming languages such as C, C++, Python, and Linux",
+          "alternatives": [
+            "C",
+            "C++",
+            "Python",
+            "Linux"
+          ]
+        },
+        {
+          "text": "Network security products experience",
+          "kind": "experience",
+          "level": "required",
+          "quote": "Hands-on experience with network security products and technologies like firewalls, VPNs, and data protection"
+        },
+        {
+          "text": "Troubleshooting and cloud knowledge",
+          "kind": "other",
+          "level": "preferred",
+          "quote": "Strong interest in troubleshooting and problem solving for customer issues and good knowledge with public cloud and/or kubernetes technologies is a plus"
+        },
+        {
+          "text": "Cloud reliability tools development",
+          "kind": "experience",
+          "level": "required",
+          "quote": "Experience in developing cloud and customer reliability tools"
+        },
+        {
+          "text": "Bachelor s degree in Computer Science",
+          "kind": "qualification",
+          "level": "preferred",
+          "quote": "Bachelor s degree in Computer Science or a relevant field of Engineering"
+        }
+      ],
+      "conditions": {
+        "location": {
+          "value": "Burnaby, Canada",
+          "quote": "We re looking for an experienced Staff Software Engineer to join our engineering team in Burnaby, Canada."
+        }
+      },
+      "skipped": [
+        "conditions.workMode \"hybrid\": the quote does not speak about the place of work",
+        "conditions.engagement \"employment\": the quote names no kind of agreement"
+      ],
+      "raw": {
+        "conditions": {
+          "compensation": null,
+          "engagement": {
+            "quote": "By applying for this role, you adhere to applicable laws, regulations, and Zscaler policies",
+            "value": "employment"
+          },
+          "hours": null,
+          "location": {
+            "quote": "We re looking for an experienced Staff Software Engineer to join our engineering team in Burnaby, Canada.",
+            "value": "Burnaby, Canada"
+          },
+          "timezone": null,
+          "workMode": {
+            "quote": "#LI-Hybrid",
+            "value": "hybrid"
+          }
+        },
+        "requirements": [
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "5+ years of experience in software development and/or sustenance engineering",
+            "text": "5+ years software development experience"
+          },
+          {
+            "alternatives": [
+              "C",
+              "C++",
+              "Python",
+              "Linux"
+            ],
+            "kind": "skill",
+            "level": "required",
+            "quote": "Proficient in programming languages such as C, C++, Python, and Linux",
+            "text": "Programming languages proficiency"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "Hands-on experience with network security products and technologies like firewalls, VPNs, and data protection",
+            "text": "Network security products experience"
+          },
+          {
+            "alternatives": [],
+            "kind": "other",
+            "level": "preferred",
+            "quote": "Strong interest in troubleshooting and problem solving for customer issues and good knowledge with public cloud and/or kubernetes technologies is a plus",
+            "text": "Troubleshooting and cloud knowledge"
+          },
+          {
+            "alternatives": [],
+            "kind": "experience",
+            "level": "required",
+            "quote": "Experience in developing cloud and customer reliability tools",
+            "text": "Cloud reliability tools development"
+          },
+          {
+            "alternatives": [],
+            "kind": "qualification",
+            "level": "preferred",
+            "quote": "Bachelor s degree in Computer Science or a relevant field of Engineering",
+            "text": "Bachelor s degree in Computer Science"
+          }
+        ]
+      }
+    }
+  ],
+  "model": "qwen3.5:35b-a3b"
+}

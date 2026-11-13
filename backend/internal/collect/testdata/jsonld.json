@@ -1,0 +1,25 @@
+[
+  {
+    "title": "Chief Technology Officer",
+    "company": "Acme Labs",
+    "originalUrl": "https://acme.test/jobs/cto",
+    "applyUrl": null,
+    "description": "Lead the engineering org.\nGo\nRust",
+    "descriptionStatus": "available structured description",
+    "location": "TELECOMMUTE · EU · Paris · IDF · France",
+    "publishedAt": "2026-10-01",
+    "publishedBasis": "datePosted",
+    "expiresAt": "2026-12-01",
+    "source": "Test Board"
+  },
+  {
+    "title": "Backend Engineer",
+    "company": "Beta Inc",
+    "originalUrl": "https://acme.test/jobs/be",
+    "applyUrl": null,
+    "description": "Build APIs",
+    "descriptionStatus": "available structured description",
+    "location": "",
+    "source": "Test Board"
+  }
+]

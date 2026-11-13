@@ -1,0 +1,13 @@
+{
+  "description": "PUT /api/profile \u2014 save a profile revision with compare-and-swap",
+  "method": "PUT",
+  "path": "/api/profile",
+  "requestBody": {
+    "expectedRevision": 1,
+    "data": {}
+  },
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["profileId", "revision", "data"],
+  "source": "synthetic"
+}

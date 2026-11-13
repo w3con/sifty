@@ -1,0 +1,86 @@
+version: 1
+port: 4317
+max_pages: 16
+max_jobs_per_source: 300
+# Measured discovery bounds, independent from imported matches and model calls.
+max_reviewed_per_source: 1200
+max_detail_requests: 100
+detail_concurrency: 4
+max_query_groups: 8
+request_timeout_ms: 20000
+max_assessments_per_run: 10
+# Opt-in only: tool-free model fallback on public pages without deterministic description extraction.
+model_extraction: false
+daily_hour: 9
+daily_minute: 0
+# Profile document inputs and extraction. Omit these keys to use the built-in defaults;
+# they are grouped here so extraction limits and accepted types have one authority.
+profile_max_document_bytes: 2097152
+profile_text_timeout_ms: 30000
+profile_extraction_timeout_ms: 120000
+profile_max_facts: 100
+profile_document_types:
+  - pdf
+  - docx
+  - md
+  - txt
+# Profile photo. The server verifies the actual image type, not the filename.
+profile_avatar_max_bytes: 2097152
+profile_avatar_types:
+  - png
+  - jpg
+  - webp
+# Quick Match two-score rules. These are the approved starting rules, still uncalibrated; change
+# them in this one configuration extension, not in application logic or views. Omitting the
+# block selects the same built-in defaults. Fits you uses the role, compensation, geography and
+# conditions weights, divided by their own sum, so they need not add up to 1. required_weight and
+# preferred_weight weigh requirements in You fit. model_passes tunes the two model passes that
+# read the vacancy text and compare it with the profile (stage: providers.yaml stages.extraction):
+# allow_paid_bulk_provider must stay false unless the extraction stage may use a provider that is
+# neither local nor marked free. paused stops the background worker, daily_limit caps the vacancies
+# analysed per day (0 = no limit) and order is the order the worker takes vacancies in: fit (Fits
+# you descending) or newest (the Inbox Newest order). The Inbox toggle Best fit / Newest saves it.
+# matching switches the model's matching pass on (default false). While it is off the worker only
+# extracts requirements and conditions and no You fit number is shown; the panel lists the
+# requirements, and only what code decides (a named skill in the profile, a skill you marked as not
+# yours) shows a state. Fits you is unaffected.
+# evidence_passages is how many profile passages closest to a requirement the matching model is
+# shown for it (default 3; the facts computed from dates and titles are always shown besides). The
+# vocabulary the matcher uses to recognise named skills by code (synonyms such as Go and Golang, and
+# which requirements a CV cannot answer) is built into the binary; an optional file skills.yaml
+# next to this one replaces it. Changing either re-runs the matching pass, never the extraction.
+# Source-field policy records when a board's structured field
+# needs corroboration; it is not a per-site preference coefficient.
+quick_match:
+  version: 1
+  rules_version: quickmatch.rules/2
+  source_policy_version: source-policy/1
+  weights:
+    role: 0.25
+    compensation: 0.20
+    geography: 0.15
+    conditions: 0.10
+  required_weight: 2
+  preferred_weight: 1
+  model_passes:
+    max_requirements: 30
+    max_attempts: 3
+    temperature: 0.1
+    matching: false
+    evidence_passages: 3
+    allow_paid_bulk_provider: false
+    paused: false
+    daily_limit: 0
+    order: fit
+  source_fields:
+    Wellfound:
+      location: needs_corroboration
+  # Regions vocabulary: omitted here; the binary ships a built-in default (regions.default.yaml).
+  # To override, uncomment and edit:
+  # regions:
+  #   - name: worldwide
+  #     aliases: [anywhere, global]
+  #     countries: []
+  #   - name: US
+  #     aliases: ["United States"]
+  #     countries: [US]

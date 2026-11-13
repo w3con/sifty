@@ -1,0 +1,3 @@
+import '../test/isolate.js';import {mkdirSync,writeFileSync} from 'node:fs';import {inspectApplication} from '../src/application-browser.js';import {localPath,now} from '../src/core.js';
+const url='https://jobs.framework.ventures/companies/zzz-wlsn-probe-2/jobs/96713574-senior-smart-contract-engineer',dir=localPath('verification');mkdirSync(dir,{recursive:true});
+const snapshot=await inspectApplication(url);const report={checked:now(),requestedUrl:url,snapshot,modelRequested:false,operationalWrites:false,externalFieldInteractions:false};writeFileSync(`${dir}/framework-inspection.json`,JSON.stringify(report,null,2));console.log(JSON.stringify({state:localPath(),...report},null,2));

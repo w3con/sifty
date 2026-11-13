@@ -1,0 +1,190 @@
+#!/usr/bin/env python3
+"""work-capture — record a bug or idea as a minimal backlog card.
+
+Usage:
+    work-capture --kind bug|idea --words "OWNER WORDS" [--title T]
+    work-capture --kind bug|idea --update <id> --words "OWNER WORDS"
+    printf '%s' "$words" | work-capture --kind bug [--title T]
+
+The wording is stored exactly as supplied, including outer whitespace,
+newlines and the original CR/LF; emptiness is checked without trimming the
+stored text. With no --update the command creates a minimal canonical backlog
+card under work/tasks/<epic>/ (default epic: inbox). With --update it appends
+the wording to the explicitly matched card's comments.md. Exact duplicate
+wording is refused unless --force-new is given for a new card.
+
+Capture only writes the card and commits those files. It never dispatches an
+executor, cuts a worktree, starts work or touches staging.
+"""
+import argparse
+import os
+import re
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+
+def slugify(text, kind):
+    slug = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+    slug = slug[:50].strip("-")
+    if not slug:
+        slug = kind
+    if not re.match(r"^[a-z]", slug):
+        slug = "%s-%s" % (kind, slug)
+    slug = re.sub(r"-+", "-", slug).strip("-") or kind
+    return slug
+
+
+def read_stdin_text():
+    return sys.stdin.buffer.read().decode("utf-8")
+
+
+def read_words(args):
+    if args.words is not None and args.words_file is not None:
+        w.die("pass --words or --words-file, not both")
+    if args.words_file is not None:
+        if args.words_file == "-":
+            words = read_stdin_text()
+        else:
+            with open(args.words_file, "rb") as fh:
+                words = fh.read().decode("utf-8")
+    elif args.words is not None:
+        words = args.words
+    else:
+        if sys.stdin.isatty():
+            w.die("provide --words, --words-file or pipe the owner's wording "
+                  "on stdin")
+        words = read_stdin_text()
+    # Emptiness is the only validation. The stored text is not trimmed and its
+    # line endings are not normalised.
+    if not words.strip():
+        w.die("owner wording is empty")
+    return words
+
+
+def title_for(args, words):
+    title = (args.title or "").strip()
+    if not title:
+        title = next((line.strip() for line in words.splitlines() if line.strip()),
+                     "").lstrip("# ").strip()
+    title = title or ("Captured %s" % args.kind)
+    return title[:72].rstrip()
+
+
+def capture_block(kind, words):
+    return ("## Capture — %s\n\n**Kind:** %s\n\n"
+            "Owner's words added verbatim:\n\n%s\n"
+            % (w.today(), kind, w.fenced_block(words)))
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-capture")
+    ap.add_argument("--kind", required=True, choices=("bug", "idea"))
+    ap.add_argument("--words", default=None)
+    ap.add_argument("--words-file", default=None, metavar="PATH")
+    ap.add_argument("--title", default=None)
+    ap.add_argument("--epic", default="inbox")
+    ap.add_argument("--slug", default=None)
+    ap.add_argument("--update", default=None, metavar="ID")
+    ap.add_argument("--force-new", action="store_true",
+                    help="create a new card even when the exact wording is "
+                         "already captured")
+    args = ap.parse_args()
+
+    words = read_words(args)
+    matches = w.matching_cards_for_words(words)
+
+    if args.update:
+        if args.force_new:
+            w.die("--force-new applies only to a new card, not --update")
+        card_dir = w.require_card_dir(args.update)
+        state = w.card_state(card_dir)
+        if state["errors"]:
+            w.refuse(["cannot update %s: %s"
+                      % (args.update, "; ".join(state["errors"]))])
+        if state["terminal"]:
+            w.refuse(["cannot update %s: card already has terminal outcome %s"
+                      % (args.update, state["state"])])
+        if any(card["path"] == card_dir for card in matches):
+            w.refuse(["owner wording is already recorded in %s; refusing a "
+                      "duplicate" % args.update])
+        others = [card for card in matches if card["path"] != card_dir]
+        if others:
+            w.refuse(["owner wording is already captured in %s; refusing a "
+                      "duplicate" % ", ".join(card["id"] for card in others)])
+        comments = os.path.join(card_dir, "comments.md")
+        existing = ""
+        if os.path.exists(comments):
+            with open(comments, "r", encoding="utf-8", newline="") as fh:
+                existing = fh.read()
+            if existing.endswith("\r\n"):
+                existing = existing.rstrip("\r\n") + "\r\n\r\n"
+            elif existing.endswith("\n"):
+                existing = existing.rstrip("\n") + "\n\n"
+            elif existing.endswith("\r"):
+                existing = existing.rstrip("\r") + "\r\r"
+            else:
+                existing += "\n\n"
+        else:
+            existing = "# %s — comments\n\nRunning discussion.\n\n" % args.update
+        with open(comments, "w", encoding="utf-8", newline="") as fh:
+            fh.write(existing + capture_block(args.kind, words) + "\n")
+        w.commit_paths([comments], "chore(work): update %s evidence" % args.update)
+        sys.stdout.write("%s\n" % args.update)
+        w.info("appended owner wording to %s"
+               % os.path.relpath(comments, w.repo_root()))
+        return
+
+    if matches and not args.force_new:
+        w.refuse(["owner wording is already captured in %s; use --update <id> "
+                  "to add evidence or --force-new to create a separate card"
+                  % ", ".join(card["id"] for card in matches)])
+
+    if not w.EPIC_RE.match(args.epic):
+        w.die("epic must be lowercase, dash-separated: %r" % args.epic)
+    slug = args.slug or slugify(title_for(args, words), args.kind)
+    if not w.SLUG_RE.match(slug):
+        w.die("slug must be lowercase, dash-separated: %r" % slug)
+
+    prefix = args.epic.replace("-", "").upper()
+    if not prefix.isalnum():
+        w.die("epic must yield an alphanumeric ID prefix: %r" % prefix)
+    card_id = w.allocate_id(prefix)
+    card_dir = os.path.join(w.tasks_dir(), args.epic, "%s_%s" % (card_id, slug))
+    if os.path.exists(card_dir):
+        w.die("card folder already exists: %s" % card_dir)
+    os.makedirs(card_dir)
+
+    description = w.render_template(
+        "capture.md",
+        id=card_id,
+        slug=slug,
+        epic=args.epic,
+        title=title_for(args, words),
+        date=w.today(),
+        kind=args.kind,
+        words_block=w.fenced_block(words),
+    )
+    comments_text = ("# %s — comments\n\nCaptured from the owner's report on "
+                     "%s. No plan or work has started.\n"
+                     % (card_id, w.today()))
+    with open(os.path.join(card_dir, "description.md"), "w",
+              encoding="utf-8", newline="") as fh:
+        fh.write(description)
+    with open(os.path.join(card_dir, "comments.md"), "w",
+              encoding="utf-8", newline="") as fh:
+        fh.write(comments_text)
+
+    w.commit_paths(
+        [os.path.join(card_dir, "description.md"),
+         os.path.join(card_dir, "comments.md")],
+        "chore(work): capture %s" % card_id)
+    sys.stdout.write("%s\n" % card_id)
+    w.info("captured %s at %s" % (card_id, os.path.relpath(card_dir, w.repo_root())))
+    w.info("ROADMAP — curate the sequence in work/ROADMAP.md when appropriate; "
+           "capture did not start any work.")
+
+
+if __name__ == "__main__":
+    main()

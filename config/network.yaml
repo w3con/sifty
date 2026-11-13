@@ -1,0 +1,10 @@
+version: 1
+# Opt in per source by exact configured name. No global network/VPN changes.
+profiles:
+  direct: {}
+  # owner-proxy:
+  #   proxy_env: FCTO_PROXY_URL
+  #   browser: true
+sources: {}
+# Example: sources: { Wellfound: owner-proxy }
+# Set proxy URL in the launching environment, never in tracked YAML.

@@ -1,0 +1,2531 @@
+# OPS-4 — execution log
+
+## Executor checkpoint — 2026-11-06 — step 3.1
+
+Step 3.1 is implemented on `work/OPS-4` and awaits coordinator review; 3.2 has not started. `sifty/web` is now `frontend/`, the Go module is `backend/` with its import path unchanged, and `app` is `legacy/app`; tracked `sifty/dist-staging` is deliberately retained at the old path for 3.3. Build, serve, worker, scanner and legacy-relative paths were repointed together, and the scanner keeps a path-exact `FCTO_STATE_DIR` compatibility allowance for `frontend/model/core.ts`. Final stage checks are recorded in the appended log. No merge, push, deploy, production/data change, real acceptance/finish or subagent was run.
+
+## Current coordinator checkpoint — 2026-11-06
+
+6.3 TECHNICAL ACCEPTANCE through `66db415`: reviewed the one-commit squash preparation/publication, explicit source approval, immutable source archive build, real commit guards, post-release recovery request, legacy old-argv/health compatibility and transaction/build-pinned recovery receipt. The executor's recorded scratch command demonstration covers one-card commit success, wrong approval, failed release, post-release recovery success/failure and restarting an old server without the new flags/version endpoint. No coordinator implementation or suite execution occurred. Session metadata was verified as `opencode-go/deepseek-v4.1-flash`. Twenty-one original steps are now technically accepted. The commands are still on the work branch until delegated installation below; no live production release or old-history rewrite is authorized.
+
+Delivery assignment: the same stopped 6.3 executor may checkpoint this acceptance record and copy only the accepted command/config/documentation files into main, preserving all owner pending changes, runtime data, the running preview and production binary. Verify command help/approval-check and existing root pages, not suites or live deploy. Do not restart preview or production, invoke work-finish, adopt a live process, refresh data, squash/merge main or push. Keep the work branch and all recovery material. Main remains an owner-review working checkout; 7.1/7.2 and actual release approval are not bypassed. Overall current stop boundary remains 23:11 CET.
+
+6.2 TECHNICAL ACCEPTANCE through `a89625a`: reviewed the deploy/refresh diff and the recorded single scratch success/failure/refresh demonstration. Same executor corrected final SQLite snapshot ordering, unsafe refresh recovery, environment-operation serialization, incomplete restoration restart and missing-backup/metadata deletion hazards. The earlier instruction to take every backup before stopping was the coordinator's error; only artifact copies may precede the stop, while the final target SQLite snapshot follows verified shutdown. All 130 assistant metadata rows for this resumed stage use `opencode-go/deepseek-v4.1-flash`. No coordinator implementation, suite execution or live release was performed during this acceptance. Twenty original steps are now technically accepted, with 6.3 next.
+
+Owner renewed continuation after the pause at 22:26 CET: «хорошо, доделывай 6.2, 6.3 (через субагентов)». The owner-facing remaining estimate was 25–45 minutes AI for the 6.2 corrections, 6.3 and acceptance; current stop boundary is 23:11 CET. Prior wall-clock pause records do not authorize an unnoticed overrun. Main production/preview remain on their existing runtime; first live deployment of the new manager still needs explicit migration/adoption and owner approval. Next stage is a fresh 6.3 executor only; mechanical commits/brief preparation are delegated.
+
+LIVE 6.1 HANDOFF: owner authorized «6.1 - доделай». Announced complexity 3 and 9–17 minutes AI for runtime-path recovery (2–4), preview completion/start (4–8) and live demonstration (3–5). Actual work was approximately 10–15 minutes, including additional owner steering about root prompts and data directories; no executor or automated suite was started. Existing preview code was reused rather than rewriting deploy automation.
+
+The owner's `remove/` contained not only old compatibility links but actual `bin`, `config`, `data`, `data-staging`, `prompts` and `CLAUDE.md`. Restored necessary files/directories; moved root prompts into `config/prompts/` and repointed the four legacy readers. General hardcoded-path removal was explicitly kept in OPS-7, with the owner's wording and provisional estimate recorded there. Fixed the relocated shared submodule's stale worktree metadata with native Git moves, leaving no dependency on the removed `ai` link. `data-staging/` was already ignored; added local `remove/` to ignores. Its current remainder is only three obsolete links and `.DS_Store`.
+
+Stopped the verified old staging process and launched `python3 bin/sift-preview start --worktree /Volumes/SSD/Dev/tknff/sifty --label main --wait 90`. Supervisor PID 98160 owns 8081 and uses existing staging data without refreshing it. Generation 1 built and became healthy. A temporary uncommitted HTML comment in `frontend/index.html` was automatically built and visible in HTTP HTML as generation 2; reverting the demonstration produced healthy generation 3 with requested and served fingerprints equal. No build command was invoked for either edit. Frontend-only rebuilding preserved backend generation/PID. Fixed preview-client generation tracking so a completed build is detected relative to the page's loaded generation; clean pages reload automatically, while edited pages retain input and show a Reload button. JavaScript syntax and diff whitespace checks passed. The demonstration source change is fully reverted.
+
+Both production and staging root pages were 404 after old links were moved. Staging now returns HTTP 200 through preview. Restarted production's same pre-existing `bin/sifty` with the same production data and existing `legacy/app/dist`, using the new backend worker path; no binary build/promotion or data copy occurred. Production now returns HTTP 200 as well. A preliminary restart attempt failed because the old process still held its port; stopping that verified PID and starting the same binary corrected it. Current production listener PID is 34905. All necessary files have been taken out of `remove`.
+
+Step 6.1 is technically accepted and live at http://localhost:8081 for owner review. This raises accepted original steps from 18 to 19; 6.2–6.3 remain deferred and 7.1's broad verification remains disabled/not performed. The preview handback portion of 7.2 is now delivered, but the original full card is not closed. No enforcement plugin, general path refactor, test suite or fresh deployment framework was added.
+
+OWNER-AUTHORIZED MAIN RELOCATION: after «применяй», preserved main's owner-rule edits with both a local copy and a named Git stash, archived the tracked staging bundle and both incident versions under `.local/retained/structure-20261106/`, then fast-forwarded main to `0b1965b`. Moved frontend/legacy/worker dependencies to their new source locations and the initialized private submodule working directory to `tools/shared`. Its old internal path remains usable through local `ai -> tools`; `app -> legacy/app` and `sifty -> .local/compat/sifty` preserve paths used by the existing 8080/8081 processes. Compatibility links are locally ignored, not new tracked source directories. Kept all leftover local directories in the retention folder. Installed the newer worktree incident record without overwriting it with the older main version. Applied the already-authorized test-off entrypoint/CI settings and planning rules in main; unfinished deploy-library/data-refresh edits remain in the original worktree and its saved patch, not main. No branch/worktree/history was deleted.
+
+Verification: main `backend/`: `go build ./...` exit 0; main `frontend/`: `npm run build` exit 0 (TypeScript and Vite). Syntax/whitespace checks succeeded. `WORK_TEST_MODE=off python3 bin/work-test` reported SKIPPED. Incident bytes matched the retained newer copy, and the staging bundle matched its retained directory. Shared tooling's own Git status is clean. Existing production/staging health and root HTML each returned HTTP 200; these are continuity checks of the still-running versions, not a claim that the new preview was deployed. No server restart, database copy, production promotion, automated suite or new executor ran. The owner cancelled the separate enforcement-plugin proposal as too costly; no plugin was created.
+
+Remaining original plan: 6.1 coded but not accepted/live; 6.2 environment/refresh rewrite incomplete and deferred; 6.3 automatic release integration absent and deferred; 7.1 comprehensive final workflow/recovery checks not done (suites disabled); 7.2 physical structure now applied, new preview/owner handback still absent. The prior 18 accepted steps remain accepted. Do not mark this original full card done to describe the narrower relocation delivery.
+
+Later owner steering authorized only disabling automatic tests and saving the review: «Отключи большинство тестов» followed by «я бы вообще все выключил». Applied small direct entrypoint/configuration changes without an executor: work-test skips by default, sift-accept defaults to app builds and skips suites, CI is manual-only; test source remains. Updated project instructions accordingly. Verified only `bash -n bin/sift-accept`, `WORK_TEST_MODE=off python3 bin/work-test` (explicit SKIPPED, not PASS), and `git diff --check`; no suite, build, site launch or deploy ran. Saved static readiness, deferred-plan consequences, proposed minimal completion and test observations in `prototype-review.md`. Original broad execution remains paused; its remaining guarantees are not claimed complete.
+
+STOPPED ON OWNER INSTRUCTION: «тормози уже - слишком много ресурсов уходит на эти задачи. кажетсяя, ты не оптимально организовал работу». The coordinator accepts responsibility for broad executor assignments, expansive test matrices and repeated coordinator acceptance cycles that made the work costly and slow. Owner steering immediately beforehand preferred coordinator code/site review over extensive executor testing. No more implementation, agent invocation or tests were started after the stop; only this durable pause record was written.
+
+Preserved state: worktree HEAD `0b1965b`, branch `work/OPS-4`; phases 1–5 technically accepted (18/23). Step 6.1 is checked and committed by the executor but remains unreviewed, not technically accepted. Step 6.2 is incomplete with modified `_deploy_lib.py`, `sift-deploy`, `work-test` and untracked `sift-data-refresh`. Do not deploy this partial state: the latest artifact-backup/publish refactor still has call sites using the old signature. The latest executor message for `ses_e4dff642dffevowoM36cc6qHuR` has `MessageAbortedError` at 19:26:37 and its latest tools are completed; no continuation was launched. Earlier executors have stopped. Main remains `c0181a1`; no live staging/production deployment, merge, push or cleanup occurred. Resume requires a new owner instruction, then review of the existing bytes before any additional implementation. No partial implementation was deleted or marked accepted to create a stopping point.
+
+Phase 5 acceptance: reviewed the requirement map, canonical task/dependency index, data provenance and separate OPS-8 migration card. Independently passed `python3 bin/map-check` (5 current documents, 14 requirements, 48 canonical cards and two legacy cards), all ten map tests and stage whitespace checks. Existing application-preparation failure is explicitly attributed to the roadmap, not a fresh live reproduction. Actual candidate-path resolution is documented; no data migration was performed. All 104 executor assistant metadata rows use `opencode-go/deepseek-v4.1-flash`. Eighteen of 23 steps are accepted through `5d62fa0`; executor stopped. Next: 6.1–6.2 only, continuous staging preview and environment isolation/explicit refresh, exercised on scratch data/ports. Stop before 6.3. Main/production remain unchanged; live staging will be activated by the coordinator only after review.
+
+Phase 4 acceptance: reviewed `601f3b0..d4a3935` and independently passed 34 state/capture/navigation tests, then the eight navigation tests after the final narrow correction; stage whitespace check is clean. Review required worktree-relative handover paths, separation of quoted owner Markdown from metadata/checklists, base cancellation/blocker refusal on resume, active-worktree state filtering, byte-preserving capture and surfacing contradictory active cards. The same executor corrected all findings with focused regressions; its full harness passed after the main correction, and the final narrow branch correction passed its focused suite. All 212 assistant metadata rows use `opencode-go/deepseek-v4.1-flash`. Fifteen of 23 steps are technically accepted. Next stage: 5.1–5.3 only, stop before staging/release automation. Empty duplicate-card directory is safe to remove after a directory read confirmed zero entries. Main and production remain unchanged.
+
+Phase 3 acceptance: reviewed `ab4be3d..6eb100b`, root workflow jobs/paths, worker npm test entrypoint, local-retention inventory and help-text path repair. Independently passed `python3 bin/work-test` and stage `git diff --check`. Executor evidence records backend vet/build/race, frontend locked install/build, five real Playwright tests and preserved bundle bytes. All 54 assistant metadata rows use `opencode-go/deepseek-v4.1-flash`; executor returned a completed handback and stopped. Twelve of 23 steps are technically accepted. Next bounded stage: 4.1–4.3, stop before phase 5. Main is unchanged; the physical relocation is still only in the worktree. The retained worktree incident file contains the newer coordination incident and must be reconciled with, never overwritten by, main's older record at eventual merge.
+
+Coordination recovery: the owner instructed this session to resolve duplicate coordination without delegating the problem back to them. Both the secondary coordinator and its executor are now confirmed stopped (`finish: stop` at 17:36:14 and 17:35:06 respectively). No process was killed and no history was deleted. This session is the sole coordinator recorded in `attention.md`; AGENTS.md now requires checking that ownership before writing or dispatching. Reconciled the duplicate OPS-7 into the original `OPS-7_configurable-paths`, retaining its acceptance criteria, owner wording and both historical versions in Git. Captured the latest application-confirmation request in existing APP-8: separate closed-vacancy and changed-mind negative responses. Worktree was clean at `99ba2cd` before these record changes. Next: bounded 3.4–3.5 executor stage; stop before phase 4.
+
+Latest review: 3.2–3.3 are technically accepted through `96b0e3d`; ten of 23 steps complete, 13 open. Reviewed relocation, task lookup, hook adapters, ignore changes, preservation inventory and resume-path correction. Independently passed `python3 bin/work-test`, `python3 -m unittest -v bin.tests.test_resume` and the stage whitespace check. Executor evidence records an uninitialized-submodule public clone, unchanged gitlink/symlink identity and complete card inventory. All 129 assistant-message metadata rows use `opencode-go/deepseek-v4.1-flash`. The executor's latest assistant message has `finish: stop`; no second writer was started. Next assignment: 3.4–3.5 only, then review before phase 4. Main is still `c0181a1`; no merge or deployment occurred.
+
+Correction to the earlier interruption record: `Task cancelled` did not stop the underlying executor. Read-only session inspection found ongoing tool calls and another coordinator session waiting on the same executor, not a second coding agent. The coordinator told the owner and waited for confirmed completion instead of dispatching again. The previous assertion that this stage had not started was stale. Also clarified that all implementation is in `.worktrees/OPS-4`, not the main checkout visible in Finder.
+
+Preservation-review correction: archive main's incident record in its already-ignored `.local/retained/` before acceptance and install `work/incidents.md` after merge; the old main does not yet ignore the latter. Bundle manifests with different absolute path prefixes cannot be compared as identical hashes; compare relative filenames and bytes. Inventory §9 carries the correction. The separate owner request for a later plan centralizing all configured paths is captured as OPS-7, without adding that refactor to the active scope.
+
+Friction: the executor repeated export, clone and inventory checks while polishing its handback, and the coordinator mistook a cancelled tool invocation for stopped work. Subsequent briefs must stop after the assigned checks pass and record concise evidence; session completion must be checked before any new writer is launched.
+
+Application relocation reviewed through `b817ea3`: source is now in `frontend/`, `backend/`, `legacy/app/` on the work branch; runtime data and other working copies remain in place. Reviewed build/deploy/accept path changes and worker/static lookup; independently reran `bin/work-test` and frontend TypeScript/Vite build successfully. Executor evidence records the backend race suite, backend aggregate, worker automation (5 tests), scanner tree sweep, legacy build and moved-reference tests. The transfer-suite provider-stage assertion predates this relocation and is recorded, not claimed green. All 122 assistant-message metadata rows for this stage use `opencode-go/deepseek-v4.1-flash`. Step 3.1 is technically accepted (eight of 23 complete, 15 open). Next stage: 3.2–3.3 only, relocating project records/docs/shared wiring, adding the MCP placeholder and preserving/untracking local incident/generated artifacts. Stop before 3.4. Newly reported Git-history cleanup and manual expired-vacancy outcome were captured in separate backlog cards, without execution.
+
+Publication/setup stage reviewed through `6473907`: independent harness/scanner checks passed before corrections; review corrections narrowed dotted-secret expression allowances, made missing setup adapters fail explicitly, and rewrote only synthetic credential fixture constructions without changing their runtime values. The stage's recorded final checks passed (50 harness tests, 35 scanner tests, scanner self-test, targeted Go configuration tests and three legacy tests). Actual session metadata names OpenCode Go / DeepSeek V4.1 Flash; no fallback. Remaining whole-tree findings are two formatting-only legacy environment-name references, not credentials. Steps 2.1–2.3 are technically accepted: seven of 23 complete, 16 open. The legacy test imports still reference old `app/web`; step 3.1 must repair these permanently instead of relying on the temporary symlink used to verify the fixture change. Next stage is 3.1 only: relocate application source/build paths and verify at their new locations; stop before moving planning/shared tooling in 3.2. CPU report captured as a separate backlog card without investigation or task switch.
+
+Reviewed lifecycle stage through `fdd1b9b`. Independent focused tests passed (37 tests); whitespace check passed. Runtime metadata for the executor session contains 131 assistant messages, exclusively `opencode-go/deepseek-v4.1-flash`, including its correction continuation. Initial review found three substantive gaps: rejection swept staged target changes into its commit, absent/invalid plans could appear complete, and non-force worktree removal still deleted ignored files. The same executor corrected all three with regression coverage. Steps 1.3–1.4 are technically accepted; four of 23 steps are complete and 19 remain. A successful finish may retain an ignored-artifact-bearing worktree and branch with an explicit report; phase 6 still owns production release semantics. Next bounded stage: 2.1–2.3, publication-policy separation, credential-check coverage/redaction and local hook/setup verification. Stop before relocation (3.1). The main checkout remains the pre-implementation snapshot; active records and implementation are in `.worktrees/OPS-4`.
+
+The owner approved the complete coordinator-authored plan on 2026-11-06 and added cleanup of obsolete directories after verified relocation. The live session now exposes the configured executor; initial-stage handover is being prepared. Earlier entries describe the state at their recorded checkpoint; the latest entry is current.
+
+## Executor configuration — 2026-11-06
+
+The owner separately authorized coding subagents on OpenCode Go / DeepSeek V4.1 Flash and retained the coordinator for planning, review and acceptance. The coordinator recorded that decision in AGENTS.md and the task documents, removed the conflicting universal Sonnet instruction from CLAUDE.md, and added the project-local executor profile. This is a configuration step only; the foundation implementation and any model invocation remain unstarted. Checkpoint 1.2 remains open until an actual executor session is verified.
+
+## Durable workflow and tool direction — 2026-11-06
+
+The coordinator recorded startup/resume reading order, request capture, bounded executor stages, same-session corrections, fresh contexts for independent stages, checkpoint contents and the distinction between current behavior and planned automation. The connected process is in `ai/WORKFLOW.md`; AGENTS.md carries the mandatory rules, and the roadmap carries the current next action. The executor profile and brief now require an explicit stage scope. The full foundation plan still awaits approval; no implementation checkbox is closed by this documentation work.
+
+The owner selected OpenCode as the primary tool and authorized a backup of Claude Code configuration. The local ignored archive is `.local/backups/claude-code-20261106-140723.tar.gz` (repository-relative), SHA-256 `40e09c110fd62606f31cda800d320863cde7ecd5e41e4b0a394050b56d69a801`. It contains active global rules/settings, agents, commands, hooks, skills, memory and output styles, their shared configuration/tooling sources including uncommitted bytes, and this project's Claude configuration/instructions. Command-line symlinks were dereferenced so the archive contains their contents. It is a configuration snapshot, not a backup of session history, account credentials or runtime data. `gzip -t`, representative member checks and `git check-ignore` passed. Live configuration and the shared checkout were not changed or removed. Further Claude Code compatibility work is excluded.
+
+Friction: the process previously existed partly in chat, while the generic executor brief encouraged proceeding through all open steps. The instructions and brief now specify a bounded handback; command-level stage scoping and numerical context enforcement are not implemented. Shared repository documentation also describes older bootstrap behavior, so a future cross-project extraction must reconcile its entry points rather than copying them blindly. Claude-specific Sonnet settings remain in the archived/live Claude configuration; they are not the OpenCode executor settings.
+
+### Verification of the documentation/configuration checkpoint
+
+- `python3 bin/work-plan OPS-4` — exit 0: `plan for OPS-4 is fit: 22 step(s), acceptance criteria present.` This validates shape, not owner approval.
+- `python3 bin/work-test` — exit 0: `PASS: all harness checks`. Coverage is compilation, template/rule presence and command help, not lifecycle safety or application behavior.
+- `git diff --check` — exit 0, no output.
+- `opencode debug agent executor` — exit 0; resolved `mode: subagent`, `providerID: opencode-go`, `modelID: deepseek-v4.1-flash`, `task: deny` and the bounded-stage prompt. This is configuration validation, not inference or proof of an executed session's model. Restart OpenCode before using the changed profile.
+- The new workflow/startup links resolve to existing project documents. Archive listing confirms the selected global symlink targets are stored as files/directories; the backup is 3,114,868 bytes with owner-only file permissions and remains ignored by Git.
+
+**Next action:** restart OpenCode to load the profile and review the complete foundation plan with the owner. Do not launch an executor, close a plan step, merge or deploy on the strength of this checkpoint. The shared-rule extraction is recorded for separate planning; no shared-repository edits were made.
+
+## Full-plan approval and first-stage preparation — 2026-11-06
+
+The owner authorized execution: «план норм, но не забудь почистить потом старые фолдеры. исполняй.» The coordinator recorded approval, added step 3.5 and a whole-task acceptance criterion for cleaning obsolete directories after verified relocation, and raised the estimate from 22 to 23 steps. This cleanup must audit ignored/untracked contents and active references and preserve runtime data, retained legacy code, backups and unrelated worktrees.
+
+The inspected main checkout remains at `d56435f`, with uncommitted preparation changes in AGENTS.md, CLAUDE.md, the roadmap, executor brief and new workflow/profile/card files. Existing linked worktrees are `.worktrees/DESIGN-1` on `work/DESIGN-1` at `d56435f` and `.worktrees/preview` on `assessment-panel` at `94f51d9`. No worktree was removed, no implementation branch created and no commit, merge, push or deployment performed.
+
+### Initial executor stage
+
+- Card: `ai/tasks/ops/OPS-4_repository-and-workflow-foundation/`.
+- Assigned steps: 1.1 and 1.2 only. Stop before 1.3 for coordinator review.
+- Worktree/branch: the `.worktrees/OPS-4` / `work/OPS-4` pair must be supplied by successful `bin/work-handover OPS-4`; it does not exist yet. Preserve all other worktrees.
+- Scope: inventory unfinished tasks, worktrees, local artifacts and preservation requirements; run baseline harness checks; verify the configured executor's actual provider/model and visible dispatch. Do not relocate or delete folders, harden lifecycle commands or deploy in this stage.
+- Checks: record `git status --short`, `git worktree list`, `python3 bin/work-test`, `python3 bin/work-plan OPS-4`, and `git diff --check`; establish task/artifact inventory from the actual checkout and ignored/untracked contents without exposing credentials. The coordinator verifies inference session metadata for `opencode-go/deepseek-v4.1-flash`; profile/debug output alone cannot close 1.2.
+- Handback: worktree/branch/revision, inventory and preservation requirements, check evidence, actual model/available usage metadata, review findings and the exact next action. Record and commit assigned completed checkpoints through the existing executor workflow; do not mark unverified steps complete.
+
+**Execution blocker:** only `explore` and `general` are exposed by this session's visible subagent tool. The project `executor` cannot be selected through that tool. No alternate model, hidden shell wrapper or coordinator coding was used. Restart OpenCode to reload the project profile, verify visible executor availability, satisfy the handover gate for the uncommitted card and then assign the stage above. Full-plan approval is already recorded and must not be requested again.
+
+Preparation checks after approval/cleanup updates: `python3 bin/work-plan OPS-4` exited 0 with `plan for OPS-4 is fit: 23 step(s), acceptance criteria present.`; `git diff --check` exited 0 with no output. No executor-stage check or implementation step is marked complete by these results.
+
+## Continuation through OpenCode Go — 2026-11-06
+
+The owner instructed «продолжай. deepseek используется через opencode go». The live visible subagent tool now includes `executor`, matching the project profile's `opencode-go/deepseek-v4.1-flash`. This clears dispatch availability, but inference identity remains unverified until the actual session metadata is inspected. The coordinator will commit only the reviewed workflow/profile/card preparation, obtain the live handover brief and assign steps 1.1–1.2, stopping before 1.3. Existing DESIGN-1 and preview worktrees remain untouched. No plan step is complete yet.
+
+## 2026-11-06 — 1.1 baseline — git status --short
+
+Check: `git status --short`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — 1.1 baseline — git worktree list
+
+Check: `git worktree list`
+Exit: 0
+
+```
+/Volumes/SSD/Dev/tknff/sifty                      c0181a1 [main]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/DESIGN-1  d56435f [work/DESIGN-1]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4     c0181a1 [work/OPS-4]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/preview   94f51d9 [assessment-panel]
+```
+
+
+## 2026-11-06 — 1.1 baseline — python3 bin/work-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+
+PASS: all harness checks
+```
+
+
+## 2026-11-06 — 1.1 baseline — python3 bin/work-plan OPS-4
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+
+## 2026-11-06 — 1.1 inventory and preservation baseline
+
+Check: `git diff --check`
+Exit: 2
+
+```
+ai/tasks/ops/OPS-4_repository-and-workflow-foundation/log.md:120: new blank line at EOF.
+```
+
+## 2026-11-06 — 1.1 diff check after log normalization
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — note
+
+Harness defect found while recording 1.1: bin/work-note ends each appended entry with a blank line at EOF, so the subsequent required 'git diff --check' failed with '__new blank line at EOF__' (exit 2, entry above). Correction: the card log was normalized (trailing blank lines removed; recorded evidence unchanged) and the check then passed. bin/work-note was not edited because harness changes are outside this stage; the coordinator should schedule the fix (likely with the 1.3/2.x workflow work).
+
+## 2026-11-06 — 1.2 executor profile — resolved model and mode
+
+Check: `opencode debug agent executor 2>&1 | grep -E '"(name|mode|providerID|modelID)"'`
+Exit: 0
+
+```
+  "name": "executor",
+  "mode": "subagent",
+    "providerID": "opencode-go",
+    "modelID": "deepseek-v4.1-flash"
+```
+
+
+## 2026-11-06 — 1.2 executor profile — subagent-only dispatch (task permission deny)
+
+Check: `opencode debug agent executor 2>&1 | grep -A2 '"permission": "task"'`
+Exit: 0
+
+```
+      "permission": "task",
+      "action": "deny",
+      "pattern": "*"
+```
+
+
+## 2026-11-06 — 1.2 runtime metadata — provider/model/agent on the streaming call
+
+Check: `grep 'message=stream providerID=opencode-go modelID=deepseek-v4.1-flash session.id=ses_e4ed72437ffeL8VjH7t0Gi23ru' ~/.local/share/opencode/log/opencode.log | grep -v 'message=evaluated' | tail -1`
+Exit: 0
+
+```
+timestamp=2026-11-06T14:08:09.232Z level=INFO run=fbbdcd50 message=stream providerID=opencode-go modelID=deepseek-v4.1-flash session.id=ses_e4ed72437ffeL8VjH7t0Gi23ru small=false agent=executor mode=subagent
+```
+
+
+## 2026-11-06 — 1.2 session metadata — agent, model and available usage
+
+Check: `sqlite3 -header -separator ' | ' ~/.local/share/opencode/opencode.db "select id,agent,model,cost,tokens_input,tokens_output,tokens_reasoning,tokens_cache_read from session where id='ses_e4ed72437ffeL8VjH7t0Gi23ru';"`
+Exit: 0
+
+```
+id | agent | model | cost | tokens_input | tokens_output | tokens_reasoning | tokens_cache_read
+ses_e4ed72437ffeL8VjH7t0Gi23ru | executor | {"id":"deepseek-v4.1-flash","providerID":"opencode-go","variant":"default"} | 0.04189728 | 66264 | 15237 | 19613 | 3682560
+```
+
+
+## 2026-11-06 — 1.2 visible dispatch — session parent relationship
+
+Check: `sqlite3 -header -separator ' | ' ~/.local/share/opencode/opencode.db "select id,parent_id,agent,model from session where id='ses_e4ed72437ffeL8VjH7t0Gi23ru';"`
+Exit: 0
+
+```
+id | parent_id | agent | model
+ses_e4ed72437ffeL8VjH7t0Gi23ru | ses_e4ed90c39ffeVGdkVhVpkwmHD2 | executor | {"id":"deepseek-v4.1-flash","providerID":"opencode-go","variant":"default"}
+```
+
+
+## 2026-11-06 — note
+
+Step 1.2 verification interpretation. The project profile `.opencode/agents/executor.md` resolves as mode=subagent with model providerID=opencode-go, modelID=deepseek-v4.1-flash and permission task=deny (no subagent nesting). This session (ses_e4ed72437ffeL8VjH7t0Gi23ru) is a child of the coordinator's build session (ses_e4ed90c39ffeVGdkVhVpkwmHD2), agent=executor; the streaming log line above is OpenCode's own runtime record naming providerID=opencode-go modelID=deepseek-v4.1-flash for each inference call, not executor self-report and not the profile declaration. The session row records the same model and the available usage counters (cost/tokens continue to grow). No fallback or provider switch occurred and the profile was not edited. Available metadata does not expose OpenCode Go remaining allowance or quota. Correction during recording: an earlier runtime-metadata command matched work-note's own permission-evaluated log line because that line echoes the grep pattern; the check was corrected with `grep -v 'message=evaluated'` and the log was re-recorded before commit. The coordinator must still re-verify the session metadata before accepting 1.2 and assigning the next independent stage.
+
+## 2026-11-06 — 1.2 stage diff check
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — stage handback — git status --short
+
+Check: `git status --short`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — stage handback — git worktree list
+
+Check: `git worktree list`
+Exit: 0
+
+```
+/Volumes/SSD/Dev/tknff/sifty                      c0181a1 [main]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/DESIGN-1  d56435f [work/DESIGN-1]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4     76be1bf [work/OPS-4]
+/Volumes/SSD/Dev/tknff/sifty/.worktrees/preview   94f51d9 [assessment-panel]
+```
+
+
+## 2026-11-06 — stage handback — python3 bin/work-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+
+PASS: all harness checks
+```
+
+
+## 2026-11-06 — stage handback — python3 bin/work-plan OPS-4
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — stage handback — git diff --check
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+
+## 2026-11-06 — note
+
+Stage handback — steps 1.1 and 1.2 complete; stop before 1.3.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step commits: `e0c2205` (1.1 inventory) and `76be1bf` (1.2 executor verification); the handback-check checkpoint is the commit containing this entry.
+- Completed: 1.1 — inventory and preservation baseline in `ai/tasks/ops/OPS-4_repository-and-workflow-foundation/inventory.md`, with baseline checks recorded above. 1.2 — profile verified (`mode: subagent`, `opencode-go/deepseek-v4.1-flash`, `task: deny`) and actual runtime metadata inspected.
+- Open: 21 of 23 steps (1.3 onward). They are context only; none is assigned to this session. Step 1.3 was not started.
+- Final checks: `git status --short` clean at check time; `git worktree list` four worktrees; `python3 bin/work-test` PASS; `python3 bin/work-plan OPS-4` fit with 23 steps; `git diff --check` exit 0.
+- Preservation requirements: inventory.md §6 (8 normative requirements) — runtime data, personal artifacts, unfinished worktrees/branches, history, per-environment deployment artifacts, submodule/symlink wiring, ignored local material and staged cleanup.
+- Actual model metadata: session `ses_e4ed72437ffeL8VjH7t0Gi23ru`, agent `executor`, parent `ses_e4ed90c39ffeVGdkVhVpkwmHD2`, model `{"id":"deepseek-v4.1-flash","providerID":"opencode-go"}`; OpenCode's streaming log names the same provider/model per call. Usage at check time: cost 0.0419 USD, input 66,264, output 15,237, reasoning 19,613, cache-read 3,682,560 tokens (continues to grow). No fallback or provider switch; profile not edited. The coordinator must independently re-verify before accepting 1.2.
+- Technical decisions: used OpenCode runtime metadata (log + session row) rather than profile output or self-report as model evidence; treated dangling shared-tool symlinks as a reproduction/setup finding rather than repairing them here; kept all relocation/cleanup out of this stage.
+- Failures and corrections: (a) `bin/work-note` leaves a trailing blank line at EOF, so `git diff --check` fails on the log it just wrote; the card log was normalized after recording and the defect is reported, not fixed. (b) `sqlite3 -column` padding introduced trailing spaces into the log; re-recorded with `-separator`. (c) the first runtime-metadata grep matched its own permission-evaluated log line; re-recorded with `grep -v 'message=evaluated'`.
+- Findings for coordinator review: dangling `ai/bin`/`ai/harness`/`ai/templates` in every linked worktree (submodule not initialized by `work-handover`); `core.hooksPath` unset; stale template open-step lines in completed COL-1/TRI-1; `ai/incidents.md` still tracked; ~1 GB of timestamped staging SQLite backups; `main` 66 commits ahead of `origin/main`.
+- Exact next action: coordinator reviews the diff, check evidence and session metadata, then issues a fresh executor brief for step 1.3 only. Do not proceed to 1.3 in this session.
+
+## Coordinator review of the initial stage — 2026-11-06
+
+Reviewed `c0181a1..7d76d2d`: changes are limited to inventory, log and two completed plan steps. Inventory preserves all four working copies, 16 nonterminal cards, runtime data, ignored artifacts and shared-tool wiring. Baseline harness checks and plan validation passed; no application behavior was tested or changed. Independent metadata query grouped every assistant message in session `ses_e4ed72437ffeL8VjH7t0Gi23ru` by provider/model: 63 rows, exclusively `opencode-go/deepseek-v4.1-flash`. Steps 1.1–1.2 are technically accepted. Recorded usage is cumulative, not context size or the owner's bill; quota was not established. Coordinator review needed no implementation correction; it found a summary error claiming dangling links in all worktrees, while the actual inventory correctly limits that finding to linked worktrees and says the main checkout resolves them.
+
+Next stage is steps 1.3–1.4 together: implement safe acceptance/finish preconditions and exercise lifecycle failure preservation in isolated test repositories. Stop before 2.1. Fix the observed work-note trailing-blank-line defect within this workflow stage and cover it narrowly rather than repeatedly normalizing logs by hand. Do not merge this foundation card, alter live servers/data or change the executor profile. The release integration remains phase 6. Owner final staging acceptance remains outstanding.
+
+## 2026-11-06 — 1.3 focused lifecycle tests (preconditions, sift-accept, work-note)
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+....................
+----------------------------------------------------------------------
+Ran 20 tests in 7.948s
+
+OK
+```
+
+## 2026-11-06 — 1.3 harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.3 plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 1.3 whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 1.4 full lifecycle tests (failure, moved revisions, dirty copies, rejection, finish)
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.151s
+
+OK
+```
+
+## 2026-11-06 — 1.4 harness self-test with lifecycle suite
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.4 plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 1.4 whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Stage handback — steps 1.3–1.4 complete; stop before 2.1.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step 1.3 commit: `f9fc222`; the 1.4 commit is the checkpoint containing this entry.
+- Completed: 1.3 — shared acceptance/finish readiness (base branch, clean source and target including untracked, all steps closed, attention resolved, no terminal outcome, captured source/target SHA and branch), exact-SHA scratch checks, pre-existing scratch preservation, non-force cleanup, rejection that preserves work, `--force` limited to skipping the acceptance command, `sift-accept` always runs the harness self-test and treats build/deploy/config changes as application-touching with a fatal `npm ci`, and the `work-note` single-trailing-newline fix. 1.4 — 30 isolated lifecycle tests covering failed checks, moved source/target revisions, changed target branch, open steps/attention, dirty tracked/untracked source and target, `--force` refusal, pre-existing scratch, dirty-during-acceptance, rejection preservation and a successful fixed-revision finish; integrated into `bin/work-test`.
+- Open: 21 of 23 steps (2.1 onward). They are context only; none is assigned to this session.
+- Checks: `python3 -m unittest discover -s bin/tests -p 'test_*.py'` — 30 tests, OK; `python3 bin/work-test` — PASS; `python3 bin/work-plan OPS-4` — fit, 23 steps; `git diff --check` — exit 0.
+- Technical decisions: `WORK_BASE_BRANCH` (default `main`) is the target; readiness and snapshot helpers live in `_work_lib.py`; acceptance scratch is detached at the captured source SHA and removed non-force; finish merges the exact tested SHA, re-checks source/target before merge, and writes `done.md` only after the merge; rejection commits only `rejected.md` and leaves branch/worktree/dirty files intact; `sift-accept` writes the frontend build to a temporary `BUILD_OUTDIR` so the scratch stays removable.
+- Failures and corrections: the first successful-finish test asserted an un-bolded `Tested revision:` string; corrected to the actual markdown. The first `sift-accept` fixtures wrote byte-identical content for build/config changes, so no commit was created; the fixtures now change the content. No product behavior failed.
+- Findings for coordinator review: tracked `sifty/dist-staging` and untracked `sifty/dist` remain (phase 3.3 ignore/untrack work); `sift-accept` runs the Go/frontend suites for `app/` changes but not the legacy `app/` test suite (existing behavior, not changed here); if non-force cleanup fails after a successful merge, `work-finish` reports a warning and exits 0 with `done.md` written and the worktree/branch preserved; `work-note` preserves check output verbatim, so trailing spaces inside a check's own output can still be reported by `git diff --check`.
+- Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 2.1. Do not run `work-accept` or `work-finish` for OPS-4: 21 steps remain open. No merge, push, deploy or finish was run on the real repository.
+
+## 2026-11-06 — 1.4 correction — rejection terminal outcome tests
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.464s
+
+OK
+```
+
+## 2026-11-06 — 1.4 correction — harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 1.4 correction — whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Correction during stage review — rejection terminal outcome.
+
+Readiness previously inspected terminal files only in the source worktree. Rejection writes `rejected.md` on the base card, so a rejected card could still be finished later. `readiness_problems` now also checks the base card's terminal file and the rejection test asserts a retry is refused with `terminal file present: rejected.md`. No plan step was reopened; this strengthens 1.4. Checks re-run: 30 lifecycle tests OK, `bin/work-test` PASS, `git diff --check` exit 0.
+
+## 2026-11-06 — acceptance base-branch propagation
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.737s
+
+OK
+```
+
+## 2026-11-06 — note
+
+Correction — pass the configured base branch to the acceptance command.
+
+`run_accept` now exports `WORK_BASE_BRANCH` from `base_branch()`, so `bin/sift-accept` uses the same target as `work-accept`/`work-finish` even when the setting comes from `bin/work.config` rather than the environment. 30 lifecycle tests OK; `bin/work-test` PASS; `git diff --check` exit 0.
+
+## 2026-11-06 — finish cleanup with ignored artifacts
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+..............................
+----------------------------------------------------------------------
+Ran 30 tests in 15.700s
+
+OK
+```
+
+## 2026-11-06 — finish cleanup whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — review corrections — lifecycle tests
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_*.py'`
+Exit: 0
+
+```
+.....................................
+----------------------------------------------------------------------
+Ran 37 tests in 19.202s
+
+OK
+```
+
+## 2026-11-06 — review corrections — harness self-test
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — review corrections — plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — review corrections — whitespace
+
+Check: `git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — note
+
+Coordinator review corrections — lifecycle safety.
+
+1. Rejection commit isolation. `work-finish` now commits the terminal record with `git commit --only -m MSG -- <file>` after a checked `git add`, so pre-existing staged changes on the target (including inside the card) and unstaged work are preserved. Regression stages unrelated and card-local changes, dirties the source worktree, rejects, and asserts the rejection commit contains only `rejected.md` with both diffs unchanged.
+2. Plan fitness in readiness. `readiness_problems` now calls `plan_fitness_problems` on the source card, so a missing steps file, empty plan, zero steps or malformed checkbox line cannot be finished. Added tests for missing plan, zero steps and malformed steps, including `--force`.
+3. Ignored material preservation. `cleanup_finished` inspects `git status --ignored=matching` before removal and retains the source worktree and branch when any ignored entry exists; it reports the retained entries and never uses `git clean` or force. Regression keeps an ignored SQLite sentinel byte-for-byte and asserts the branch/worktree remain; the clean successful-finish test still removes both.
+4. Arithmetic correction: 23 total steps minus 4 completed (1.1–1.4) = 19 open (2.1 onward), not 21.
+
+Checks re-run: 37 lifecycle tests OK; `bin/work-test` PASS; `bin/work-plan OPS-4` fit; `git diff --check` exit 0. Steps 1.3–1.4 remain ticked; no plan step was reopened. Exact next action: coordinator reviews this diff and evidence, then assigns step 2.1 in a fresh executor context. Do not run `work-accept` or `work-finish` for OPS-4; 19 steps remain open.
+
+## 2026-11-06 — 2.1 separate credential and formatting rules
+
+Check: `python3 sifty/scripts/leakcheck/leakcheck-selftest && python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.002s
+
+OK
+```
+
+## 2026-11-06 — 2.2 scanner reads real blobs everywhere and redacts findings
+
+Check: `python3 sifty/scripts/leakcheck/leakcheck-selftest && python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+................................
+----------------------------------------------------------------------
+Ran 32 tests in 3.607s
+
+OK
+```
+
+## 2026-11-06 — 2.3 hook adapters and fresh-clone setup
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_hooks.py'`
+Exit: 0
+
+```
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 5.470s
+
+OK
+```
+
+## 2026-11-06 — note
+
+Stage handback — steps 2.1–2.3 complete; stop before 3.1.
+
+- Worktree/branch: `.worktrees/OPS-4` on `work/OPS-4`. Step 2.1: `5c30848`. Step 2.2: `f3a34ea`. Step 2.3 and this handback: the checkpoint containing this entry.
+- Completed: 2.1 separated credential/security rules from formatting rules, made task identifiers and `bin/work-*` commands ordinary content, and moved Russian formatting to a path-based formatting-required subtree. 2.2 reads staged index blobs and historical commit blobs, scans renamed files (including pure renames), root commits and ranges, uses NUL Git output for paths, skips symlinks and gitlinks, fails loudly on Git errors, and redacts every diagnostic. 2.3 made the optional kb integration skip when no `kb/` exists, made missing required tools and scanners fail explicitly, repaired current-layout paths, and made `bin/work-setup` verify the effective relative hooksPath and executable adapters. Added isolated hook tests and scanner policy/integration tests; integrated them into `bin/work-test`.
+- Checks: `python3 bin/work-test` — PASS (47 harness tests, scanner self-test, 32 scanner tests, scanner sources clean); `python3 -m unittest discover -s bin/tests -p 'test_*.py'` — 47 tests OK; `python3 -m unittest discover -s sifty/scripts/leakcheck/tests -p 'test_*.py'` — 32 tests OK; `python3 sifty/scripts/leakcheck/leakcheck-selftest` — PASS; `python3 bin/work-plan OPS-4` — fit, 23 steps; `git diff --check` — exit 0.
+- Technical decisions: two explicit rule groups (credential/security always; formatting path-based); the census's formatting-required subtree is `sifty/`, with the scanner directory formatting-exempt and work records/tooling outside it; tests assemble synthetic values at runtime rather than receiving a test-path exemption; staged and historical checks read blobs, never unstaged working-tree content; diagnostics print form, safe path and line only; symlinks and gitlinks are skipped by mode; the kb adapter uses `ai/bin/kb-index` for the current layout and delegates nothing to the shared submodule.
+- Failures and corrections: the first rule split made the scanner flag its own URL/SSH/PEM pattern definitions; these were corrected by constructing those literals so they do not match themselves (not by exempting the scanner directory). A minified bundle false positive and a `password: decodeURIComponent(...)` false positive were tightened narrowly; real credential assignments still fail. The whole-tree output was rewritten to omit matched values and whole lines.
+- Findings for coordinator review: whole-tree `tree-check` reports 6 pre-existing findings — 4 synthetic URL/IP fixtures in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, and 2 `FCTO_STATE_DIR` literals in `sifty/web/model/core.ts`. They were reported, not rewritten, and no security rule was weakened. Tracked `sifty/dist-staging` remains for phase 3.3. `sifty/scripts/setup` now delegates to `bin/work-setup` in this layout. Legacy test fixtures still carry literal fake user:pass URL values.
+- Exact next action: coordinator reviews the actual diff and check evidence, then issues a fresh executor brief for step 3.1. Do not run `work-accept` or `work-finish` for OPS-4; 16 steps remain open. No merge, push, deploy, production promotion, global configuration or subagent was run.
+
+## 2026-11-06 — note
+
+Stage handback correction before review — diagnostics and ref scans.
+
+- `tree-check` now skips symlinks and gitlinks in `--ref` scans as well as the working tree, and redacts the repository label and origin URL in both clean and refused output. `commit-diff-check` redacts its source label too, and the watched-name finding no longer echoes the person's name.
+- Added a regression test for an origin URL carrying a synthetic credential: the clean message must not print it. Scanner tests are now 33 and pass; the scanner self-test passes.
+- No plan step was reopened. The final stage checkpoint is the commit containing this correction note.
+
+## 2026-11-06 — review corrections — dotted secrets, required setup files, fixture assembly
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (sifty/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — note
+
+Coordinator review corrections — 2.1–2.3.
+
+1. Narrowed `_looks_like_code_expression`: a dot alone is no longer an exemption. Function calls and code-context property expressions pass; dotted unquoted values in `=`/config assignments are refused. Regressions cover `PASSWORD=<dotted-value>`, `password: <dotted-value>` and `password: decodeURIComponent(proxy.password)`.
+2. `bin/work-setup` now checks an explicit required set: six hooks, three pre-commit steps, ten harness commands, and the scanner directory plus seven scanner files. Missing whole directory, hook, step, command or scanner file fails instead of printing ready. Isolated tests cover the whole scanner directory, each required hook and a missing scanner file.
+3. Assembled the synthetic fixtures at runtime in `app/test/integration.test.ts`, `app/test/workflow.test.ts` and `sifty/internal/config/save_test.go`, preserving the identical runtime values and behavior. Narrow checks: `go test ./internal/config -run TestSaveRejectsSecrets` PASS, `go test ./internal/config` PASS; the three changed legacy tests pass under `tsx` (the legacy test's `app/web` import is stale after the frontend move, so the check used a temporary local `app/web -> ../sifty/web` symlink, removed afterwards). Whole-tree `tree-check` now reports only the two `FCTO_STATE_DIR` formatting findings in `sifty/web/model/core.ts`; they are recorded as a formatting-only relocation issue and the compatibility references were not removed.
+
+Checks: `python3 bin/work-test` PASS (50 harness tests, 35 scanner tests, self-test, scanner sources clean); `python3 bin/work-plan OPS-4` fit; `git diff --check` exit 0. `e41098d` (OPS-5 CPU report) was preserved untouched. Exact next action: coordinator reviews these corrections, then assigns 3.1 in a fresh executor context. Stop before 3.1. No real setup run, global configuration change, deploy, merge, push or subagent.
+
+## 2026-11-06 — 3.1 relocation — backend Go race suite
+
+Check: `cd backend && go test -race ./...`
+Exit: 0
+
+```
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	(cached)
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+```
+
+## 2026-11-06 — 3.1 relocation — frontend clean install, tsc and Vite build
+
+Check: `cd frontend && npm ci --silent && npm run build`
+Exit: 0
+
+```
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 433ms
+```
+
+## 2026-11-06 — 3.1 relocation — Makefile build path
+
+Check: `make build`
+Exit: 0
+
+```
+mkdir -p bin
+cd backend && go build -o ../bin/sifty ./cmd/sifty
+npm --prefix frontend run build
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 431ms
+```
+
+## 2026-11-06 — 3.1 relocation — backend script aggregate (scanner, vet, build, race tests)
+
+Check: `bash backend/scripts/test`
+Exit: 0
+
+```
+== leak-scanner self-test ==
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  allow documented compatibility literal only at its named path
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+== go vet ==
+== go build ==
+== go test ==
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	(cached)
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+test: OK
+```
+
+## 2026-11-06 — 3.1 relocation — legacy app install and build from new path
+
+Check: `cd legacy/app && npm ci --silent && npm run build`
+Exit: 0
+
+```
+
+> fcto-job-catalogue@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 437ms
+```
+
+## 2026-11-06 — 3.1 relocation — legacy tests that exercise the moved frontend references
+
+Check: `cd legacy/app && npx tsx --test test/usability-filters.test.ts test/workflow.test.ts test/refinements.test.ts test/lever-labels.test.ts test/integration.test.ts`
+Exit: 0
+
+```
+TAP version 13
+# (node:8153) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: config validation preserves existing 16 sources and OR aliases, unknown sources explicit
+ok 1 - config validation preserves existing 16 sources and OR aliases, unknown sources explicit
+  ---
+  duration_ms: 18.055375
+  type: 'test'
+  ...
+# Subtest: SQLite persistence, canonical apply dedup, identity dedup, late merge and status history
+ok 2 - SQLite persistence, canonical apply dedup, identity dedup, late merge and status history
+  ---
+  duration_ms: 13.737417
+  type: 'test'
+  ...
+# Subtest: HTML/RSS descriptions, explicit links, bounded pagination and honest failures
+ok 3 - HTML/RSS descriptions, explicit links, bounded pagination and honest failures
+  ---
+  duration_ms: 106.753042
+  type: 'test'
+  ...
+# Subtest: candidate context selection retains provenance/missing notices and rejects overflow
+ok 4 - candidate context selection retains provenance/missing notices and rejects overflow
+  ---
+  duration_ms: 1.346
+  type: 'test'
+  ...
+# Subtest: optional model extraction routes separately and rejects invented page facts
+ok 5 - optional model extraction routes separately and rejects invented page facts
+  ---
+  duration_ms: 2.404333
+  type: 'test'
+  ...
+# Subtest: assessment evidence is validated, versioned, stale-detected; failures preserve pending jobs
+ok 6 - assessment evidence is validated, versioned, stale-detected; failures preserve pending jobs
+  ---
+  duration_ms: 20.090833
+  type: 'test'
+  ...
+# Subtest: both local HTTP adapters use structured output; malformed JSON, HTTP and timeout errors surface
+ok 7 - both local HTTP adapters use structured output; malformed JSON, HTTP and timeout errors surface
+  ---
+  duration_ms: 169.217167
+  type: 'test'
+  ...
+# Subtest: CLI adapters parse real subprocess protocol with controlled fixture; timeout kills process group
+ok 8 - CLI adapters parse real subprocess protocol with controlled fixture; timeout kills process group
+  ---
+  duration_ms: 467.296167
+  type: 'test'
+  ...
+# Subtest: scheduler excludes overlaps, recovers dead owner and honours same-day catch-up
+ok 9 - scheduler excludes overlaps, recovers dead owner and honours same-day catch-up
+  ---
+  duration_ms: 9.550458
+  type: 'test'
+  ...
+# Subtest: remote import blocks private destinations before requests
+ok 10 - remote import blocks private destinations before requests
+  ---
+  duration_ms: 3.089458
+  type: 'test'
+  ...
+# Subtest: per-source proxy environment reference routes a real HTTP request through a controlled CONNECT proxy
+ok 11 - per-source proxy environment reference routes a real HTTP request through a controlled CONNECT proxy
+  ---
+  duration_ms: 10.587125
+  type: 'test'
+  ...
+# Subtest: dedicated Chromium source sessions persist separately without using owner accounts
+ok 12 - dedicated Chromium source sessions persist separately without using owner accounts
+  ---
+  duration_ms: 424.895
+  type: 'test'
+  ...
+# Subtest: actual MCP stdio shares persisted state, import/search errors and tool-free assessment
+ok 13 - actual MCP stdio shares persisted state, import/search errors and tool-free assessment
+  ---
+  duration_ms: 1022.939083
+  type: 'test'
+  ...
+# (node:8154) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: observed Lever wrappers yield seven distinct actual questions, clean file/location labels and the real opportunity-location question; reinspection preserves IDs and six answers
+ok 14 - observed Lever wrappers yield seven distinct actual questions, clean file/location labels and the real opportunity-location question; reinspection preserves IDs and six answers
+  ---
+  duration_ms: 208.89175
+  type: 'test'
+  ...
+# Subtest: standards beat container/placeholder; local multi-control labels, helpers and group options stay separate; hidden/unknown text never becomes a question
+ok 15 - standards beat container/placeholder; local multi-control labels, helpers and group options stay separate; hidden/unknown text never becomes a question
+  ---
+  duration_ms: 174.865917
+  type: 'test'
+  ...
+# (node:8155) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: pre-refinement SQLite shape migrates without changing job IDs, statuses or assessment/history bytes
+ok 16 - pre-refinement SQLite shape migrates without changing job IDs, statuses or assessment/history bytes
+  ---
+  duration_ms: 16.874708
+  type: 'test'
+  ...
+# Subtest: queue persists, deduplicates, skips completed current work and invalidates actual changed inputs
+ok 17 - queue persists, deduplicates, skips completed current work and invalidates actual changed inputs
+  ---
+  duration_ms: 49.305833
+  type: 'test'
+  ...
+# Subtest: interrupted inference recovers; provider pause and persistent retry do not loop or spend
+ok 18 - interrupted inference recovers; provider pause and persistent retry do not loop or spend
+  ---
+  duration_ms: 12.439542
+  type: 'test'
+  ...
+# Subtest: single inference, selected-role priority and eventual completion beyond ten jobs without collection lock
+ok 19 - single inference, selected-role priority and eventual completion beyond ten jobs without collection lock
+  ---
+  duration_ms: 49.011083
+  type: 'test'
+  ...
+# Subtest: missing descriptions are not inference pending; legacy gaps never become confirmed mismatches
+ok 20 - missing descriptions are not inference pending; legacy gaps never become confirmed mismatches
+  ---
+  duration_ms: 2.657708
+  type: 'test'
+  ...
+# Subtest: fresh assessment fingerprints skip inference and unsupported CV absence becomes a question, not a confirmed mismatch
+ok 21 - fresh assessment fingerprints skip inference and unsupported CV absence becomes a question, not a confirmed mismatch
+  ---
+  duration_ms: 10.31725
+  type: 'test'
+  ...
+# Subtest: domain requests serialize across aliases with 3–6s pacing, Retry-After, restart cooldown and independent hosts
+ok 22 - domain requests serialize across aliases with 3–6s pacing, Retry-After, restart cooldown and independent hosts
+  ---
+  duration_ms: 0.5305
+  type: 'test'
+  ...
+# Subtest: three-hour fingerprint cache reuses unchanged queries, only fetches added keys and independently revalidates details at 24h
+ok 23 - three-hour fingerprint cache reuses unchanged queries, only fetches added keys and independently revalidates details at 24h
+  ---
+  duration_ms: 0.170375
+  type: 'test'
+  ...
+# Subtest: cached finite inventory resumes description-only matches even with a non-technical title, and reports deferred/failed honestly
+ok 24 - cached finite inventory resumes description-only matches even with a non-technical title, and reports deferred/failed honestly
+  ---
+  duration_ms: 252.204542
+  type: 'test'
+  ...
+# Subtest: feedback is durable verbatim without a model, grounded, scoped, conflict-preserving and additive on revision
+ok 25 - feedback is durable verbatim without a model, grounded, scoped, conflict-preserving and additive on revision
+  ---
+  duration_ms: 7.136667
+  type: 'test'
+  ...
+# Subtest: local filters use aliases, OR within AND across groups, tags and truthful assessed states
+ok 26 - local filters use aliases, OR within AND across groups, tags and truthful assessed states
+  ---
+  duration_ms: 1.389375
+  type: 'test'
+  ...
+# (node:8156) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: configured role/skill groups distinguish all, none and OR subsets; migration preserves legacy choices
+ok 27 - configured role/skill groups distinguish all, none and OR subsets; migration preserves legacy choices
+  ---
+  duration_ms: 4.233292
+  type: 'test'
+  ...
+# Subtest: management is bounded title matching and sorting uses first collection date with unassessed last
+ok 28 - management is bounded title matching and sorting uses first collection date with unassessed last
+  ---
+  duration_ms: 0.368625
+  type: 'test'
+  ...
+# (node:8157) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: legacy migration preserves records, evidence/history; stages, seen and explicit confirmation survive restart
+ok 29 - legacy migration preserves records, evidence/history; stages, seen and explicit confirmation survive restart
+  ---
+  duration_ms: 25.767041
+  type: 'test'
+  ...
+# Subtest: Web3 uses word-aware real content and external URLs accept only credential-free HTTP(S)
+ok 30 - Web3 uses word-aware real content and external URLs accept only credential-free HTTP(S)
+  ---
+  duration_ms: 0.124583
+  type: 'test'
+  ...
+# Subtest: wrapped auto-advance skips decided roles; session retention does not become durable filter state
+ok 31 - wrapped auto-advance skips decided roles; session retention does not become durable filter state
+  ---
+  duration_ms: 1.347667
+  type: 'test'
+  ...
+# Subtest: late merge preserves confirmed application date, seen, aliases and transition history
+ok 32 - late merge preserves confirmed application date, seen, aliases and transition history
+  ---
+  duration_ms: 1.540916
+  type: 'test'
+  ...
+1..32
+# tests 32
+# suites 0
+# pass 32
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 2781.000667
+```
+
+## 2026-11-06 — 3.1 relocation — harness self-test and lifecycle tests
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 3.1 relocation — scanner policy, Git and compatibility tests
+
+Check: `python3 -m unittest discover -s backend/scripts/leakcheck/tests -p 'test_*.py'`
+Exit: 0
+
+```
+.......................................
+----------------------------------------------------------------------
+Ran 39 tests in 4.172s
+
+OK
+```
+
+## 2026-11-06 — note
+
+3.1 decisions and findings.
+
+- Relocation: sifty/web -> frontend; sifty/{cmd,internal,scripts,workers,docs,README,LICENSE,go.mod,go.sum,.github,.githooks,.gitignore} -> backend; app -> legacy/app. Tracked sifty/dist-staging was deliberately retained at the old path for 3.3 artifact cleanup. The module import path stayed github.com/w3con/sifty.
+- Build/serve repoints: Makefile, bin/sift-deploy, bin/sift-accept, bin/work.config examples, .githooks scanner adapters, bin/work-setup, bin/work-test, worker lookup/error messages, and Go serve fallbacks now use backend/, frontend/ and frontend/dist. Frontend Vite default output is frontend/dist; sift-deploy keeps prod and staging bundles separate. make run-staging preserves its existing shared-bundle behavior (frontend/dist), while sift-deploy creates frontend/dist-staging.
+- Legacy repairs: legacy tests import ../../../frontend/{filters,workflow}.js instead of the removed app/web; legacy build config points at ../../frontend and outputs frontend/dist; legacy root-relative paths, plist template, launchd/audit tools and server dist now use legacy/app and frontend/dist. Legacy README remains historical until 3.2/5.
+- Scanner: moved to backend/scripts/leakcheck and still applies credential rules everywhere and formatting under backend/ and frontend/. Added a path-exact compatibility allowance for FCTO_STATE_DIR only in frontend/model/core.ts; the same literal elsewhere is still refused and credentials in that file are still checked. Whole-tree tree-check is clean.
+- Failure/correction: the first legacy Vite config used root ../frontend, which resolves to legacy/frontend; corrected to ../../frontend. The migrated usability-filters test initially failed because it still supplied assessment.score while the actual frontend sortCatalogue uses matchScore; the fixture was repaired to exercise the real frontend behavior. No product behavior was changed.
+- Pre-existing failure, not repaired: npx tsx --test test/transfer.test.ts has 22/23 passing; the one failure expects after.stages {assessment:ollama,extraction:ollama} while config/providers.yaml includes preparation: luna. git show main:config/providers.yaml has the same preparation field and git show main:app/test/transfer.test.ts has the same assertion, so this predates relocation. The moved transfer fixture and its legacy/app/ops/transfer copy otherwise pass.
+
+## 2026-11-06 — 3.1 relocation — whole-tree credential and formatting scan
+
+Check: `python3 backend/scripts/leakcheck/tree-check .`
+Exit: 0
+
+```
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+```
+
+## 2026-11-06 — 3.1 relocation — plan fitness
+
+Check: `python3 bin/work-plan OPS-4`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+```
+
+## 2026-11-06 — 3.1 relocation — staged and working-tree whitespace
+
+Check: `git add -A && git diff --cached --check && git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 3.1 relocation — staged pure-rename and full-blob scan
+
+Check: `python3 backend/scripts/leakcheck/commit-diff-check --staged --repo .`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 3.1 relocation — Playwright worker fixture suite from backend/workers
+
+Check: `cd backend/workers/playwright && npm ci --silent && node --test automation.test.mjs`
+Exit: 0
+
+```
+TAP version 13
+# Subtest: 1.1 realistic fingerprint: UA and navigator.webdriver
+ok 1 - 1.1 realistic fingerprint: UA and navigator.webdriver
+  ---
+  duration_ms: 172.521084
+  type: 'test'
+  ...
+# Subtest: 1.2 host pacing: sequential navigations are spaced by the configured interval
+ok 2 - 1.2 host pacing: sequential navigations are spaced by the configured interval
+  ---
+  duration_ms: 305.956166
+  type: 'test'
+  ...
+# Subtest: 1.3 concurrency: at most the configured number of navigations run at once
+ok 3 - 1.3 concurrency: at most the configured number of navigations run at once
+  ---
+  duration_ms: 312.238875
+  type: 'test'
+  ...
+# Subtest: 2.1 block detection: 429 response ends in backed-off state with no retry
+ok 4 - 2.1 block detection: 429 response ends in backed-off state with no retry
+  ---
+  duration_ms: 147.215209
+  type: 'test'
+  ...
+# Subtest: 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+ok 5 - 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+  ---
+  duration_ms: 386.001208
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1519.7175
+```
+
+## 2026-11-06 — 3.2 relocation — plan and live resume brief at the new card path
+
+Check: `set -e; python3 bin/work-plan OPS-4; set +e; WORK_SESSION=1 python3 bin/work-resume OPS-4 >/tmp/ops4-32-brief.txt 2>/tmp/ops4-32-brief.err; rc=$?; set -e; test $rc -eq 97; grep -E 'Card folder:|steps_file|work/OPS-4' /tmp/ops4-32-brief.txt; printf 'resume_exit=%s\n' $rc`
+Exit: 0
+
+```
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+- Card folder: `work/tasks/ops/OPS-4_repository-and-workflow-foundation`
+- Your branch: `work/OPS-4`
+Work only inside your working copy. Never touch another worktree. Never switch off branch `work/OPS-4`.
+resume_exit=97
+```
+
+## 2026-11-06 — 3.2 relocation — harness lifecycle, hooks and scanner suite
+
+Check: `python3 bin/work-test 2>&1 | tail -8`
+Exit: 0
+
+```
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 3.2 relocation — gitlink/symlink identity and fresh public clone without submodule
+
+Check: `bash /tmp/ops4_32_wiring_check.sh`
+Exit: 0
+
+```
+== gitlink and symlink index entries ==
+120000 0d02f77f3a1fbe4e038696000b2e564401e12b49 0	tools/bin
+120000 03189074fa8a65200f5eac9b80294d1d641d44db 0	tools/harness
+160000 aebbcda835ab708be1b465cfcb566b1994f09b19 0	tools/shared
+120000 ce2498660d7bb3b368c104646eb4345f207517a7 0	tools/templates
+== relative symlink targets ==
+tools/bin -> shared/bin
+tools/harness -> shared/harness
+tools/templates -> shared/templates
+== submodule declaration ==
+submodule.tools/shared.path tools/shared
+submodule.tools/shared.url git@github.com:w3con/ai.git
+== canonical card ids ==
+46
+== fresh clone without private submodule ==
+-aebbcda835ab708be1b465cfcb566b1994f09b19 tools/shared
+The optional knowledge-base integration is not required for a public clone.
+If this checkout uses the optional shared tooling, run: git submodule update --init tools/shared
+
+harness ready. Run bin/work-test to verify.
+
+PASS: all harness checks
+plan for OPS-4 is fit: 23 step(s), acceptance criteria present.
+founded DEMO-1 at work/tasks/demo/DEMO-1_fresh-card
+ROADMAP — now add DEMO-1 to work/ROADMAP.md: place it in the queue with its order and dependencies. Not automatic; the sequence there is curated prose.
+DEMO-1
+FRESH_CLONE_OK
+```
+
+## 2026-11-06 — 3.3 artifacts — ignored local incident and staging bundle, untracked with preserved bytes
+
+Check: `bash /tmp/ops4_33_check.sh`
+Exit: 0
+
+```
+== tracked files matching an ignore rule (must be empty) ==
+== ignored generated/local paths ==
+.gitignore:50:/work/incidents.md	work/incidents.md
+.gitignore:22:sifty/dist-staging/	sifty/dist-staging/index.html
+.gitignore:17:frontend/dist/	frontend/dist/x
+.gitignore:19:legacy/app/dist/	legacy/app/dist/x
+backend/.gitignore:37:/bin/	backend/bin/x
+backend/.gitignore:39:*.test	backend/foo.test
+.gitignore:33:*.log	server.log
+== source and task evidence remain visible to Git ==
+not ignored: frontend/src/main.tsx
+not ignored: backend/internal/server/routes.go
+not ignored: docs/README.md
+not ignored: work/tasks/ops/OPS-4_repository-and-workflow-foundation/log.md
+== retained local bytes ==
+incidents_sha256 ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+dist_files 20
+dist_manifest ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+== index entries (must be 0) ==
+tracked_incident 0
+tracked_dist 0
+== mcp placeholder ==
+# Sifty MCP adapter (not implemented)
+RELOCATION_33_OK
+```
+
+## 2026-11-06 — 3.3 artifacts — staged/tree scanner, harness suite and whitespace
+
+Check: `set -e; git diff --cached --check; python3 backend/scripts/leakcheck/commit-diff-check --staged --repo .; python3 backend/scripts/leakcheck/tree-check .; python3 bin/work-test 2>&1 | tail -5; echo RELOCATION_33_SCANNER_OK`
+Exit: 0
+
+```
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+
+PASS: all harness checks
+RELOCATION_33_SCANNER_OK
+```
+
+## 2026-11-06 — note
+
+3.2–3.3 handback notes (2026-11-06).
+
+- Relocation: planning moved to `work/` (tasks, decisions, ROADMAP, WORKFLOW, backlog); product/architecture docs moved to `docs/product/` and `docs/architecture/`; the optional shared tooling moved to `tools/`. Card IDs are unchanged (46 canonical cards including OPS-5, OPS-6 and APP-8). The card is resumable at `work/tasks/ops/OPS-4_repository-and-workflow-foundation/`; `find_card_dir` prefers that path and keeps `ai/tasks/` as a migration fallback.
+- Shared wiring: `tools/shared` keeps the pinned gitlink `aebbcda835ab708be1b465cfcb566b1994f09b19`, `.gitmodules` now consistently names path `tools/shared` with the same upstream URL, and `tools/bin|harness|templates` keep the byte-identical relative targets `shared/bin|harness|templates`. The linked worktree cannot initialize the private upstream and does not try; the symlinks are intentionally dangling there. A fresh public clone without the submodule passed `work-setup`, `work-test`, `work-plan OPS-4` and `work-new`.
+- 3.3: `mcp/README.md` is a placeholder only (GO-9 keeps implementation). `work/incidents.md` is ignored/untracked with SHA-256 `ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae`; `sifty/dist-staging` is ignored/untracked with 20 files and manifest SHA-256 `ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824`. No incident contents were printed or committed. The main checkout still has the same hashes.
+- Mandatory coordinator action before merge: the merge deletes main's tracked `ai/incidents.md` and `sifty/dist-staging`. Preserve both in the main checkout first, using the exact source/destination commands in `inventory.md` §9 (`main ai/incidents.md` -> `main work/incidents.md`; `main sifty/dist-staging` -> `main .local/retained/sifty-dist-staging-20261106`). The executor did not write to main.
+- Historical handling: old MIT/private-repository material in MAP, backlog and dev-setup notes is labeled historical; current license stays Elastic License 2.0. Historical logs/inventory were not rewritten. Legacy transfer tooling still describes the old `ai/shared` archive layout and is documented as historical.
+- Failures/corrections: the first clean-export check used the stale index and exercised the old harness; corrected by staging before the check. Adding `docs/` to formatting checks exposed two literal internal-name mentions in the dated architecture reference; they were neutralized as historical prose and the tree scanner is clean. No application code or product behavior changed.
+- Next action: coordinator reviews 3.2–3.3; 3.4 (root GitHub workflows and path coverage) remains open. Stop before 3.4.
+
+## 2026-11-06 — 3.2 correction — resume resolves the worktree card during path migration
+
+Check: `set -e; python3 -m unittest -v bin.tests.test_resume 2>&1 | tail -4; cd /Volumes/SSD/Dev/tknff/sifty; set +e; WORK_SESSION=1 python3 .worktrees/OPS-4/bin/work-resume OPS-4 >/tmp/ops4-main-resume.txt 2>/tmp/ops4-main-resume.err; rc=$?; set -e; test $rc -eq 97; grep -E 'Card folder:|work/tasks/ops/OPS-4_repository-and-workflow-foundation' /tmp/ops4-main-resume.txt; grep -E '^\- \[ \] 3\.4' /tmp/ops4-main-resume.txt; echo migration_resume_exit=$rc`
+Exit: 0
+
+```
+----------------------------------------------------------------------
+Ran 1 test in 0.345s
+
+OK
+- Card folder: `work/tasks/ops/OPS-4_repository-and-workflow-foundation`
+1. Read the next assigned open step (`- [ ]`) in the plan (work/tasks/ops/OPS-4_repository-and-workflow-foundation/plan.md).
+- [ ] 3.4 — Move GitHub workflows to root, correct their paths and cover backend, frontend, workers and harness checks.
+migration_resume_exit=97
+```
+
+## 2026-11-06 — note
+
+Correction after review: `work-resume` read the card's relative path from the base checkout, so before merge (base still at `ai/tasks/`, work branch at `work/tasks/`) it could miss the worktree card and report every step closed. It now resolves the card inside the worktree by ID and prints the new path. Added `bin/tests/test_resume.py` for this migration state; `bin/work-test` passes, and the branch command run from the main checkout prints `work/tasks/ops/OPS-4_repository-and-workflow-foundation` with the remaining open steps. No application code changed.
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 1
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+Traceback (most recent call last):
+  File "/tmp/ops4_links_inventory.py", line 45, in <module>
+    text = p.read_text()
+           ^^^^^^^^^^^^^
+  File "/Users/tknff/anaconda3/lib/python3.12/pathlib.py", line 1027, in read_text
+    with self.open(mode='r', encoding=encoding, errors=errors) as f:
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/tknff/anaconda3/lib/python3.12/pathlib.py", line 1013, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+IsADirectoryError: [Errno 21] Is a directory: 'tools/shared'
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory (corrected check)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 1
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 12
+STALE legacy/app/test/transfer.test.ts:34
+STALE legacy/app/test/transfer.test.ts:35
+STALE legacy/app/test/transfer.test.ts:36
+STALE legacy/app/test/transfer.test.ts:88
+STALE legacy/app/test/transfer.test.ts:89
+STALE legacy/app/test/transfer.test.ts:92
+STALE legacy/app/test/transfer.test.ts:93
+STALE legacy/app/test/transfer.test.ts:144
+STALE legacy/app/test/transfer.test.ts:165
+STALE work/WORKFLOW.md:49
+STALE work/tasks/go-migration/GO-1_backend-and-public-repo/checks/check-2.2.sh:3
+STALE work/tasks/go-migration/GO-1_backend-and-public-repo/checks/check-2.2.sh:12
+Traceback (most recent call last):
+  File "/tmp/ops4_links_inventory.py", line 56, in <module>
+    assert not hits
+           ^^^^^^^^
+AssertionError
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and exact card inventory (final)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 0
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 0
+card_files_old: 243
+card_files_new: 243
+canonical_card_ids: 49
+LINK_INVENTORY_OK
+```
+
+## 2026-11-06 — 3.2/3.3 verification — active links and canonical ID inventory (corrected count)
+
+Check: `python3 /tmp/ops4_links_inventory.py`
+Exit: 0
+
+```
+active_markdown_links_checked: 9
+active_markdown_links_missing: 0
+active_stale_ai_references: 0
+card_files_old: 243
+card_files_new: 243
+canonical_card_ids: 46
+single_file_cards: 2
+LINK_INVENTORY_OK
+```
+
+## 2026-11-06 — 3.3 correction — portable relative-name bundle manifest
+
+Check: `python3 /tmp/ops4_bundle_manifest.py`
+Exit: 0
+
+```
+old_style_main      = ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+old_style_worktree  = ef6fb24288551ba3420bdc31b2ce6936d903bdee894d16b734d61955e35f3824
+manifest_main_files  = 20
+manifest_main        = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+manifest_worktree_files  = 20
+manifest_worktree        = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+manifest_temp_dest_files = 20
+manifest_temp_dest = cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+incident_main     = ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+incident_worktree = ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae
+```
+
+## 2026-11-06 — note
+
+Correction to §9 preservation instructions: the earlier `ef6f…` bundle digest was a path-inclusive digest over the sorted `shasum -a 256` lines of the source tree rooted at `sifty/dist-staging/`. It matches main and the worktree only because both were scanned with the same relative prefix; it cannot match a retained copy rooted elsewhere. The inventory now specifies a path-independent algorithm: sort files by relative path, hash each file's bytes with SHA-256, feed `<hash>  <relative-path>\n` lines to SHA-256. All three locations (main source, worktree source, temporary destination copy) produce `20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064`. The old log output is left unchanged; this note and the corrected inventory supersede its use for destination verification. No main writes, backups, or file changes were made.
+
+## 2026-11-06 — 3.4 root workflow and covered suites
+
+Check: `bash /tmp/ops4_34_check.sh`
+Exit: 0
+
+```
+== static workflow check ==
+workflow_jobs: backend,frontend,harness,leak-scan,workers
+static_workflow_check: OK
+== leak scanner self-test ==
+ok  flag  [cloud access key]
+ok  flag  [personal access token]
+ok  flag  [cloud API key]
+ok  flag  [JSON Web Token]
+ok  flag  [private key (PEM block)]
+ok  flag  [secret assigned a real value]
+ok  flag  [credentials in a URL]
+ok  pass  'fitScore := assess(candidate, posting)'
+ok  pass  'api_key = ${SIFTY_API_KEY}'
+ok  pass  'export API_KEY from the environment'
+ok  pass  'token: your-token-here'
+ok  pass  'password = <changeme>'
+ok  pass  'WORK_SESSION=1'
+ok  pass  'SIFTY_PROD_PORT=8080'
+ok  pass  'WORK_PUSH=0'
+ok  pass  '// read the key from a local file the .gitignore excludes'
+ok  allow '// OPS-4 uses bin/work-test to record this checkpoint'
+ok  allow 'docs(scope): bin/work-commit records the step'
+ok  allow Russian work-record wording
+ok  flag  Russian application text
+ok  scanner sources formatting-exempt
+ok  allow documented compatibility literal only at its named path
+ok  diagnostics redact the matched value
+ok  scanner own sources carry no credential form
+
+PASS: 7 seeded credentials flagged, 9 clean lines passed
+== whole-tree leak sweep ==
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+== harness suite ==
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+== backend vet/build/race ==
+?   	github.com/w3con/sifty/cmd/sifty	[no test files]
+ok  	github.com/w3con/sifty/internal/assess	(cached)
+ok  	github.com/w3con/sifty/internal/background	(cached)
+ok  	github.com/w3con/sifty/internal/candidate	(cached)
+ok  	github.com/w3con/sifty/internal/collect	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+?   	github.com/w3con/sifty/internal/dirs	[no test files]
+ok  	github.com/w3con/sifty/internal/fetch	(cached)
+ok  	github.com/w3con/sifty/internal/inspect	2.360s
+?   	github.com/w3con/sifty/internal/model	[no test files]
+ok  	github.com/w3con/sifty/internal/prepare	(cached)
+?   	github.com/w3con/sifty/internal/prompts	[no test files]
+ok  	github.com/w3con/sifty/internal/records	(cached)
+ok  	github.com/w3con/sifty/internal/server	(cached)
+ok  	github.com/w3con/sifty/internal/source	(cached)
+ok  	github.com/w3con/sifty/internal/store	(cached)
+?   	github.com/w3con/sifty/internal/version	[no test files]
+ok  	github.com/w3con/sifty/internal/worker	(cached)
+?   	github.com/w3con/sifty/scripts/capture-fixtures	[no test files]
+== frontend npm ci ==
+
+added 28 packages in 745ms
+== frontend build ==
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BHyfT4x_.js                                 288.61 kB │ gzip: 89.05 kB
+✓ built in 430ms
+== worker npm ci ==
+
+added 2 packages in 174ms
+== worker browser ==
+== worker tests ==
+
+> test
+> node --test automation.test.mjs
+
+TAP version 13
+# Subtest: 1.1 realistic fingerprint: UA and navigator.webdriver
+ok 1 - 1.1 realistic fingerprint: UA and navigator.webdriver
+  ---
+  duration_ms: 165.284666
+  type: 'test'
+  ...
+# Subtest: 1.2 host pacing: sequential navigations are spaced by the configured interval
+ok 2 - 1.2 host pacing: sequential navigations are spaced by the configured interval
+  ---
+  duration_ms: 306.303333
+  type: 'test'
+  ...
+# Subtest: 1.3 concurrency: at most the configured number of navigations run at once
+ok 3 - 1.3 concurrency: at most the configured number of navigations run at once
+  ---
+  duration_ms: 312.6665
+  type: 'test'
+  ...
+# Subtest: 2.1 block detection: 429 response ends in backed-off state with no retry
+ok 4 - 2.1 block detection: 429 response ends in backed-off state with no retry
+  ---
+  duration_ms: 146.72475
+  type: 'test'
+  ...
+# Subtest: 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+ok 5 - 2.2 cooldown: second inspect to blocked host is deferred; proceeds after cooldown
+  ---
+  duration_ms: 383.139791
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1503.153167
+OPS4_34_CHECK_OK
+```
+
+## 2026-11-06 — 3.5 obsolete-path cleanup and retention audit
+
+Check: `bash /tmp/ops4_35_verify.sh`
+Exit: 0
+
+```
+== obsolete roots and tracked paths ==
+absent: ai
+absent: app
+absent: sifty
+absent: backend/.github
+no_tracked_old_paths_or_deletions: OK
+== retained staging bundle ==
+retained_manifest: 20 cf1e44c802be4fdccfbd642604672f0714dedc4814a00f8f88a92f373abf7064
+bundle_retained_local_and_ignored: OK
+== preserved local/runtime material ==
+preserved_paths: OK
+== live reference repair ==
+settings_reference_updated: OK
+== documentation and tree checks ==
+tree-check: /Volumes/SSD/Dev/tknff/sifty/.worktrees/OPS-4 is clean (public repository, origin git@github.com:w3con/sifty.git).
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+== frontend build after Settings.tsx change ==
+
+> sifty-web@1.0.0 build
+> tsc --noEmit && vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 54 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                                 0.40 kB │ gzip:  0.28 kB
+dist/assets/ibm-plex-mono-latin-400-normal-CvHOgSBP.woff       13.14 kB
+dist/assets/ibm-plex-mono-latin-500-normal-CB9ihrfo.woff       13.16 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-BTotfTJu.woff    13.51 kB
+dist/assets/ibm-plex-mono-latin-400-normal-DMJ8VG8y.woff2      14.71 kB
+dist/assets/ibm-plex-sans-cyrillic-400-normal-DZqxrq2p.woff2   14.80 kB
+dist/assets/ibm-plex-mono-latin-500-normal-DSY6xOcd.woff2      14.89 kB
+dist/assets/unbounded-latin-600-normal-oRSANpZr.woff2          20.95 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CYLoc0-x.woff       22.10 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bth3BMcD.woff       22.28 kB
+dist/assets/ibm-plex-sans-latin-400-normal-CDDApCn2.woff2      22.59 kB
+dist/assets/ibm-plex-sans-latin-700-normal-Bxkt5Cjx.woff2      22.83 kB
+dist/assets/ibm-plex-sans-latin-600-normal-Cu4Hd6ag.woff       23.88 kB
+dist/assets/ibm-plex-sans-latin-500-normal-BgVn5rGT.woff       23.92 kB
+dist/assets/ibm-plex-sans-latin-500-normal-6ng42L7E.woff2      24.18 kB
+dist/assets/ibm-plex-sans-latin-600-normal-CuJfVYMP.woff2      24.25 kB
+dist/assets/unbounded-latin-600-normal-BPdB_PEv.woff           26.40 kB
+dist/assets/index-BaqFdC5W.css                                 28.78 kB │ gzip:  6.87 kB
+dist/assets/index-BmioAjSk.js                                 288.62 kB │ gzip: 89.06 kB
+✓ built in 429ms
+OPS4_35_VERIFY_OK
+```
+
+## 2026-11-06 — note
+
+3.5 retention correction: worktree work/incidents.md is a newer coordinator-written copy (7207 bytes, mtime 2026-11-06 17:49) than main's ai/incidents.md (6342 bytes, SHA-256 ea43e12946752a06a49d83d0495d30d99d12d5b6eb7599a2510470add213b2ae). Step 3.5 did not modify it; the coordinator must preserve the newer copy when reconciling inventory §9. No product or tracked-content change.
+
+## 2026-11-06 — 4.1 — four task states, blockers and cancellation outcomes
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+...............
+----------------------------------------------------------------------
+Ran 15 tests in 3.756s
+
+OK
+```
+
+## 2026-11-06 — 4.2 — lightweight bug and idea capture
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_capture.py'`
+Exit: 0
+
+```
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 1.427s
+
+OK
+```
+
+## 2026-11-06 — 4.3 — task/status/resume navigation and documentation
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_navigation.py' && python3 bin/work-test`
+Exit: 0
+
+```
+.....
+----------------------------------------------------------------------
+Ran 5 tests in 2.043s
+
+OK
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   compile work-status
+ok   compile work-list
+ok   compile work-capture
+ok   compile work-cancel
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   template capture.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   --help work-status
+ok   --help work-list
+ok   --help work-capture
+ok   --help work-cancel
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 4.1 correction — handover marks the worktree card in progress
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+................
+----------------------------------------------------------------------
+Ran 16 tests in 4.256s
+
+OK
+```
+
+## 2026-11-06 — 4.1 correction — base-card blockers stop acceptance
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+.................
+----------------------------------------------------------------------
+Ran 17 tests in 4.497s
+
+OK
+```
+
+## 2026-11-06 — phase 4 correction — full harness at correction head
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   compile work-status
+ok   compile work-list
+ok   compile work-capture
+ok   compile work-cancel
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   template capture.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   --help work-status
+ok   --help work-list
+ok   --help work-capture
+ok   --help work-cancel
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 4.1 correction — legacy approved/descoped inference
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py'`
+Exit: 0
+
+```
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 5.033s
+
+OK
+```
+
+## 2026-11-06 — phase 4 correction — final full harness
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   compile work-status
+ok   compile work-list
+ok   compile work-capture
+ok   compile work-cancel
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   template capture.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   --help work-status
+ok   --help work-list
+ok   --help work-capture
+ok   --help work-cancel
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — phase 4 coordinator review corrections
+
+Fixed handover brief paths relative to the worktree; bounded metadata and step parsing to the header/unfenced content; resume now refuses base outcomes, blockers and attention; navigation uses the active worktree's effective state while showing base safety; capture preserves exact wording including outer whitespace and CRLF.
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_task_states.py' && python3 -m unittest discover -s bin/tests -p 'test_capture.py' && python3 -m unittest discover -s bin/tests -p 'test_navigation.py'`
+Exit: 0
+
+```
+...................
+----------------------------------------------------------------------
+Ran 19 tests in 5.912s
+
+OK
+........
+----------------------------------------------------------------------
+Ran 8 tests in 3.026s
+
+OK
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 5.741s
+
+OK
+```
+
+## 2026-11-06 — phase 4 corrections — final harness result
+
+Ran python3 bin/work-test once after all corrections: exit 0, PASS: all harness checks (compile, templates, command help, 85 isolated lifecycle/task tests, leak scanner self-test/tests/tree-check, root CI workflow).
+
+## 2026-11-06 — phase 4 correction — surface contradictory active worktree
+
+navigation_state no longer falls back to a healthy base/current state when the active worktree card has contradictory or unknown metadata; work-status and work-list now refuse and leave the base card unchanged. Base terminal/blocker/attention override precedence is retained.
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_navigation.py'`
+Exit: 0
+
+```
+........
+----------------------------------------------------------------------
+Ran 8 tests in 6.381s
+
+OK
+```
+
+## 2026-11-06 — 5.1 — current product/architecture map
+
+Check: `python3 - <<'PY'
+import re, pathlib, sys
+root=pathlib.Path(".").resolve()
+docs=[root/"docs/MAP.md",root/"docs/README.md"]
+def anchors(p):
+    text=p.read_text(encoding="utf-8")
+    ids=set(re.findall(r"<a\s+(?:id|name)=\"([^\"]+)\"",text))
+    for h in re.findall(r"^#{1,6}\s+(.+?)\s*$",text,re.M):
+        s=h.lower(); s=re.sub(r"<[^>]+>","",s); s=re.sub(r"[^\w\s-]","",s); s=re.sub(r"\s+","-",s).strip("-")
+        ids.add(s)
+    return ids
+errors=[]
+for doc in docs:
+    text=doc.read_text(encoding="utf-8")
+    for target in re.findall(r"(?<!!)\[[^\]]*\]\(([^)\s]+)\)",text):
+        if re.match(r"^(?:https?|mailto):",target): continue
+        path,frag=(target.split("#",1)+[""])[:2]
+        t=doc if not path else (doc.parent/path)
+        t=t.resolve()
+        if not t.exists(): errors.append(f"{doc.relative_to(root)}: missing {target}")
+        elif frag and t.suffix==".md" and frag not in anchors(t): errors.append(f"{doc.relative_to(root)}: missing anchor {target}")
+if errors:
+    print("\n".join(errors)); sys.exit(1)
+print(f"OK: {len(docs)} navigation documents, all local links and fragments resolve")
+PY`
+Exit: 0
+
+```
+OK: 2 navigation documents, all local links and fragments resolve
+```
+
+## 2026-11-06 — 5.2 — epics, task dependencies and reusable map validator
+
+Check: `python3 bin/map-check && python3 -m unittest discover -s bin/tests -p 'test_map.py' && git diff --check`
+Exit: 0
+
+```
+OK: 4 active document(s), 14 requirement(s), 47 canonical card(s), 2 legacy card(s)
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.015s
+
+OK
+```
+
+## 2026-11-06 — 5.3 — data provenance, proposed separation and OPS-8 migration card
+
+Check: `python3 bin/map-check && python3 -m unittest discover -s bin/tests -p 'test_map.py' && git diff --check`
+Exit: 0
+
+```
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+..........
+----------------------------------------------------------------------
+Ran 10 tests in 0.015s
+
+OK
+```
+
+## 2026-11-06 — phase 5 — final harness
+
+Check: `python3 bin/work-test`
+Exit: 0
+
+```
+ok   compile _work_lib.py
+ok   compile _map_lib.py
+ok   compile work-new
+ok   compile work-plan
+ok   compile work-handover
+ok   compile work-note
+ok   compile work-commit
+ok   compile work-resume
+ok   compile work-accept
+ok   compile work-finish
+ok   compile work-status
+ok   compile work-list
+ok   compile work-capture
+ok   compile work-cancel
+ok   compile map-check
+ok   template convention.md
+ok   template description.md
+ok   template short-description.md
+ok   template plan.md
+ok   template log.md
+ok   template comments.md
+ok   template attention.md
+ok   template executor-brief.md
+ok   template capture.md
+ok   AGENTS.md present
+ok   AGENTS.md names the commands
+ok   AGENTS.md has no @-import of the mechanism
+ok   --help work-new
+ok   --help work-plan
+ok   --help work-handover
+ok   --help work-note
+ok   --help work-commit
+ok   --help work-resume
+ok   --help work-accept
+ok   --help work-finish
+ok   --help work-status
+ok   --help work-list
+ok   --help work-capture
+ok   --help work-cancel
+ok   --help map-check
+ok   navigation map links
+ok   lifecycle tests (bin/tests)
+ok   leak scanner self-test
+ok   leak scanner tests (backend/scripts/leakcheck/tests)
+ok   leak scanner own sources clean
+ok   root CI workflow present
+ok   no nested CI workflow
+
+PASS: all harness checks
+```
+
+## 2026-11-06 — 6.1 — continuous preview of one active worktree with visible failure and one owner
+
+Check: `python3 -m unittest discover -s bin/tests -p 'test_preview.py' && (cd backend && go test ./internal/server && go build ./...) && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+....
+----------------------------------------------------------------------
+Ran 4 tests in 58.970s
+
+OK
+ok  	github.com/w3con/sifty/internal/server	(cached)
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```
+
+## 2026-11-06 — note
+
+Continuation checkpoint: synchronized current owner-approved main changes into the work branch while preserving the unfinished deploy library/entrypoint. Both pre-sync diffs are retained under main .local/retained/release-continuation-20261106. A coordinator copy loop initially used zsh's reserved path variable and could not resolve cp; reran it with a non-reserved variable and absolute copy executable. No source bytes were lost. Current assignment is 6.2 only, with live ports/data protected and suites disabled.
+
+## 2026-11-06 — 6.2 — isolated environment artifacts, candidate builds, explicit data refresh, rollback
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-deploy bin/sift-data-refresh bin/work-test && OPS4_SRC="$PWD" python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-62-demo/demo.py`
+Exit: 0
+
+```
+successful-deploy: state=OK version=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+forced-failure: exit=1 state=ROLLBACK served=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+explicit-refresh: config+kb+answers copied, old staging edit preserved in 20261106T200939.734306Z, wal-row=prod-row
+demo: OK
+```
+
+## 2026-11-06 — 6.2 acceptance corrections — post-stop DB snapshot, safe refresh recovery, per-env operation lock, coherent rollback
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-deploy bin/sift-data-refresh bin/work-test && OPS4_SRC="$PWD" python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-62-demo/demo.py && git diff --check`
+Exit: 0
+
+```
+successful-deploy: state=OK version=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+forced-failure: exit=1 state=ROLLBACK served=prod-v1 bundle=ui-v1 workers=worker-v1 db=prod-row
+explicit-refresh: config+kb+answers copied, old staging edit preserved in 20261106T212937.612662Z, wal-row=prod-row
+demo: OK
+```
+
+## 2026-11-06 — 6.2 data-safety correction — never infer a missing database from absent recovery metadata
+
+Check: `python3 -m py_compile bin/_deploy_lib.py && git diff --check`
+Exit: 0
+
+```
+
+```
+
+## 2026-11-06 — 6.3 — one-card squash, approved-source release, failed-release recovery
+
+Check: `python3 -m py_compile bin/_work_lib.py bin/_deploy_lib.py bin/work-finish bin/sift-promote bin/sift-deploy && python3 bin/sift-promote --source HEAD --approve HEAD --check >/dev/null && python3 bin/sift-deploy --help >/dev/null && python3 bin/work-finish --help >/dev/null && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/demo.py "$PWD" && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+source revision: 43cf7cbf348df9396df39f984b28419beb3c03e7
+squash revision: b06a78c241eabe6dba0bd639c1ef247fe711ef10 (feat(ops): DEMO-1 Demo card)
+target revision: main@1073fc0279792db593e75b9c469d75177d6d49e1
+release adapter: python3 bin/fake-release
+release succeeded for source 43cf7cbf348df9396df39f984b28419beb3c03e7
+published one card commit b06a78c241eabe6dba0bd639c1ef247fe711ef10 on main
+finished DEMO-1
+fake-release: OK source=43cf7cbf348df9396df39f984b28419beb3c03e7 build=demo-build-1
+success: source=43cf7cbf348d squash=b06a78c241ea main=b06a78c subject='feat(ops): DEMO-1 Demo card'
+success: recovery-ref=43cf7cb done=A	work/tasks/ops/DEMO-1_demo/done.md
+approval-guard: refused wrong approval, main unchanged
+source revision: 0014a8f72237cee7eaecf1f5918b8861656e4643
+squash revision: 0d652e93109421361a2cb7774ff0483916798adc (feat(ops): DEMO-2 Demo card)
+target revision: main@b06a78c241eabe6dba0bd639c1ef247fe711ef10
+release adapter: python3 bin/fake-release
+REFUSED:
+  - release failed (exit 1) for source 0014a8f72237cee7eaecf1f5918b8861656e4643; no done.md, main unchanged, work branch and worktree preserved
+fake-release: deliberate failure
+failure: source=0014a8f72237 squash=0d652e931094 main=b06a78c outcome=absent branch=preserved worktree=preserved
+demo: OK
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```
+
+## 2026-11-06 — note
+
+6.3 correction: materialize_source now wraps git-archive/extraction failures in DeployError, removes its partial source directory, and refuses an invalid revision. Verified with a pinned-source extraction and a bad-SHA refusal.
+
+## 2026-11-06 — note
+
+6.3 correction: legacy rollback restores the actual adopted bundle/worker paths but no longer removes pre-existing new-destination artifacts; restore_artifacts owns their pre-deploy state. Verified with a pre-existing new bundle/worker tree preserved while the legacy assets were restored.
+
+## 2026-11-06 — 6.3 acceptance corrections — legacy restart, post-release recovery, source-path guards
+
+Check: `python3 -m py_compile bin/_work_lib.py bin/_deploy_lib.py bin/work-finish bin/sift-promote bin/sift-deploy && python3 bin/sift-promote --source HEAD --approve HEAD --check >/dev/null && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/demo.py "$PWD" && python3 bin/map-check && git diff --check`
+Exit: 0
+
+```
+source revision: 4e8dca5b43bf68aea47c759864329f8b8d40b3e3
+squash revision: 327982ab6bdaf9bd445743964415355c04ede95c (feat(ops): DEMO-1 Demo card)
+target revision: main@f9f7b3ddff2b13ae83530d7e61ceeecce86d59f0
+commit guards passed for squash 327982ab6bdaf9bd445743964415355c04ede95c
+release adapter: python3 bin/fake-release
+release succeeded for source 4e8dca5b43bf68aea47c759864329f8b8d40b3e3
+published one card commit 327982ab6bdaf9bd445743964415355c04ede95c on main
+finished DEMO-1
+fake-release: OK source=4e8dca5b43bf68aea47c759864329f8b8d40b3e3 build=demo-build-1
+success: source=4e8dca5b43bf squash=327982ab6bda main=327982a subject='feat(ops): DEMO-1 Demo card'
+success: recovery-ref=4e8dca5 done=A	work/tasks/ops/DEMO-1_demo/done.md
+approval-guard: refused wrong approval, main unchanged
+source revision: 1f4c2e171a856040922f7e9e2a3355237496b227
+squash revision: 3e51a55a205ba21b99bc100ed287fe614887159c (feat(ops): DEMO-2 Demo card)
+target revision: main@327982ab6bdaf9bd445743964415355c04ede95c
+commit guards passed for squash 3e51a55a205ba21b99bc100ed287fe614887159c
+release adapter: python3 bin/fake-release
+REFUSED:
+  - release failed (exit 1) for source 1f4c2e171a856040922f7e9e2a3355237496b227; no done.md, main unchanged, work branch and worktree preserved
+fake-release: deliberate failure
+failure: source=1f4c2e171a85 squash=3e51a55a205b main=327982a outcome=absent branch=preserved worktree=preserved
+source revision: f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+squash revision: 761b5e627d033f8eacae821dbf609566e2cb8c93 (feat(ops): DEMO-3 Demo card)
+target revision: main@327982ab6bdaf9bd445743964415355c04ede95c
+commit guards passed for squash 761b5e627d033f8eacae821dbf609566e2cb8c93
+release adapter: python3 bin/fake-release
+release succeeded for source f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+release already advanced production; requesting recovery
+REFUSED:
+  - target moved during release: main@327982ab6bdaf9bd445743964415355c04ede95c -> main@2de8335913f7eb6da86d5c86e592955bd14c3089; production was already released for source f0b7fbdab8d86b900d85b8f6041afed792e38ddf; main is at the observed target, not claimed unchanged
+  - production recovery reported success; done.md was not published
+[main 2de8335] actor moved main
+fake-release: OK source=f0b7fbdab8d86b900d85b8f6041afed792e38ddf build=demo-build-1
+fake-release: recovery OK source=f0b7fbdab8d86b900d85b8f6041afed792e38ddf
+post-release-recovery: main=2de8335913f7 source=f0b7fbdab8d8 outcome=absent recovery=requested
+source revision: 088118b203f0952ea8835f312511ce792290c98e
+squash revision: f36fb9ce9f6252c1f6858b3598660f23445d5a57 (feat(ops): DEMO-4 Demo card)
+target revision: main@2de8335913f7eb6da86d5c86e592955bd14c3089
+commit guards passed for squash f36fb9ce9f6252c1f6858b3598660f23445d5a57
+release adapter: python3 bin/fake-release
+release succeeded for source 088118b203f0952ea8835f312511ce792290c98e
+release already advanced production; requesting recovery
+REFUSED:
+  - target moved during release: main@2de8335913f7eb6da86d5c86e592955bd14c3089 -> main@a00aea3213bd9727256cfa2d3251d199148fcc57; production was already released for source 088118b203f0952ea8835f312511ce792290c98e; main is at the observed target, not claimed unchanged
+  - production recovery FAILED (exit 1); production may still run source 088118b203f0952ea8835f312511ce792290c98e; inspect the adapter output above
+[main a00aea3] actor moved main
+fake-release: OK source=088118b203f0952ea8835f312511ce792290c98e build=demo-build-1
+fake-release: recovery deliberately failed
+post-release-recovery-failure: main=a00aea3 source=088118b203f0 outcome=absent recovery=FAILED
+legacy-boundary: old argv restarted, /api/version=404, /api/health=200
+demo: OK
+OK: 5 active document(s), 14 requirement(s), 48 canonical card(s), 2 legacy card(s)
+```
+
+## 2026-11-06 — note
+
+6.3 correction evidence: run_commit_guards ran the approved source's backend/scripts/leakcheck commit-diff-check and commit-msg-check against a prepared real OPS-4 squash commit (exit 0, no findings). The scratch demo also proves the old binary rejects --port/--public-port and returns 404 for /api/version while restart_legacy_server succeeds through /api/health, and that post-release target movement requests recovery (success and honest failure).
+
+## 2026-11-06 — 6.3 recovery receipt — pin recovery to source/squash/approval/build and refuse stale
+
+Check: `python3 -m py_compile bin/_deploy_lib.py bin/sift-promote && python3 /var/folders/c8/_lqpbcqj6rq9dmy7v2nj70mw0000gn/T/opencode/ops4-63-demo/receipt_demo.py "$PWD" && git diff --check`
+Exit: 0
+
+```
+receipt-match: OK
+receipt-mismatch-refused: receipt squashSha does not match this finish
+stale-state-refused: latest deploy state is 'FAILED'
+```
+
+## 2026-11-06 — note
+
+Delivery installation 2026-11-06: accepted work SHA 396a21442e60b3694741b473e1def9edd6f8d50e. Installed into main working tree from the worktree: bin/_deploy_lib.py, bin/_work_lib.py, bin/sift-deploy, bin/sift-promote, bin/sift-data-refresh, bin/work-finish, bin/work.config, bin/work-test (owner skip default + sift-deploy/sift-data-refresh in TOOLS), Makefile, .gitignore, AGENTS.md (owner role text preserved and live-preview paragraph retained), docs/MAP.md, docs/architecture/preview-and-environments.md, work/WORKFLOW.md, work/ROADMAP.md and the active OPS-4 card records. Pending owner changes outside this list, config/prompts relocation, legacy prompt readers and preview-client reload fix were not touched. Backups are under . Checks: command --help for work-finish/sift-promote/sift-deploy/sift-data-refresh; sift-promote --source 396a214 --approve 396a214 --check; git diff --check; read-only HTTP 8080 / and /api/health 200 (version 404 old binary), 8081 / /api/health /api/version 200. No tests, builds, restart, stop, adoption, recovery, refresh, merge, commit or push. The new code is source-only in main; the running daemons still use the old binary/bundles until an owner-approved release.
+
+## 2026-11-06 — note
+
+Delivery backup: .local/delivery-backup-20261106T230400 (ignored local directory; contains every overwritten target before installation).
+
+## 2026-11-06 — note
+
+FINAL PROTOTYPE ACCEPTANCE — 2026-11-06: owner accepted staging and approved closure («принимай и закрывай»). 7.1 evidence: recorded 6.2/6.3 scratch deploy/release/recovery/legacy demonstrations, accepted builds (Go, npm ci, tsc+vite) and live review of 8080/8081; automated suites SKIPPED by owner prototype policy, not reported as passed. 7.2 evidence: accepted commands/config/docs installed in main and reconciled into this source snapshot; owner approval and first-adoption release path recorded. Proceeding to normal pinned-source work-finish with WORK_RELEASE_CMD set to bin/sift-promote --adopt-legacy for this invocation only.

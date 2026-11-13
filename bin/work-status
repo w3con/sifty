@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+"""work-status — inspect or change one card's state without bypassing checks.
+
+Usage:
+    work-status <id>
+    work-status <id> <state>
+    work-status <id> --block "<reason>"
+    work-status <id> --unblock
+
+Display shows the canonical state, blocker, kind, card path, the exact next open
+step and, when a work/<id> worktree differs from the base checkout, both states.
+The normal states are backlog, in progress, review and done. `done` is refused
+here: only `work-finish` may write it after the checked, owner-approved
+completion path. Rejection and cancellation are archived outcomes written by
+`work-finish --reject` and `work-cancel`.
+
+State changes are written to the current checkout. Run the command inside the
+active worktree when changing an in-progress card; the base copy is then shown
+as the differing base state by navigation.
+"""
+import argparse
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import _work_lib as w
+
+STATE_ARG_ALIASES = {
+    "backlog": "backlog",
+    "in-progress": "in progress",
+    "in progress": "in progress",
+    "in_progress": "in progress",
+    "started": "in progress",
+    "wip": "in progress",
+    "review": "review",
+    "done": "done",
+    "rejected": "rejected",
+    "cancelled": "cancelled",
+    "canceled": "cancelled",
+}
+
+
+def render(card_id, nav):
+    state = nav["effective"]
+    card_dir = state["card_dir"]
+    base_state = nav["base_state"]
+    wt_info = nav["wt_info"]
+    root = w.repo_root()
+    base_root = w.base_checkout_root()
+
+    def display_path(path):
+        rel = os.path.relpath(path, root)
+        if rel.startswith(".."):
+            rel = os.path.relpath(path, base_root)
+        return rel
+
+    print("%s — %s" % (card_id, w.card_title(card_dir)))
+    print("Card: %s" % display_path(card_dir))
+    if base_state and base_state["card_dir"] != card_dir:
+        print("Base card: %s" % display_path(base_state["card_dir"]))
+    label = state["state"]
+    if state["terminal"]:
+        label += " (successful outcome)" if state["successful"] else \
+                 " (archived unsuccessful outcome)"
+    print("State: %s" % label)
+    print("Kind: %s" % state["kind"])
+    print("Blocker: %s" % ("; ".join(state["blockers"]) or "none"))
+    if state["attention"]:
+        print("Attention: %s" % "; ".join(state["attention"]))
+    if state["next_step"]:
+        print("Next open step: %s" % state["next_step"])
+    elif state["terminal"]:
+        print("Next open step: none (archived outcome)")
+    elif state["steps_closed"]:
+        print("Next open step: none (all steps closed)")
+    else:
+        print("Next open step: none (no steps prepared)")
+    if base_state and (nav["source"] == "worktree"
+                       or base_state["state"] != state["state"]
+                       or base_state["blockers"] or base_state["attention"]):
+        print("Base state: %s" % base_state["state"])
+        if base_state["blockers"]:
+            print("Base blocker: %s" % "; ".join(base_state["blockers"]))
+        if base_state["attention"]:
+            print("Base attention: %s" % "; ".join(base_state["attention"]))
+    if wt_info:
+        print("Worktree: %s" % w.worktree_note(wt_info))
+    else:
+        print("Worktree: none")
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="work-status")
+    ap.add_argument("id")
+    ap.add_argument("state", nargs="?", default=None,
+                    help="backlog, in progress or review (done is refused)")
+    ap.add_argument("--block", default=None, metavar="REASON")
+    ap.add_argument("--unblock", action="store_true")
+    args = ap.parse_args()
+
+    card_dir = w.require_card_dir(args.id)
+    state = w.card_state(card_dir)
+    if state["errors"]:
+        w.refuse(["cannot read %s: %s" % (args.id, "; ".join(state["errors"]))])
+
+    requested = None
+    if args.state is not None:
+        key = args.state.strip().lower()
+        requested = STATE_ARG_ALIASES.get(key)
+        if requested is None:
+            w.die("unknown state %r; use backlog, in progress, review, done, "
+                  "rejected or cancelled" % args.state)
+
+    if requested is None and args.block is None and not args.unblock:
+        nav = w.navigation_state(args.id)
+        if nav["effective"] is None:
+            w.refuse(["cannot read %s: no card state" % args.id])
+        if nav["effective"]["errors"]:
+            w.refuse(["cannot read %s: %s"
+                      % (args.id, "; ".join(nav["effective"]["errors"]))])
+        render(args.id, nav)
+        return
+
+    if args.block is not None and args.unblock:
+        w.die("--block and --unblock are mutually exclusive")
+
+    problems = []
+    if requested is not None:
+        problems += w.state_transition(card_dir, requested)
+    if requested is None and (args.block is not None or args.unblock):
+        if state["terminal"]:
+            problems.append("card already has terminal outcome %s; archived "
+                            "evidence is not reopened" % state["state"])
+    if args.block is not None and not args.block.strip():
+        problems.append("--block requires a non-empty reason")
+    if problems:
+        w.refuse(["cannot change %s:" % args.id] + problems)
+
+    changed = w.rewrite_status_metadata(
+        card_dir,
+        state=requested,
+        block=args.block.strip() if args.block is not None else None,
+        unblock=args.unblock,
+    )
+
+    if not changed:
+        w.info("%s already has the requested state/metadata" % args.id)
+    else:
+        if requested is not None and args.block is not None:
+            message = "chore(work): set %s to %s and record blocker" % (
+                args.id, requested)
+        elif requested is not None:
+            message = "chore(work): set %s to %s" % (args.id, requested)
+        elif args.block is not None:
+            message = "chore(work): block %s" % args.id
+        else:
+            message = "chore(work): unblock %s" % args.id
+        w.commit_paths([os.path.join(card_dir, "description.md")], message)
+        w.info("updated metadata in the current checkout: %s"
+               % os.path.relpath(card_dir, w.repo_root()))
+
+    if args.unblock and os.path.exists(os.path.join(card_dir, "question.md")):
+        w.info("note: question.md remains and still blocks the card")
+    nav = w.navigation_state(args.id)
+    if nav["effective"] and nav["effective"]["errors"]:
+        w.refuse(["metadata is now contradictory: %s"
+                  % "; ".join(nav["effective"]["errors"])])
+    render(args.id, nav)
+
+
+if __name__ == "__main__":
+    main()

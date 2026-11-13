@@ -1,0 +1,38 @@
+{
+  "success": true,
+  "data": {
+    "jobBoard": {
+      "isListed": true,
+      "jobPostings": [
+        {
+          "id": "b1234567-abcd-0001-efgh-000000000001",
+          "title": "Engineering Manager, Infrastructure",
+          "locationName": "London, UK",
+          "isListed": true,
+          "publishedDate": "2026-10-30T09:00:00.000Z",
+          "descriptionHtml": "<p>Manage and grow the infrastructure engineering team. Set the technical direction for reliability, observability, and developer experience.</p><p>You will work closely with the VP of Engineering to define the roadmap and hire for key positions.</p>",
+          "jobUrl": "https://jobs.ashbyhq.com/gammacorp/b1234567-abcd-0001-efgh-000000000001",
+          "applyUrl": "https://jobs.ashbyhq.com/gammacorp/b1234567-abcd-0001-efgh-000000000001/application",
+          "departmentName": "Engineering",
+          "teamName": "Infrastructure"
+        },
+        {
+          "id": "b1234567-abcd-0002-efgh-000000000002",
+          "title": "Senior Data Engineer",
+          "locationName": "Remote (EU)",
+          "isListed": true,
+          "publishedDate": "2026-10-31T09:00:00.000Z",
+          "descriptionHtml": "<p>Build and maintain the data platform that powers analytics and machine-learning workflows across the company.</p>",
+          "jobUrl": "https://jobs.ashbyhq.com/gammacorp/b1234567-abcd-0002-efgh-000000000002",
+          "applyUrl": "https://jobs.ashbyhq.com/gammacorp/b1234567-abcd-0002-efgh-000000000002/application",
+          "departmentName": "Data",
+          "teamName": "Data Platform"
+        }
+      ]
+    },
+    "organization": {
+      "name": "Gamma Corp",
+      "websiteUrl": "https://gammacorp.example"
+    }
+  }
+}

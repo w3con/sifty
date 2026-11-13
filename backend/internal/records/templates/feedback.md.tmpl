@@ -1,0 +1,28 @@
+---
+title: "Candidate feedback — {{.Date}}"
+type: reference
+status: working
+tags: [candidate-feedback]
+---
+
+# Owner-confirmed candidate feedback
+
+Recorded {{.Created}}. Source: owner confirmation in the local job catalogue for [{{.JobTitle}}]({{.JobURL}}). Scope: {{.ScopeText}}.
+
+## Original user statement (unchanged)
+
+{{.Fence}}text
+{{.Text}}
+{{.Fence}}
+
+## Grounded extraction and review
+
+{{.ExtractionBlock}}
+
+{{.ConflictsBlock}}
+
+{{.SupersedesBlock}}
+
+## For AI / source map
+
+<!-- SIFT_FEEDBACK {{.Encoded}} -->

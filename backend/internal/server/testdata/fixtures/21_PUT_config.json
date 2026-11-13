@@ -1,0 +1,14 @@
+{
+  "description": "PUT /api/config/:name \u2014 save config file",
+  "method": "PUT",
+  "path": "/api/config/runtime",
+  "requestBody": {
+    "content": "version: 1\nport: 4317\n"
+  },
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": [
+    "saved"
+  ],
+  "source": "synthetic"
+}

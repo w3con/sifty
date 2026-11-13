@@ -1,0 +1,9 @@
+{
+  "description": "GET /api/stop-words/preview?word= — count the stored roles a stop-word would newly hide; creates nothing",
+  "method": "GET",
+  "path": "/api/stop-words/preview",
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["word", "count"],
+  "source": "synthetic"
+}

@@ -1,0 +1,18 @@
+[
+  {
+    "generic_ambiguity": true,
+    "no_disagree": true,
+    "conflicts": 0,
+    "conflict_text": [],
+    "unknown_count": 1,
+    "edit_buttons": [],
+    "blocked": [
+      "POST /api/search",
+      "POST /api/jobs/2/seen"
+    ],
+    "errs": []
+  },
+  {
+    "profile_status": "Quick ranking up to date |  | Candidate context is not current: stored context predates the confirmed profile; refresh context This is separate from Quick ranking. |  | Technical details"
+  }
+]

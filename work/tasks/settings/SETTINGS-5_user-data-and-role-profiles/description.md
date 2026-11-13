@@ -15,7 +15,7 @@ Captured verbatim from the owner. This is the canonical record; do not paraphras
 
 ## Preparation
 
-**Deferred by owner.** The User/Profiles hierarchy and separate per-profile Triage/Preparation/rejections are agreed; actual submitted-application history is common. Full coordinator-authored backend design is preserved in [plan.md](plan.md). It is a deferred design record, not an approved implementation plan. No worktree, execution, auth/logout or migration is authorized now.
+Approved by the owner on 2026-11-12 (plan.md §Approval); starts after INBOX-2 is released; spec docs/specs/profiles.md.
 
 ## Provisional estimate
 

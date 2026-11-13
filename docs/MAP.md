@@ -24,8 +24,13 @@ These documents describe enduring product behavior, not task execution plans. Pr
 | Specification | Requirement | Current state |
 |---|---|---|
 | [Quick Match](specs/quick-match.md) | R-ASM, R-SEARCH, R-SET | Implemented in main (`58af432`) with v1 uncalibrated defaults: contract, extractor, pure evaluator, persistence/API and catalogue/Overview rendering. Normal persisted actual-profile adoption is proven on an isolated snapshot: 2271 visible jobs with numeric results at profile revision20 (1539 evaluated zero, 732 nonzero, 0 stale). The temporary 8083 review server is stopped. Released to production on 2026-11-10 from pinned main `157fe9f` with the confirmed staging profile selectively transferred and 2777 persisted numeric results; technical acceptance stands, card review and owner ranking-quality review remain. The dual-fit and targeted-extraction direction is in specification section 13; its coordinator-written starting policy (section 13.7) is owner-approved for implementation but not implemented, v1 remains current, and no paid call has run. Section 14 (2026-11-11, two fit scores Fits you / You fit with model-extracted requirements; card [ASSESSMENT-3](../work/tasks/assessment/ASSESSMENT-3_two-fit-scores/description.md)) supersedes section 13.7 after the owner rejected ASSESSMENT-2; implemented in main and released to production on 2026-11-11 (steps Q.1–Q.7 and Q.9): Fits you and a requirement list from model extraction, the worker and its order toggle, ✓ / ✕ on skill lines, "Skills you do not have". The model's matching pass is off by default and You fit is not shown until a matching method is chosen (section 14.14); matching quality moves to ASSESSMENT-5, the shortlist re-check to ASSESSMENT-6, vacancy sections to INBOX-2. |
-| [Profiles](specs/profiles.md) | R-SET, R-SEARCH, R-TRI | Agreed with the owner on 2026-11-12, not implemented: My data shared, profiles with their own goals, search, Fits you, Triage and decisions; search moves from Settings to the profile; card [SETTINGS-5](../work/tasks/settings/SETTINGS-5_user-data-and-role-profiles/plan.md), starts after INBOX-2. |
+| [Profiles](specs/profiles.md) | R-SET, R-SEARCH, R-TRI | Agreed with the owner on 2026-11-12, not implemented: My data shared, profiles with their own goals, search, Fits you, Inbox/Shortlist and decisions; search moves from Settings to the profile; SETTINGS-9 absorbed into S.1 (owner, 2026-11-13); card [SETTINGS-5](../work/tasks/settings/SETTINGS-5_user-data-and-role-profiles/plan.md), starts after INBOX-2. Spec updated OPS-11. |
 | [Vacancy view](specs/vacancy-view.md) | R-SEARCH, R-COL | Agreed 2026-11-12, not implemented: By section = What they ask / What they offer / (What you'll do) / Other text (owner 2026-11-12; visual layout to confirm); Key facts from merged facts; card [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) L.5 rework. |
+| [Collection](specs/collection.md) | R-COL | Owner decisions of 2026-11-13 applied. 51 rules: 36 implemented, 10 not implemented (INBOX-2, COL-2, COL-4, SETTINGS-5, 4 no-card items), 5 deviate. Cards: COL-2, COL-4, COLLECTION-1, COLLECTION-2, COLLECTION-3, SETTINGS-6. |
+| [Catalogue and search](specs/catalogue.md) | R-COL, R-SEARCH | Owner decisions of 2026-11-13 applied. 24 rules: 15 implemented, 3 implemented with known limits, 2 not implemented (INBOX-2), 1 not implemented (SETTINGS-5), 3 deviate. Cards: SETTINGS-5, INBOX-2, INBOX-1. |
+| [Triage and decisions](specs/triage.md) | R-TRI | Owner decisions of 2026-11-13 applied. 38 rules: 30 implemented, 5 deviate, 3 not implemented (no card), 0 open questions. Cards: GO-7, TRIAGE-1, SETTINGS-5, ASSESSMENT-6, APP-8 follow-up. |
+| [Application preparation](specs/application.md) | R-APP | NOT DESIGNED. Owner decisions of 2026-11-13 applied. 21 rules: 7 implemented, 2 deviate, 10 not implemented, 2 owner decision needed (ASSESSMENT-6, re-run model). Design questions deferred to a design session. Cards: APP-3, APP-4, APP-5, APP-6, APP-7, APP-8, SET-1, ASM-1, ASSESSMENT-6. |
+| [Local data](specs/data.md) | R-DATA | Owner decisions of 2026-11-13 applied. 27 rules: 20 implemented, 4 not implemented (OPS-7, OPS-8, GO-6, documented procedure), 2 not implemented (new owner decisions: server-side snapshot coverage, move procedure), 1 pointer to triage. Cards: OPS-7, OPS-8, GO-6. |
 
 <a id="code-areas"></a>
 ## Where the current implementation lives
@@ -64,9 +69,7 @@ Each requirement names its user outcome, the current implementation, the checks 
 <a id="req-col"></a>
 ### R-COL — Collect vacancies from configured sources
 
-**Status:** implemented, with a known observability gap.
-
-**User outcome.** Opening the application starts a throttled collection; manual and per-source buttons force a run; sources are fetched through a guarded HTTP layer and deterministic parsers.
+**Status:** implemented, with a known observability gap. Behaviour is specified in [Collection](specs/collection.md).
 
 **Backend and workers.** [collect.go](../backend/internal/background/collect.go), [trigger.go](../backend/internal/background/trigger.go) and [scheduler.go](../backend/internal/background/scheduler.go); adapters in [backend/internal/source](../backend/internal/source/source.go); fetch safety and pacing in [backend/internal/fetch](../backend/internal/fetch/client.go); jobspy runs as a [worker](../backend/workers/jobspy/index.mjs).
 
@@ -83,9 +86,7 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 <a id="req-search"></a>
 ### R-SEARCH — Search, filter and rank roles
 
-**Status:** implemented.
-
-**User outcome.** Roles are filtered immediately: OR terms, AND terms and exclusions combine in the FTS query. FTS/BM25 remains query matching; fit ordering is determined separately by Quick Match (R-ASM), not by the BM25 score.
+**Status:** implemented. Catalogue and search behaviour is specified in [Catalogue and search](specs/catalogue.md).
 
 **Frontend.** [Collection.tsx](../frontend/Collection.tsx) (search editor), [main.tsx](../frontend/main.tsx) and [CatalogueFilters.tsx](../frontend/CatalogueFilters.tsx).
 
@@ -98,9 +99,7 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 <a id="req-tri"></a>
 ### R-TRI — Triage, dismiss and archive
 
-**Status:** implemented, with one timer gap.
-
-**User outcome.** The owner dismisses a role, blocks a company or exclusion term, and later finds dismissed or applied roles in the archive.
+**Status:** implemented, with one timer gap. Behaviour is specified in [Triage and decisions](specs/triage.md). The canonical screen names are Inbox, Shortlist and Archive (owner, 2026-11-13).
 
 **Frontend and API.** [main.tsx](../frontend/main.tsx), [RoleContent.tsx](../frontend/RoleContent.tsx), [ApplicationConfirmation.tsx](../frontend/ApplicationConfirmation.tsx); workflow guards and archive queries in [store/core.go](../backend/internal/store/core.go) and [store/jobs.go](../backend/internal/store/jobs.go).
 
@@ -128,9 +127,7 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 <a id="req-app"></a>
 ### R-APP — Prepare application answers and apply manually
 
-**Status:** limited; the form-inspection worker path is known broken.
-
-**User outcome.** For a role in Preparation, Sift reads the application form, shows its questions, drafts editable answers from candidate evidence, and opens the employer page for the owner. Sift never fills or submits the form. The owner confirms manually when they have submitted; only that confirmation moves the role to Applied.
+**Status:** limited; the feature is not designed and the form-inspection worker path is known broken. Behaviour is specified in [Application preparation](specs/application.md).
 
 **Implemented.** Inspection wiring and honest states (`APP-1`, `APP-2`, `APP-4`, `APP-5`), draft editing and remembering, and the manual confirmation dialog. Code: [preparation.go](../backend/internal/background/preparation.go), [inspect.go](../backend/internal/background/inspect.go), [discipline.go](../backend/internal/background/discipline.go), [prepare](../backend/internal/prepare/prepare.go), [application store](../backend/internal/store/application.go), [ApplicationDraft.tsx](../frontend/ApplicationDraft.tsx), [ApplicationConfirmation.tsx](../frontend/ApplicationConfirmation.tsx), [RoleContent.tsx](../frontend/RoleContent.tsx).
 
@@ -147,9 +144,7 @@ Latest owner scope is the minimal manual review loop (INBOX-1), with negative Ap
 <a id="req-data"></a>
 ### R-DATA — Own, back up and migrate local data
 
-**Status:** limited; provenance and recovery are documented, separation is proposed only.
-
-**User outcome.** The owner can see which data is user-provided, user-derived, vacancy/assessment state or application state, and can back up and restore it without losing evidence.
+**Status:** limited; provenance and recovery are documented, separation is proposed only. Behaviour is specified in [Local data](specs/data.md).
 
 **Current implementation.** One data directory resolved by [dirs.go](../backend/internal/dirs/dirs.go); SQLite store in [store](../backend/internal/store/store.go); file-first answer and feedback records in [records](../backend/internal/records/records.go); config saves keep backups in [config/save.go](../backend/internal/config/save.go). Deployment backups and rollback are in [sift-deploy](../bin/sift-deploy).
 
@@ -266,22 +261,22 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 
 | Card | Requirement | State | Depends on |
 |---|---|---|---|
-| [SETTINGS-1](../work/tasks/settings/SETTINGS-1_user-profile/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `564f334` (final `58af432`); owner usability findings continued in SETTINGS-2 | owner acceptance/release separate; production not updated |
-| [SETTINGS-2](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `7f80bbf` (final `58af432`); owner review pending ([workflow plan](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/plan.md)) | real-document yield and release remain separate; production not updated |
-| [SETTINGS-3](../work/tasks/settings/SETTINGS-3_profile-fields/description.md) | R-SET, R-ASM | review; original fields technically accepted; source in main `c827cee` (final `58af432`); continent-level preference captured, unimplemented (+30–50min provisional) | owner acceptance/release separate; production not updated |
+| [SETTINGS-1](../work/tasks/settings/SETTINGS-1_user-profile/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `564f334` (final `58af432`); owner usability findings continued in SETTINGS-2; spec [Profiles](specs/profiles.md) | owner acceptance/release separate; production not updated |
+| [SETTINGS-2](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/description.md) | R-SET, R-SEARCH, R-ASM | review; technically accepted; source in main `7f80bbf` (final `58af432`); owner review pending ([workflow plan](../work/tasks/settings/SETTINGS-2_profile-workflow-and-fields/plan.md)); spec [Profiles](specs/profiles.md) | real-document yield and release remain separate; production not updated |
+| [SETTINGS-3](../work/tasks/settings/SETTINGS-3_profile-fields/description.md) | R-SET, R-ASM | review; original fields technically accepted; source in main `c827cee` (final `58af432`); continent-level preference captured, unimplemented (+30–50min provisional); spec [Profiles](specs/profiles.md) | owner acceptance/release separate; production not updated |
 | [SETTINGS-5](../work/tasks/settings/SETTINGS-5_user-data-and-role-profiles/description.md) | R-SET, R-TRI, R-ASM, R-APP | approved 2026-11-12 (plan §10), spec [Profiles](specs/profiles.md); starts after INBOX-2; was: full User/role-profile design saved, explicitly deferred; separate profile pipelines/shared actual submissions agreed | no implementation/auth now; re-estimate and split before approval; canonical design in plan.md |
-| [SETTINGS-4](../work/tasks/settings/SETTINGS-4_profile-url-sources/description.md) | R-SET | backlog ([URL plan](../work/tasks/settings/SETTINGS-4_profile-url-sources/plan.md); not approved) | SETTINGS-2; existing guarded fetch/provider |
+| [SETTINGS-4](../work/tasks/settings/SETTINGS-4_profile-url-sources/description.md) | R-SET | backlog ([URL plan](../work/tasks/settings/SETTINGS-4_profile-url-sources/plan.md); not approved); spec [Profiles](specs/profiles.md) §6 | SETTINGS-2; existing guarded fetch/provider |
 | [ASM-5](../work/tasks/assessment/ASM-5_shared-term-matching/description.md) | R-SET, R-SEARCH, R-ASM | backlog ([shared matching plan](../work/tasks/assessment/ASM-5_shared-term-matching/plan.md); not approved) | SETTINGS-3; preserved SETTINGS-1 ranking; refines INBOX-1 |
 | [INBOX-1](../work/tasks/inbox/INBOX-1_search-catalogue-overview-quick-match/description.md) | R-COL, R-SEARCH, R-ASM, R-SET, R-TRI | backlog ([proposed sequence](../work/tasks/inbox/INBOX-1_search-catalogue-overview-quick-match/plan.md); not approved) | SETTINGS-1 first; search → scoring → Overview |
 | [APP-1](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-1_inspect-chain-at-selection/done.md) | GO-2 |
 | [APP-2](../work/tasks/application-preparation/APP-2_application-tab-states/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-2_application-tab-states/done.md) | APP-1 |
-| [APP-3](../work/tasks/application-preparation/APP-3_answers-from-kb-and-think-modal/description.md) | R-APP | backlog (blocked: SET-1) | SET-1, APP-1, APP-2 |
+| [APP-3](../work/tasks/application-preparation/APP-3_answers-from-kb-and-think-modal/description.md) | R-APP | backlog (blocked: SET-1); spec [Application preparation](specs/application.md) | SET-1, APP-1, APP-2 |
 | [APP-4](../work/tasks/application-preparation/APP-4_robust-form-inspection/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-4_robust-form-inspection/done.md) | APP-1 |
 | [APP-5](../work/tasks/application-preparation/APP-5_respectful-browser-automation/description.md) | R-APP | [done](../work/tasks/application-preparation/APP-5_respectful-browser-automation/done.md) | APP-4 |
-| [APP-6](../work/tasks/application-preparation/APP-6_answer-memories-in-prepare/description.md) | R-APP | backlog | APP-1, APP-4 |
-| [APP-7](../work/tasks/application-preparation/APP-7_draft-revision-check/description.md) | R-APP | backlog | APP-1 |
-| [APP-8](../work/tasks/application-preparation/APP-8_expired-application-outcome/description.md) | R-APP, R-TRI | review; owner/technical acceptance; source in main `a3ead8b` (final `58af432`); five outcomes/button-only modal; free-text explanation pending | release separate; production not updated; v16 migration gate corrected |
-| [ASM-1](../work/tasks/assessment/ASM-1_rerun-failed-with-model/description.md) | R-ASM | backlog (deferred) | ASM-4 |
+| [APP-6](../work/tasks/application-preparation/APP-6_answer-memories-in-prepare/description.md) | R-APP | backlog; spec [Application preparation](specs/application.md) | APP-1, APP-4 |
+| [APP-7](../work/tasks/application-preparation/APP-7_draft-revision-check/description.md) | R-APP | backlog; spec [Application preparation](specs/application.md) | APP-1 |
+| [APP-8](../work/tasks/application-preparation/APP-8_expired-application-outcome/description.md) | R-APP, R-TRI | review; owner/technical acceptance; source in main `a3ead8b` (final `58af432`); five outcomes/button-only modal; free-text explanation pending; spec [Triage](specs/triage.md), [Application preparation](specs/application.md) | release separate; production not updated; v16 migration gate corrected |
+| [ASM-1](../work/tasks/assessment/ASM-1_rerun-failed-with-model/description.md) | R-ASM | backlog (deferred); spec [Application preparation](specs/application.md) §3.1 | ASM-4 |
 | [ASM-2](../work/tasks/assessment/ASM-2_ollama-num-ctx/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-2_ollama-num-ctx/done.md) | GO-2 |
 | [ASM-3](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-3_skip-stopped-in-enqueue/done.md) | COL-6, ASM-4 |
 | [ASM-4](../work/tasks/assessment/ASM-4_fast-weighted-ranking/description.md) | R-ASM | [done](../work/tasks/assessment/ASM-4_fast-weighted-ranking/done.md) | COL-1 |
@@ -289,38 +284,38 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [ASSESSMENT-1](../work/tasks/assessment/ASSESSMENT-1_user-calibration-of-quick-match-weights/description.md) | R-ASM, R-SET | backlog; user weight calibration with method reference, provisional55–100min, not approved | working Quick Match and explicit scales; no v1 calibration UI |
 | [ASSESSMENT-2](../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/description.md) | R-ASM, R-SEARCH, R-SET, R-COL | backlog; owner approved the complete plan on 2026-11-10 (exact wording and approval in the [card plan](../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md)); Q.1 next; whole-task estimate unchanged at165–290min; starting policy approved but not implemented, no paid call or release | released v1 in ASM-6 remains current; [approved plan](../work/tasks/assessment/ASSESSMENT-2_dual-fit-targeted-extraction/plan.md); ASSESSMENT-1 calibration and ASM-6 release records are separate |
 | [ASSESSMENT-3](../work/tasks/assessment/ASSESSMENT-3_two-fit-scores/description.md) | R-ASM, R-SEARCH | [done](../work/tasks/assessment/ASSESSMENT-3_two-fit-scores/done.md); in main `0bc8af6`, released to production 2026-11-11; the model's matching pass is off by default and You fit is hidden; spec [quick-match §14](specs/quick-match.md) | supersedes ASSESSMENT-2; follow-ups ASSESSMENT-4/5/6 |
-| [ASSESSMENT-4](../work/tasks/assessment/ASSESSMENT-4_dismiss-requirement/description.md) | R-ASM | backlog (agreed behaviour and estimate in the card) | after ASSESSMENT-3 |
+| [ASSESSMENT-4](../work/tasks/assessment/ASSESSMENT-4_dismiss-requirement/description.md) | R-ASM | backlog (agreed behaviour and estimate in the card); spec [Profiles](specs/profiles.md) §3.5 | after ASSESSMENT-3 |
 | [ASSESSMENT-5](../work/tasks/assessment/ASSESSMENT-5_matching-quality/description.md) | R-ASM | backlog ([plan](../work/tasks/assessment/ASSESSMENT-5_matching-quality/plan.md); not approved) | after ASSESSMENT-3; old Q.8 |
 | [ASSESSMENT-6](../work/tasks/assessment/ASSESSMENT-6_shortlist-recheck/description.md) | R-ASM | backlog (draft; open questions) | after ASSESSMENT-3 |
 | [ASSESSMENT-7](../work/tasks/assessment/ASSESSMENT-7_pair-judge-trial/description.md) | R-ASM | backlog; plan in the card; for a separate agent in parallel with INBOX-2 | feeds ASSESSMENT-5; spec [quick-match §15](specs/quick-match.md) |
 | [ASSESSMENT-8](../work/tasks/assessment/ASSESSMENT-8_restricted-remote/description.md) | R-ASM | done; in main `eddc94a`, released 2026-11-13 | follow-up ASSESSMENT-9 |
 | [ASSESSMENT-9](../work/tasks/assessment/ASSESSMENT-9_model-location-restriction/description.md) | R-ASM | done; in main `66ae60d`, released 2026-11-13 | follow-up ASSESSMENT-10 |
 | [ASSESSMENT-10](../work/tasks/assessment/ASSESSMENT-10_restriction-labels-like-remote-us-only-and-us-cana/description.md) | R-ASM | done; in main `105e82e`, released 2026-11-13 | compound restriction labels resolved; cities and time zones stay unknown |
-| [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/description.md) | R-COL, R-SEARCH | backlog; owner approved the [plan](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) with By section on 2026-11-11 | after ASSESSMENT-3; includes INBOX-3 as L.4b |
-| [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b) | INBOX-2 |
+| [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/description.md) | R-COL, R-SEARCH | backlog; owner approved the [plan](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) with By section on 2026-11-11; spec [Collection](specs/collection.md) | after ASSESSMENT-3; includes INBOX-3 as L.4b |
+| [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b); spec [Catalogue and search](specs/catalogue.md) | INBOX-2 |
 | [OPS-9](../work/tasks/ops/OPS-9_finish-process-defects/description.md) | R-HARNESS, R-REL | backlog (scope agreed, estimate in the card) | found at the ASSESSMENT-3 finish |
 | [OPS-10](../work/tasks/ops/OPS-10_production-db-hang/description.md) | R-REL, R-ASM | done; in main `f7190bf`, released to production 2026-11-12 | follow-up: INBOX-2 L.4d (jobs list polling) |
 | [OPS-11](../work/tasks/ops/OPS-11_spec-coverage/description.md) | R-COL, R-SEARCH, R-TRI, R-APP, R-DATA, R-SET | in progress (coordinator); feature specs reviewed, owner decisions of 2026-11-13 applied in `work/OPS-11` | every product feature has a spec |
-| [COLLECTION-4](../work/tasks/collection/COLLECTION-4_collection-run-feedback-failed-sources-on-off-swit/description.md) | R-COL | backlog (captured 2026-11-13 from OPS-11) | not planned |
-| [TRIAGE-3](../work/tasks/triage/TRIAGE-3_applied-tab-promises-30-day-deletion-owner-chose-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11) | not planned |
-| [TRIAGE-4](../work/tasks/triage/TRIAGE-4_small-interface-fixes-n-and-a-keys-on-any-layout-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11) | not planned |
+| [COLLECTION-4](../work/tasks/collection/COLLECTION-4_collection-run-feedback-failed-sources-on-off-swit/description.md) | R-COL | backlog (captured 2026-11-13 from OPS-11); spec [Collection](specs/collection.md) | not planned |
+| [TRIAGE-3](../work/tasks/triage/TRIAGE-3_applied-tab-promises-30-day-deletion-owner-chose-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11); spec [Triage](specs/triage.md) | not planned |
+| [TRIAGE-4](../work/tasks/triage/TRIAGE-4_small-interface-fixes-n-and-a-keys-on-any-layout-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11); spec [Triage](specs/triage.md) | not planned |
 | [INBOX-4](../work/tasks/inbox/INBOX-4_location-tile-shows-the-geography-verdict/description.md) | R-SEARCH | backlog (captured 2026-11-13 from OPS-11) | not planned |
-| [SETTINGS-6](../work/tasks/settings/SETTINGS-6_edit-source-url/description.md) | R-SET, R-COL | backlog (proposed behaviour and estimate in the card) | small; after INBOX-2 |
+| [SETTINGS-6](../work/tasks/settings/SETTINGS-6_edit-source-url/description.md) | R-SET, R-COL | backlog (proposed behaviour and estimate in the card); spec [Collection](specs/collection.md) | small; after INBOX-2 |
 | [SETTINGS-7](../work/tasks/settings/SETTINGS-7_profile-file-delete/description.md) | R-SET | [done](../work/tasks/settings/SETTINGS-7_profile-file-delete/done.md); in main `320dbf9`, released to production 2026-11-12 | — |
 | [SETTINGS-8](../work/tasks/settings/SETTINGS-8_cv-fact-extraction/description.md) | R-SET | done; in main `b2cf419`, released to production 2026-11-12 | known limits in its attention.md |
-| [SETTINGS-9](../work/tasks/settings/SETTINGS-9_geography-editor-location/description.md) | R-SET | backlog bug, low priority: geography editor shows location not set | with SETTINGS-5 S.1 |
+| [SETTINGS-9](../work/tasks/settings/SETTINGS-9_geography-editor-location/description.md) | R-SET | backlog bug, low priority: geography editor shows location not set; spec [Profiles](specs/profiles.md) §3 rule 16 | with SETTINGS-5 S.1 |
 | [COL-1](../work/tasks/collection/COL-1_source-abstraction/description.md) | R-COL | [done](../work/tasks/collection/COL-1_source-abstraction/done.md) | GO-2 |
-| [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog; per-source rules and repair (owner, 2026-11-11; spec quick-match §15.3) | COL-1; after INBOX-2 |
+| [COL-2](../work/tasks/collection/COL-2_learned-template-cache/description.md) | R-COL | backlog; per-source rules and repair (owner, 2026-11-11; spec quick-match §15.3); spec [Collection](specs/collection.md) | COL-1; after INBOX-2 |
 | [COL-3](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/description.md) | R-COL | [done](../work/tasks/collection/COL-3_auto-and-manual-collect-trigger/done.md) | COL-1 |
-| [COL-4](../work/tasks/collection/COL-4_collection-progress-events/description.md) | R-COL | backlog | COL-1, COL-3 |
+| [COL-4](../work/tasks/collection/COL-4_collection-progress-events/description.md) | R-COL | backlog; spec [Collection](specs/collection.md) | COL-1, COL-3 |
 | [COL-5](../work/tasks/collection/COL-5_description-structure/description.md) | R-COL | cancelled (duplicate of INBOX-2) | — |
 | [COL-6](../work/tasks/collection/COL-6_stop-word-collection-filter/description.md) | R-COL | [done](../work/tasks/collection/COL-6_stop-word-collection-filter/done.md) | COL-1 |
 | [COL-7](../work/tasks/collection/COL-7_production-refresh-and-assess/description.md) | R-COL, R-ASM | backlog (owner-requested existing production operation) | preserve old pending queue; no Profile execution or deploy |
-| [COLLECTION-1](../work/tasks/collection/COLLECTION-1_publication-date-and-age/description.md) | R-COL, R-TRI, R-ASM | review; technically accepted; source in main `3ee6260` (final `58af432`); approx35min vs20–35; source dates/basis and Newest, automatic scoring deferred | legacy origin unverified; release separate; production not updated |
-| [COLLECTION-2](../work/tasks/collection/COLLECTION-2_remotive-category-pages/description.md) | R-COL | backlog; 73 Remotive category pages stored as vacancies (plan in the card) | after INBOX-2 |
-| [COLLECTION-3](../work/tasks/collection/COLLECTION-3_sites-behind-login/description.md) | R-COL, R-SET | backlog idea; to discuss with the owner later (LinkedIn profile import stored a sign-in page) | — |
-| [TRIAGE-1](../work/tasks/triage/TRIAGE-1_recognize-previously-applied-vacancy-duplicates/description.md) | R-COL, R-TRI, R-APP | backlog bug; Coinbag/Uniswap examples expose same-ID divergent application histories across environments;25–45min provisional | choose authoritative real history before reconciliation; no automatic merge or execution approved |
-| [TRIAGE-2](../work/tasks/triage/TRIAGE-2_layout-independent-select-shortcut/description.md) | R-TRI | in progress; K.2 integrated the accepted physical `KeyY` Select fix and reviewed records in main `e295b21`; K.3 push awaits coordinator review | guards/other shortcuts preserved; no release; production not updated |
+| [COLLECTION-1](../work/tasks/collection/COLLECTION-1_publication-date-and-age/description.md) | R-COL, R-TRI, R-ASM | review; technically accepted; source in main `3ee6260` (final `58af432`); approx35min vs20–35; source dates/basis and Newest, automatic scoring deferred; spec [Collection](specs/collection.md) | legacy origin unverified; release separate; production not updated |
+| [COLLECTION-2](../work/tasks/collection/COLLECTION-2_remotive-category-pages/description.md) | R-COL | backlog; 73 Remotive category pages stored as vacancies (plan in the card); spec [Collection](specs/collection.md) | after INBOX-2 |
+| [COLLECTION-3](../work/tasks/collection/COLLECTION-3_sites-behind-login/description.md) | R-COL, R-SET | backlog idea; to discuss with the owner later (LinkedIn profile import stored a sign-in page); spec [Collection](specs/collection.md) | — |
+| [TRIAGE-1](../work/tasks/triage/TRIAGE-1_recognize-previously-applied-vacancy-duplicates/description.md) | R-COL, R-TRI, R-APP | backlog bug; Coinbag/Uniswap examples expose same-ID divergent application histories across environments;25–45min provisional; spec [Triage](specs/triage.md), [Collection](specs/collection.md) | choose authoritative real history before reconciliation; no automatic merge or execution approved |
+| [TRIAGE-2](../work/tasks/triage/TRIAGE-2_layout-independent-select-shortcut/description.md) | R-TRI | in progress; K.2 integrated the accepted physical `KeyY` Select fix and reviewed records in main `e295b21`; K.3 push awaits coordinator review; spec [Triage](specs/triage.md) | guards/other shortcuts preserved; no release; production not updated |
 | [DESIGN-1](../work/tasks/design/DESIGN-1_design-token-layer/description.md) | R-DESIGN | backlog | GO-11 |
 | [DESIGN-2](../work/tasks/design/DESIGN-2_separate-presentation-and-logic/description.md) | R-DESIGN, R-SEARCH, R-TRI, R-SET, R-APP | backlog (approved; preparing worktree) | GO-11 |
 | [DESIGN-3](../work/tasks/design/DESIGN-3_reusable-design-blocks/description.md) | R-DESIGN, R-SET | review; owner confirmed design finished; technical acceptance stands; source in main `5bedae3` (final `58af432`) | corrected25–45min, approximately28–30min technical stage; functional owner acceptance/release separate; production not updated |
@@ -330,7 +325,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [GO-4](../work/tasks/go-migration/GO-4_race-free-tests/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-4_race-free-tests/done.md) | GO-2 |
 | [GO-5](../work/tasks/go-migration/GO-5_consolidate-under-sifty/description.md) | R-LEGACY | backlog | COL-1, APP-6, APP-7, GO-7, GO-9, GO-11 |
 | [GO-6](../work/tasks/go-migration/GO-6_self-host-packaging/description.md) | R-PKG | backlog | GO-5, GO-10 |
-| [GO-7](../work/tasks/go-migration/GO-7_serve-background-timers/description.md) | R-TRI | backlog | GO-2 |
+| [GO-7](../work/tasks/go-migration/GO-7_serve-background-timers/description.md) | R-TRI | backlog; spec [Triage](specs/triage.md) | GO-2 |
 | [GO-8](../work/tasks/go-migration/GO-8_cli-command-parity/description.md) | R-LEGACY | [cancelled](../work/tasks/go-migration/GO-8_cli-command-parity/cancelled.md) | — |
 | [GO-9](../work/tasks/go-migration/GO-9_mcp-server/description.md) | R-MCP | backlog | COL-1, GO-11 |
 | [GO-10](../work/tasks/go-migration/GO-10_license-elastic-2/description.md) | R-PLATFORM | [done](../work/tasks/go-migration/GO-10_license-elastic-2/done.md) | GO-1 |
@@ -345,9 +340,9 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [OPS-4](../work/tasks/ops/OPS-4_repository-and-workflow-foundation/description.md) | R-REL, R-HARNESS | in progress | OPS-1, OPS-3 |
 | [OPS-5](../work/tasks/ops/OPS-5_staging-idle-cpu/description.md) | R-REL | backlog (bug) | OPS-3 |
 | [OPS-6](../work/tasks/ops/OPS-6_git-history-cleanup/description.md) | R-HARNESS | backlog (idea) | — |
-| [OPS-7](../work/tasks/ops/OPS-7_configurable-paths/description.md) | R-DATA | backlog (idea) | OPS-4 |
-| [OPS-8](../work/tasks/ops/OPS-8_data-layout-migration/description.md) | R-DATA | backlog | OPS-4, OPS-7 |
-| [SET-1](../work/tasks/settings/SET-1_first-time-answer-preparation/description.md) | R-SET | backlog (blocked: owner questions) | GO-2 |
+| [OPS-7](../work/tasks/ops/OPS-7_configurable-paths/description.md) | R-DATA | backlog (idea); spec [Local data](specs/data.md) | OPS-4 |
+| [OPS-8](../work/tasks/ops/OPS-8_data-layout-migration/description.md) | R-DATA | backlog; spec [Local data](specs/data.md) | OPS-4, OPS-7 |
+| [SET-1](../work/tasks/settings/SET-1_first-time-answer-preparation/description.md) | R-SET | backlog (blocked: owner questions); spec [Profiles](specs/profiles.md) §2 (Answers for application forms in My data) | GO-2 |
 | [SET-2](../work/tasks/settings/SET-2_config-live-reload/description.md) | R-SET | [done](../work/tasks/settings/SET-2_config-live-reload/done.md) | GO-2 |
 | [SET-3](../work/tasks/settings/SET-3_stage-model-selection/description.md) | R-SET | [done](../work/tasks/settings/SET-3_stage-model-selection/done.md) | SET-2 |
 | [SET-4](../work/tasks/settings/SET-4_status-bar-inline-models/description.md) | R-SET | backlog | SET-3 |

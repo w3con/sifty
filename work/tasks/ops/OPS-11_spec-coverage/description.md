@@ -16,14 +16,14 @@ Scope decided by the coordinator: product behaviour areas only. Process areas (R
 
 ## Steps
 
-- [ ] **S.1 — Inventory** (30–45 min): table in `inventory.md` of every non-terminal card: area, covering spec, plan state, stale or contradicting statements.
-- [ ] **S.2 — Current behaviour per area** (40–60 min, parallel read-only agents): implemented behaviour of the six areas with file:line references, saved in this folder (`area-*.md`).
-- [ ] **S.3 — Specs** (90–120 min): `docs/specs/collection.md`, `search.md`, `triage.md`, `application.md`, `settings.md`, `data.md` — implemented behaviour, agreed-but-not-implemented behaviour (with the card), known limits; indexed in `docs/MAP.md`; `bin/map-check` passes.
-- [ ] **S.4 — Plans** (20–30 min): every prepared card links its spec; contradictions between a plan and a spec listed for the owner in `log.md`.
+- [x] **S.1 — Inventory**: `as-built/inventory.md`, 45 non-terminal cards.
+- [x] **S.2 — Current behaviour per area**: as-built descriptions in `as-built/` (material, not specs; owner 2026-11-13: a spec is per feature, not per task, button or transaction).
+- [x] **S.3 — Feature specs** (owner's rework): `collection.md`, `catalogue.md`, `triage.md`, `application.md` (not designed), `data.md`, updated `vacancy-view.md` and `profiles.md`, per `brief-specs.md`; reviewed by the coordinator against the owner's decisions; questions for the owner collected in one list.
+- [x] **S.4 — Into the repository**: an executor moves the approved specs into `docs/specs/`, indexes them in `docs/MAP.md` (replacing the old R-* prose where it duplicates them), links each open card to its spec; `bin/map-check` passes.
 
 ## Acceptance criteria
 
-- Each of the six product areas has a spec in `docs/specs/` that distinguishes implemented, agreed-not-implemented and proposed behaviour, with code references for implemented behaviour.
+- Each product feature has a spec in `docs/specs/` written as rules of intended behaviour, each rule tagged implemented / not implemented / deviates / owner decision needed.
 - Every non-terminal card appears in `inventory.md` with its spec or "process — no product spec".
 - `docs/MAP.md` lists every spec; `bin/map-check` passes.
 - Open contradictions are listed for the owner, not resolved silently.

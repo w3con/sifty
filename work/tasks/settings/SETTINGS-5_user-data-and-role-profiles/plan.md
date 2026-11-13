@@ -1,6 +1,6 @@
-# SETTINGS-5 — User и ролевые Profiles: отложенный проект
+# SETTINGS-5 — User data and role profiles
 
-**Состояние:** отложено владельцем. Это сохранённый проект, не разрешение на реализацию. Исполняемых checkpoints пока нет.
+Approved by the owner on 2026-11-12 (plan.md §Approval); starts after INBOX-2 is released; spec docs/specs/profiles.md.
 
 **Авторство:** модель и backend-предложение написал координатор. Владелец согласовал общий уровень «Мои данные» над профилями и уточнил, что Triage, Preparation и отказы должны быть отдельными по профилям: «да отдельные. сохрани все это в карточке, но сейчас мы это делать не будем. отложим на потом.» Один человек, несколько вариантов позиционирования; другие люди, регистрация, сессии и logout — гораздо позже.
 
@@ -112,7 +112,7 @@ Owner, 2026-11-12: «и еще - пора сделать возможность 
 
 ### Proposed stages (each a separately checkable result)
 
-- [ ] **S.1 — User, profiles, migration** (60–90 min). Tables/records for User (facts: identity, skills, experience, languages, documents, ✓/✕ lists, answers) and Profile (name, target roles and industries, compensation, engagement, hours, work modes, wanted places, dealbreakers, selected skills/experience/documents, search expressions). Migration turns `local` into User + first Profile, preserving ids, revisions, quotes and history. API: list / create / rename / copy / archive profiles, get/patch User. Targeted tests: migration preserves the profile byte-for-byte in meaning; two profiles do not see each other's goals.
+- [ ] **S.1 — User, profiles, migration** (60–90 min). Tables/records for User (facts: identity, skills, experience, languages, documents, ✓/✕ lists, answers) and Profile (name, target roles and industries, compensation, engagement, hours, work modes, wanted places, dealbreakers, selected skills/experience/documents, search expressions). Migration turns `local` into User + first Profile, preserving ids, revisions, quotes and history. API: list / create / rename / copy / archive profiles, get/patch User. Targeted tests: migration preserves the profile byte-for-byte in meaning; two profiles do not see each other's goals. Includes SETTINGS-9 (geography editor shows "not set"), owner 2026-11-13.
 - [ ] **S.2 — Search per profile** (45–75 min). Each profile has its own search expressions; sources (sites) stay shared. A collection run uses the union of active (non-archived) profiles' expressions and records which profile's expression matched each vacancy. One shared catalogue; a vacancy is not copied per profile.
 - [ ] **S.3 — Scores per profile** (60–90 min). `match_fit_results` keyed by (profile, job); Fits you per profile from that profile's goals and the shared User facts; extraction shared; the worker works for all profiles, ordering by the active profile's toggle; switching profiles reads stored results and never calls a model. Targeted test: switching does not call the model; a profile change marks only that profile's results stale.
 - [ ] **S.4 — Triage and decisions per profile** (60–90 min). Per (profile, job): stage, rejection reason, history of manual moves; the fact of an application stays User-level and is visible in every profile (design §6). Migration puts today's states into the first profile.

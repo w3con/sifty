@@ -194,7 +194,7 @@ func TestLiveFitSensitivity(t *testing.T) {
 				r.Sources[s.label] = result{}
 				continue
 			}
-			merged, conflicts, err := jobextract.MergeModelConditions(*facts, c)
+			merged, conflicts, err := jobextract.MergeModelConditions(*facts, c, set.rules.RestrictionPhrases)
 			if err != nil {
 				t.Fatalf("merge %d: %v", id, err)
 			}
@@ -230,7 +230,7 @@ func TestLiveFitSensitivity(t *testing.T) {
 				},
 			}
 			for name, pick := range one {
-				m1, c1, err := jobextract.MergeModelConditions(*facts, pick(c))
+				m1, c1, err := jobextract.MergeModelConditions(*facts, pick(c), set.rules.RestrictionPhrases)
 				if err != nil {
 					t.Fatalf("merge %d %s: %v", id, name, err)
 				}

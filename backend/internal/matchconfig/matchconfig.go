@@ -41,6 +41,15 @@ func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
 			Countries: append([]string(nil), re.Countries...),
 		})
 	}
+	phrases, err := q.EffectiveRestrictionPhrases()
+	if err != nil {
+		return matchcontract.Rules{}, fmt.Errorf("quick match restriction phrases: %w", err)
+	}
+	for _, p := range phrases {
+		if p = strings.TrimSpace(p); p != "" {
+			r.RestrictionPhrases = append(r.RestrictionPhrases, p)
+		}
+	}
 	if err := r.Validate(); err != nil {
 		return matchcontract.Rules{}, fmt.Errorf("quick match configuration: %w", err)
 	}

@@ -2,7 +2,7 @@
 
 **Epic:** assessment
 **Created:** 2026-11-13
-**Status:** backlog
+**Status:** review
 **Kind:** bug
 
 ## Owner's words
@@ -25,7 +25,7 @@ After ASSESSMENT-8, vacancy 1136 ("Remote (US/Canada only)") is "?" instead of �
 
 Proposed rule: a model location whose quote passed the exact-excerpt check **and** whose quote states the restriction explicitly ("only", "based in", "must reside / be located in", "eligible to work in", "within <region>") is `usable` for the restriction check; a bare place name stays `needs corroboration`. The restriction phrases live in the region vocabulary configuration (ASSESSMENT-8 G.1). Spec quick-match §4.1 / §14.5 updated.
 
-- [ ] **M.1 — Rule and phrases** (25–35 min): as above; one targeted test (explicit restriction quote → usable; bare place → needs corroboration).
-- [ ] **M.2 — Check** (15–20 min): on a fresh production copy: vacancy 1136 becomes "not covered" with a mismatch line; count of vacancies that change from "?" to ✕ / ✓.
+- [x] **M.1 — Rule and phrases** (25–35 min): as above; one targeted test (explicit restriction quote → usable; bare place → needs corroboration).
+- [x] **M.2 — Check** (15–20 min): on a fresh production copy: vacancy 1136 becomes "not covered" with a mismatch line; count of vacancies that change from "?" to ✕ / ✓.
 
 Estimate: complexity 2, AI time about 45–60 min. Backend only.

@@ -1,83 +1,101 @@
 # Default region vocabulary for restricted-remote detection.
-# This file is embedded in the binary and used when quick_match.regions is absent from runtime.yaml.
-# To override, add a quick_match.regions block to your data/config/runtime.yaml.
-# Each entry maps a region name and its aliases to ISO 3166-1 alpha-2 country codes.
+# This file is embedded in the binary. Each key mirrors the same key of the quick_match block in
+# data/config/runtime.yaml and is used when that key is absent there; a key present in runtime.yaml
+# replaces the default below entirely.
+#
+# regions: each entry maps a region name and its aliases to ISO 3166-1 alpha-2 country codes.
 # An empty countries list means worldwide / unrestricted.
-- name: worldwide
-  aliases: [anywhere, global, international, remote]
-  countries: []
-- name: US
-  aliases: ["United States", "United States of America", USA, "U.S.", "U.S.A.", "US only", "United States only"]
-  countries: [US]
-- name: Canada
-  aliases: [CA, "Canada only"]
-  countries: [CA]
-- name: "North America"
-  aliases: [NA, NOAM]
-  countries: [US, CA, MX]
-- name: Americas
-  aliases: [AMER, "North and South America"]
-  countries: [US, CA, MX, BR, AR, CL, CO, PE, VE, UY, PY, BO, EC, GY, SR, GF]
-- name: LATAM
-  aliases: ["Latin America", "LatAm"]
-  countries: [MX, BR, AR, CL, CO, PE, VE, UY, PY, BO, EC, GY, SR, GF, CR, PA, GT, HN, SV, NI, DO, CU, PR, HT, JM]
-- name: EU
-  aliases: ["European Union"]
-  countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE]
-- name: EEA
-  aliases: ["European Economic Area"]
-  countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IS, IT, LV, LI, LT, LU, MT, NL, NO, PL, PT, RO, SK, SI, ES, SE]
-- name: Europe
-  aliases: [EUR, EMEA]
-  countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IS, IT, LV, LI, LT, LU, MT, NL, NO, PL, PT, RO, SK, SI, ES, SE, GB, CH, UA, RS, BA, AL, ME, MK, MD, BY, GE, AM, AZ, TR]
-- name: UK
-  aliases: ["United Kingdom", "Great Britain", GB, "UK only"]
-  countries: [GB]
-- name: APAC
-  aliases: ["Asia Pacific", "Asia-Pacific"]
-  countries: [AU, NZ, JP, KR, SG, HK, CN, IN, TW, ID, TH, MY, PH, VN, BD, PK, LK]
-- name: Australia
-  aliases: [AU, "Australia only"]
-  countries: [AU]
-- name: "New Zealand"
-  aliases: [NZ, "New Zealand only"]
-  countries: [NZ]
-- name: Germany
-  aliases: [DE, Deutschland]
-  countries: [DE]
-- name: France
-  aliases: [FR]
-  countries: [FR]
-- name: Netherlands
-  aliases: [NL, Holland]
-  countries: [NL]
-- name: Spain
-  aliases: [ES]
-  countries: [ES]
-- name: Sweden
-  aliases: [SE]
-  countries: [SE]
-- name: Switzerland
-  aliases: [CH]
-  countries: [CH]
-- name: Poland
-  aliases: [PL]
-  countries: [PL]
-- name: Portugal
-  aliases: [PT]
-  countries: [PT]
-- name: Ireland
-  aliases: [IE]
-  countries: [IE]
-- name: Brazil
-  aliases: [BR]
-  countries: [BR]
-- name: India
-  aliases: [IN]
-  countries: [IN]
-- name: Singapore
-  aliases: [SG]
-  countries: [SG]
-- name: Japan
-  aliases: [JP]
-  countries: [JP]
+#
+# restriction_phrases: wording that states a hiring restriction explicitly. A location read by the
+# model becomes usable for the remote-restriction check only when its exact quote contains one of
+# these phrases as whole words (case, punctuation and spacing aside); a bare place name stays
+# "needs corroboration".
+restriction_phrases:
+  - only
+  - based in
+  - must reside
+  - must be located in
+  - must live in
+  - eligible to work in
+  - authorized to work in
+  - authorised to work in
+  - within
+regions:
+  - name: worldwide
+    aliases: [anywhere, global, international, remote]
+    countries: []
+  - name: US
+    aliases: ["United States", "United States of America", USA, "U.S.", "U.S.A.", "US only", "United States only"]
+    countries: [US]
+  - name: Canada
+    aliases: [CA, "Canada only"]
+    countries: [CA]
+  - name: "North America"
+    aliases: [NA, NOAM]
+    countries: [US, CA, MX]
+  - name: Americas
+    aliases: [AMER, "North and South America"]
+    countries: [US, CA, MX, BR, AR, CL, CO, PE, VE, UY, PY, BO, EC, GY, SR, GF]
+  - name: LATAM
+    aliases: ["Latin America", "LatAm"]
+    countries: [MX, BR, AR, CL, CO, PE, VE, UY, PY, BO, EC, GY, SR, GF, CR, PA, GT, HN, SV, NI, DO, CU, PR, HT, JM]
+  - name: EU
+    aliases: ["European Union"]
+    countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IT, LV, LT, LU, MT, NL, PL, PT, RO, SK, SI, ES, SE]
+  - name: EEA
+    aliases: ["European Economic Area"]
+    countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IS, IT, LV, LI, LT, LU, MT, NL, NO, PL, PT, RO, SK, SI, ES, SE]
+  - name: Europe
+    aliases: [EUR, EMEA]
+    countries: [AT, BE, BG, HR, CY, CZ, DK, EE, FI, FR, DE, GR, HU, IE, IS, IT, LV, LI, LT, LU, MT, NL, NO, PL, PT, RO, SK, SI, ES, SE, GB, CH, UA, RS, BA, AL, ME, MK, MD, BY, GE, AM, AZ, TR]
+  - name: UK
+    aliases: ["United Kingdom", "Great Britain", GB, "UK only"]
+    countries: [GB]
+  - name: APAC
+    aliases: ["Asia Pacific", "Asia-Pacific"]
+    countries: [AU, NZ, JP, KR, SG, HK, CN, IN, TW, ID, TH, MY, PH, VN, BD, PK, LK]
+  - name: Australia
+    aliases: [AU, "Australia only"]
+    countries: [AU]
+  - name: "New Zealand"
+    aliases: [NZ, "New Zealand only"]
+    countries: [NZ]
+  - name: Germany
+    aliases: [DE, Deutschland]
+    countries: [DE]
+  - name: France
+    aliases: [FR]
+    countries: [FR]
+  - name: Netherlands
+    aliases: [NL, Holland]
+    countries: [NL]
+  - name: Spain
+    aliases: [ES]
+    countries: [ES]
+  - name: Sweden
+    aliases: [SE]
+    countries: [SE]
+  - name: Switzerland
+    aliases: [CH]
+    countries: [CH]
+  - name: Poland
+    aliases: [PL]
+    countries: [PL]
+  - name: Portugal
+    aliases: [PT]
+    countries: [PT]
+  - name: Ireland
+    aliases: [IE]
+    countries: [IE]
+  - name: Brazil
+    aliases: [BR]
+    countries: [BR]
+  - name: India
+    aliases: [IN]
+    countries: [IN]
+  - name: Singapore
+    aliases: [SG]
+    countries: [SG]
+  - name: Japan
+    aliases: [JP]
+    countries: [JP]

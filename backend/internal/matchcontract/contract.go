@@ -475,7 +475,9 @@ type RegionEntry struct {
 // goal groups; Fits you divides by the sum of the weights of the groups it uses, so the weights
 // need not add up to 1. RequiredWeight and PreferredWeight weigh requirements in You fit.
 // Regions is the optional region vocabulary for restricted-remote detection; when empty the
-// restriction check is skipped and remote works as before.
+// restriction check is skipped and remote works as before. RestrictionPhrases is the wording that
+// makes a model-read location usable for that check (docs/specs/quick-match.md 14.5); when empty
+// every model-read location needs corroboration. Both enter the rules identity.
 type Rules struct {
 	SchemaVersion      string            `json:"schemaVersion"`
 	RulesVersion       string            `json:"rulesVersion"`
@@ -485,6 +487,7 @@ type Rules struct {
 	UnknownGoalUtility float64           `json:"unknownGoalUtility"`
 	VerdictUtility     VerdictUtilities  `json:"verdictUtility"`
 	Regions            []RegionEntry     `json:"regions,omitempty"`
+	RestrictionPhrases []string          `json:"restrictionPhrases,omitempty"`
 }
 
 // ResultStatus distinguishes a numeric score, no usable evidence, and a stale saved result.

@@ -3,6 +3,7 @@ package jobextract
 import (
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/w3con/sifty/internal/matchcontract"
 )
@@ -17,9 +18,12 @@ import (
 //     is returned as a conflict to be kept for audit, never shown.
 //   - A model value that cannot be read as a typed value (an unknown work mode, a salary with no
 //     amount) is ignored, never guessed.
+//   - A model location is usable only when its quote states the restriction explicitly in one of
+//     restrictionPhrases (matchcontract.Rules.RestrictionPhrases); a bare place name needs
+//     corroboration.
 //
 // It returns a copy of the facts with the facts hash recomputed; the input is not modified.
-func MergeModelConditions(f matchcontract.VacancyFacts, c matchcontract.ExtractedConditions) (matchcontract.VacancyFacts, []matchcontract.ConditionConflict, error) {
+func MergeModelConditions(f matchcontract.VacancyFacts, c matchcontract.ExtractedConditions, restrictionPhrases []string) (matchcontract.VacancyFacts, []matchcontract.ConditionConflict, error) {
 	out := f
 	out.Compensation = f.Compensation
 	out.Geography.HiringLocations = append([]matchcontract.LocationFact(nil), f.Geography.HiringLocations...)
@@ -103,11 +107,16 @@ func MergeModelConditions(f matchcontract.VacancyFacts, c matchcontract.Extracte
 		switch {
 		case len(labels) == 0:
 		case len(out.Geography.HiringLocations) == 0:
-			// A location the model read from running text is one statement, not a verified
-			// hiring restriction, so it needs corroboration like any generic location line.
+			// A bare place the model read from running text is one statement, not a verified
+			// hiring restriction, so it needs corroboration like any generic location line. A quote
+			// that states the restriction itself ("Remote (US/Canada only)") is usable.
+			reliability := matchcontract.ReliabilityNeedsCorroboration
+			if statesRestriction(v.Quote, restrictionPhrases) {
+				reliability = matchcontract.ReliabilityUsable
+			}
 			for _, label := range labels {
 				out.Geography.HiringLocations = append(out.Geography.HiringLocations, matchcontract.LocationFact{
-					Label: label, Evidence: evidence(v.Quote, matchcontract.ReliabilityNeedsCorroboration),
+					Label: label, Evidence: evidence(v.Quote, reliability),
 				})
 			}
 		default:
@@ -137,6 +146,24 @@ func MergeModelConditions(f matchcontract.VacancyFacts, c matchcontract.Extracte
 		return matchcontract.VacancyFacts{}, nil, fmt.Errorf("merge model conditions: %w", err)
 	}
 	return out, conflicts, nil
+}
+
+// statesRestriction reports whether quote contains one of phrases as whole words; case,
+// punctuation and spacing are ignored, so "US-only" contains "only".
+func statesRestriction(quote string, phrases []string) bool {
+	hay := " " + plainWords(quote) + " "
+	for _, p := range phrases {
+		if w := plainWords(p); w != "" && strings.Contains(hay, " "+w+" ") {
+			return true
+		}
+	}
+	return false
+}
+
+func plainWords(s string) string {
+	return strings.Join(strings.FieldsFunc(strings.ToLower(s), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r)
+	}), " ")
 }
 
 // modeFromValue reads a work mode from a model's free wording. The hybrid cue wins over remote,

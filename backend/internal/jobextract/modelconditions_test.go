@@ -34,7 +34,7 @@ func TestMergeModelConditionsFillsOnlyWhatTheParseMissed(t *testing.T) {
 		Hours:        cond("full-time", "full-time"),
 		Timezone:     cond("CET", "CET"),
 		Compensation: cond("USD 120,000 - 150,000 per year gross", "USD 120,000 - 150,000 per year gross"),
-	})
+	}, nil)
 	if err != nil || len(conflicts) != 0 {
 		t.Fatalf("merge: err=%v conflicts=%+v", err, conflicts)
 	}
@@ -68,7 +68,7 @@ func TestMergeModelConditionsLetsTheDeterministicFactWinAndKeepsTheConflict(t *t
 		WorkMode:     cond("fully remote", "fully remote"),
 		Engagement:   cond("permanent employee", "permanent employee"),
 		Compensation: cond("USD 120,000 - 150,000 per year gross", "USD 120,000 - 150,000 per year gross"),
-	})
+	}, nil)
 	if err != nil {
 		t.Fatalf("merge: %v", err)
 	}
@@ -101,7 +101,7 @@ func TestMergeModelConditionsIgnoresValuesItCannotReadAsTyped(t *testing.T) {
 		WorkMode:     cond("flexible", "flexible"),
 		Engagement:   cond("interesting", "interesting"),
 		Compensation: cond("competitive", "competitive salary"),
-	})
+	}, nil)
 	if err != nil || len(conflicts) != 0 {
 		t.Fatalf("merge: err=%v conflicts=%+v", err, conflicts)
 	}

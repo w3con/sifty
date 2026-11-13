@@ -152,6 +152,9 @@ type QuickMatch struct {
 	SourceFields        map[string]QuickMatchSourceField `yaml:"source_fields"        json:"sourceFields"`
 	ModelPasses         QuickMatchModelPasses            `yaml:"model_passes"         json:"modelPasses"`
 	Regions             []QuickMatchRegion               `yaml:"regions,omitempty"    json:"regions,omitempty"`
+	// RestrictionPhrases is the wording that states a hiring restriction explicitly; when absent,
+	// EffectiveRestrictionPhrases returns the built-in default (regions.default.yaml).
+	RestrictionPhrases []string `yaml:"restriction_phrases,omitempty" json:"restrictionPhrases,omitempty"`
 }
 
 // QuickMatchModelPasses tunes the two model passes (requirement extraction and profile matching).

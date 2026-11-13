@@ -114,7 +114,7 @@ func (s *Service) fitJob(current profile.Profile, set settings, jobID int64) err
 		if ext != nil {
 			// The conditions the model read fill only what the ordinary parse did not find; where
 			// they disagree the deterministic fact stands and the conflict is kept.
-			merged, conflicts, err := jobextract.MergeModelConditions(*facts, ext.Conditions)
+			merged, conflicts, err := jobextract.MergeModelConditions(*facts, ext.Conditions, set.rules.RestrictionPhrases)
 			if err != nil {
 				return err
 			}

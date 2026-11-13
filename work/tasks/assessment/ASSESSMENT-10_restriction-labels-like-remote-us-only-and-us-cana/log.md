@@ -1,0 +1,6 @@
+
+## 2026-11-13 — coordinator check of the executor hand-back (N.1–N.2)
+
+Executor `executor-sonnet-4-6` (aa85224a3fafdac17) reported N.1 (`b0d1b9f`) and N.2 (`800e423`) on `work/ASSESSMENT-10`, both ticked. Checked by the coordinator: diff `b6e7c58..800e423` (13 files); `resolveRestrictionLabel` tries the full label first, then paren-aware decomposition and configured separators (letter separators at word boundaries); wrapper prefixes, trailing qualifiers and separators live in `backend/internal/config/regions.default.yaml` with `quick_match` override; the hard-coded `strippedForms` list is gone; targeted test `TestResolveRestrictionLabelForms` covers the nine labels and a vocabulary name containing "and"; spec quick-match §4.1 updated. Probe result reported: 1934 vacancies, ?→✕ 6 (1153, 1175, 1196, 1201, 1279, 1294), ?→✓ 0, 1136 unchanged.
+
+Not accepted yet: the probe baseline is "old configuration on new code", so changes caused by the code itself (vacancy 17, any over-splitting) are invisible. Correction sent to the same executor: true before/after against the base tree `b6e7c58` with a per-vacancy verdict diff; show where the new rule fields enter the rules identity (stored results re-evaluated without a model call) or bump the evaluator version; record N.2 in comments.md.

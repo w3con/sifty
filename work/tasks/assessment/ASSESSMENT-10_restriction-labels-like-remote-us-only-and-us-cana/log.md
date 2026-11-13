@@ -16,3 +16,7 @@ Owner: «Да, выпускай.» Release by the same executor (aa85224a3fafdac
 ## 2026-11-13 — released; coordinator check of production
 
 Executor report: main merged into the branch (`fb43ae8`), spec marked released (`71c3a80`), `bin/work-finish` exit 0, squash commit on main `105e82e`, production `71c3a802fe79-20261113T022044.178759Z`. Coordinator checked on port 8080: health 200; `/api/version` prints that version; vacancy 17 now carries `remote_restricted_not_covered`; 1136 still does; 1262 has no restriction line (worldwide). The executor stashed the untracked `legacy/app/shoot-L57.mjs` to let work-finish run and restored it; the stash list holds no leftover entry. Worktree `.worktrees/ASSESSMENT-10` kept (holds a production copy in scratch/data); remove on the owner's word.
+
+## Worktree removed, 2026-11-13
+
+Owner: «да и да, удали». The coordinator removed `.worktrees/ASSESSMENT-10` together with its production copy in `scratch/data` (290 MB); it held no uncommitted changes. Branch `work/ASSESSMENT-10` is kept. In the same step ten untracked one-off scripts in `legacy/app/` (shoot-*, nav-explore*, check-row-buttons*, explore-ui, find-skill-comma) were deleted from the main checkout; no code referenced them.

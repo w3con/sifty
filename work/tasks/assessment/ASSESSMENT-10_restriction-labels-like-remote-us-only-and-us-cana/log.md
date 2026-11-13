@@ -8,3 +8,7 @@ Not accepted yet: the probe baseline is "old configuration on new code", so chan
 ## 2026-11-13 — coordinator acceptance
 
 Executor returned the corrected N.2 (`36db7cf`): true before/after on a fresh production copy (base tree `b6e7c58` versus the branch, one line per vacancy): 8 changed — 17, 1153, 1175, 1196, 1201, 1279, 1294 unknown → not covered; 1262 "Remote (Global)" unknown → not applicable (worldwide; correct); 1119, 1281, 1136 unchanged. Rules identity covers the new fields (`matchcontract/identity.go:8` hashes the whole `Rules`; `matchsvc/service.go:298`), so stored results re-evaluate at startup without a model call; no version bump. Coordinator ran `go build ./...` and the tests of quickmatch, matchsvc, config, matchcontract on the branch: pass; data probes skip without their environment variables. Accepted technically; report in `acceptance.md`, limits in `attention.md`. Release waits for the owner's «да»; main must be merged into the branch first.
+
+## Owner, 2026-11-13: release
+
+Owner: «Да, выпускай.» Release by the same executor (aa85224a3fafdac17): merge main into the branch, mark the spec released, `bin/work-finish` with release; coordinator checks production after.

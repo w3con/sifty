@@ -23,7 +23,7 @@ This page records the **current** layout and provenance from the code, the confi
   store.sqlite-shm    SQLite shared-memory sidecar while the store is open
 ```
 
-`<data-dir>` also receives environment-specific operational files through the deploy scripts: `prod-server.log`, `staging-server.log`, `deploy.log` and `store.sqlite.backup.<timestamp>` snapshots. The binaries and their `.prev` rollback copies live under `bin/`, not the data directory.
+`<data-dir>` also receives environment-specific operational files through the deploy scripts: `prod-server.log`, `staging-server.log` (staging retired 2026-11-13), `deploy.log` and `store.sqlite.backup.<timestamp>` snapshots. The binaries and their `.prev` rollback copies live under `bin/`, not the data directory.
 
 **Candidate file paths.** Relative paths in `candidate.yaml` `files` are resolved under the **data directory root**, not under `evidence/`. The same applies to a profile's optional relative `export` path. In the observed local configuration this is why the CV, profile and knowledge-base files are referenced as root-relative paths (`cv.pdf`, `profile.pdf`, `kb/...`) while `evidence/` exists but is empty. `evidence/` is a conventional place for owner-supplied files, not a resolver rule.
 

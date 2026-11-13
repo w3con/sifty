@@ -16,7 +16,7 @@ Neighboring specifications: [collection.md](collection.md) covers how vacancies 
 
 ### Location and structure
 
-1. All runtime state lives in one data directory, created with owner-only permissions on startup. One machine-wide model-call lock file is kept outside the data directory so that production and staging share it; it is created on demand. [implemented — `backend/internal/dirs/dirs.go:24-50,83-102`]
+1. All runtime state lives in one data directory, created with owner-only permissions on startup. One machine-wide model-call lock file is kept outside the data directory so that every Sifty server on the machine (production and any preview) shares it; it is created on demand. [implemented — `backend/internal/dirs/dirs.go:24-50,83-102`]
 
 2. The application refuses to write any file whose resolved path falls outside the data directory root. [implemented — `backend/internal/dirs/dirs.go:74-81`]
 
@@ -62,7 +62,7 @@ Neighboring specifications: [collection.md](collection.md) covers how vacancies 
 
 19. The deploy snapshot covers the database and all owner files (`config/`, `answers/`, `feedback/`, `evidence/`, the knowledge base, the profile photo), so a deploy rollback restores the complete state before the deploy. Owner, 2026-11-13: accepted the coordinator's recommendation. [not implemented — no card; today the snapshot covers only the database; a rollback does not restore changes to owner files made after the previous deploy]
 
-20. Staging holds a copy of production data only after an explicit data refresh; an ordinary deploy never copies production data to staging. A data refresh copies the production database and owner files, including `config/`, `evidence/`, `answers/`, `feedback/`, the knowledge base and the profile photo, so staging holds the owner's personal documents once refreshed. See [AGENTS.md](../../AGENTS.md) for the refresh command. [implemented]
+20. (Staging retired 2026-11-13 by the owner; this rule describes the unused script path.) Staging holds a copy of production data only after an explicit data refresh; an ordinary deploy never copies production data to staging. A data refresh copies the production database and owner files, including `config/`, `evidence/`, `answers/`, `feedback/`, the knowledge base and the profile photo, so staging holds the owner's personal documents once refreshed. See [AGENTS.md](../../AGENTS.md) for the refresh command. [implemented]
 
 21. The owner has no application command or supported procedure to back up the whole data directory (database plus owner files together), export it or restore from a whole-directory backup. [not implemented — OPS-8]
 

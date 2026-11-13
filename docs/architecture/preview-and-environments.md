@@ -4,6 +4,8 @@ This document records the local preview supervisor and the isolated production
 and staging runtime. It describes commands that exist in the repository, not a
 target design.
 
+**Staging retired (owner, 2026-11-13).** Production is the only long-lived environment; cards are reviewed on a preview started with an explicit free `--port` and a `--data-dir` holding a fresh copy of production data, and the preview is stopped when the review ends. The staging server is stopped; the staging sections below describe script behaviour that is kept but not used. `data-staging/` stays on disk until the owner decides to delete it.
+
 ## Continuous preview
 
 `bin/sift-preview` follows one active card worktree continuously:

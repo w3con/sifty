@@ -27,8 +27,8 @@ The owner will continue in Claude Code on the Mac, so the next coordinator can o
 - **Git locks:** committing from the VM needs delete permission on the sifty folder (`device_request_delete_permission` for `/Volumes/SSD/Dev/tknff/sifty`), otherwise git leaves `.git/HEAD.lock` / `next-index-*.lock` that block the owner's git. After a failed unlink, remove the stale lock (or `mv` it aside without permission).
 - `bin/work-finish --reject` and anything resolving worktree absolute paths must run on the Mac (owner's Terminal or an executor).
 - Untracked file `legacy/app/shoot-L57.mjs` (INBOX-2's) sits in main; executors move it aside temporarily for `work-finish` cleanliness and put it back. Leave it.
-- Production: port 8080, started by the release tool (`bin/sift-promote` via `work-finish`). If the owner restarts by hand use `make run` from main (rebuilds from main). Never start `bin/sifty` directly after a worktree build. Staging preview: 8081/8082. Review copies: 8094 (INBOX-2), other free ports for executors.
-- Data: production `data/store.sqlite`, staging `data-staging/store.sqlite`. Copies only for executors.
+- Production: port 8080, started by the release tool (`bin/sift-promote` via `work-finish`). If the owner restarts by hand use `make run` from main (rebuilds from main). Never start `bin/sifty` directly after a worktree build. Staging retired 2026-11-13 (owner); 8081 is free. Card previews: a free port each (8093, 8094, …) against a fresh copy of production data; stop each preview when its review ends.
+- Data: production `data/store.sqlite`; `data-staging/` is kept on disk but unused. Copies only for executors.
 - Commit trailer for your commits: `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>` and the session line.
 
 ## 3. Where things are

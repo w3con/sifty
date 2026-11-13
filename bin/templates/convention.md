@@ -65,7 +65,7 @@ Contradictions are refused: several outcome files, a `**Status:**` naming an out
 
 A short card carries only `description.md` plus `comments.md`. Its steps (as `- [ ]` lines) and its acceptance criteria live inside `description.md`. Create one with `work-new --short`.
 
-`work-capture` creates a minimal backlog card for an incoming bug or idea: `description.md` plus `comments.md`, the owner's exact words, `**Kind:**`, and no plan, log or attention file. The wording is stored exactly as supplied, including outer whitespace, newlines and original CR/LF; only emptiness is validated. It does not dispatch an executor, cut a worktree, start work or touch staging. Preparing the plan later adds the steps and acceptance criteria. `work-capture --update <id>` appends evidence to an explicitly matched existing card and refuses exact duplicate evidence.
+`work-capture` creates a minimal backlog card for an incoming bug or idea: `description.md` plus `comments.md`, the owner's exact words, `**Kind:**`, and no plan, log or attention file. The wording is stored exactly as supplied, including outer whitespace, newlines and original CR/LF; only emptiness is validated. It does not dispatch an executor, cut a worktree, start work or start a server. Preparing the plan later adds the steps and acceptance criteria. `work-capture --update <id>` appends evidence to an explicitly matched existing card and refuses exact duplicate evidence.
 
 ## Steps, attention and navigation
 

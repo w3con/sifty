@@ -1,6 +1,0 @@
-RUN label=actual goos=darwin goarch=arm64 cpus=14 jobs_total=2273 eligible=2212 selected=300 input_bytes=1584529 profile_id=local profile_revision=1 target_roles=0 skills=0 cash_min=unset rules_version=quickmatch.rules/1 rules_identity=3e4be6348c9f1f46d3d921b33146e003c7f2a0355633a335164fba20e6664ede policy_version=source-policy/1+2f62927a36099c380c0cad44f7ee68fe492d81bbd691cb1ff7bdf8c711abc2d2
-PHASE extraction_actual n=300 total_ms=92.24 p50_ms=0.286 p95_ms=0.438 max_ms=0.781 avg_ms=0.307 
-PHASE evaluate_pure n=300 total_ms=2.80 p50_ms=0.003 p95_ms=0.034 max_ms=0.389 avg_ms=0.009 scored=0 unscored=300 avg_score=0.00
-PHASE full_fresh n=300 total_ms=300.93 p50_ms=0.852 p95_ms=1.257 max_ms=20.766 avg_ms=1.003 scored=0 unscored=300
-PHASE full_warm n=300 total_ms=176.42 p50_ms=0.507 p95_ms=0.710 max_ms=17.702 avg_ms=0.588 scored=0 unscored=300
-PHASE decorate_get_jobs n=2273 total_ms=490.51 decorated=2273 unscored=2273 stale=0

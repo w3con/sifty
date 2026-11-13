@@ -1,8 +1,0 @@
-{
-  "description": "GET /api/stop-words — list all active stop-words",
-  "method": "GET",
-  "path": "/api/stop-words",
-  "responseStatus": 200,
-  "responseBodyShape": "array",
-  "source": "synthetic"
-}

@@ -1,8 +1,0 @@
-{
-  "description": "GET /api/search/expressions — read the current OR/AND search expressions (synthesises backward-compat OR group from titles+keywords when no expressions are set)",
-  "method": "GET",
-  "path": "/api/search/expressions",
-  "responseStatus": 200,
-  "responseBodyShape": "array",
-  "source": "synthetic"
-}

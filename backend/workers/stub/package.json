@@ -1,6 +1,0 @@
-{
-  "name": "sifty-worker-stub",
-  "private": true,
-  "type": "module",
-  "description": "Round-trip stub for the Go-core to TypeScript-worker protocol."
-}

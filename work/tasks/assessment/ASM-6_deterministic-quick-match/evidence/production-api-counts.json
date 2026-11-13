@@ -1,9 +1,0 @@
-{
-  "source": "157fe9f6d0f86e91b9101150087ea2aa19fecaf4",
-  "version": "157fe9f6d0f8-20261110T151309.703877Z",
-  "healthHttp": 200,
-  "apiJobCount": 2777,
-  "quickMatch": { "scored": 2777, "unscored": 0, "avgScore": 10.38, "min": 0, "max": 100 },
-  "profile": { "id": "local", "revision": 20, "revisions": 20, "documents": 8, "facts": 22 },
-  "browser": { "brand": "Sifty", "title": "Sifty · Job triage", "topJob": { "id": 84, "score": 100, "coverage": 29, "state": "Current" }, "zeroJob": { "id": 977, "score": 0, "coverage": 29, "state": "Current" }, "searchIntercepted": 1, "consoleErrors": 0 }
-}

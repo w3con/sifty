@@ -1,3 +1,0 @@
-[submodule "tools/shared"]
-	path = tools/shared
-	url = git@github.com:w3con/ai.git

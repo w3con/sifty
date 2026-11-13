@@ -1,9 +1,0 @@
-{
-  "description": "PUT /api/search/expressions — replace the search expressions in search.yaml",
-  "method": "PUT",
-  "path": "/api/search/expressions",
-  "requestBody": {"expressions": [{"or": ["CTO", "Interim CTO"]}, {"and": ["Blockchain", "Engineer"]}]},
-  "responseStatus": 200,
-  "responseBodyShape": "object",
-  "source": "synthetic"
-}

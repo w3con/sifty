@@ -1,8 +1,0 @@
-{
-  "description": "GET /api/sources — distinct source names in the stored roles, each with a role count and a blocked flag",
-  "method": "GET",
-  "path": "/api/sources",
-  "responseStatus": 200,
-  "responseBodyShape": "array",
-  "source": "synthetic"
-}

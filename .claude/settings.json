@@ -1,5 +1,0 @@
-{
-  "env": {
-    "CLAUDE_CODE_SUBAGENT_MODEL": "claude-sonnet-4-6"
-  }
-}

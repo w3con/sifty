@@ -1,9 +1,0 @@
-{
-  "description": "PATCH /api/search/sites/{name} — toggle the enabled flag of a source site in search.yaml",
-  "method": "PATCH",
-  "path": "/api/search/sites/LinkedIn",
-  "requestBody": {"enabled": false},
-  "responseStatus": 200,
-  "responseBodyShape": "object",
-  "source": "synthetic"
-}

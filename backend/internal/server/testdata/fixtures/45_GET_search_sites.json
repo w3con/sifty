@@ -1,8 +1,0 @@
-{
-  "description": "GET /api/search/sites — list all source sites from search.yaml with their enabled flag",
-  "method": "GET",
-  "path": "/api/search/sites",
-  "responseStatus": 200,
-  "responseBodyShape": "array",
-  "source": "synthetic"
-}

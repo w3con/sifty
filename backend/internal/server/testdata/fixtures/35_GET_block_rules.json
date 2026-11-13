@@ -1,8 +1,0 @@
-{
-  "description": "GET /api/block-rules — list all active block rules",
-  "method": "GET",
-  "path": "/api/block-rules",
-  "responseStatus": 200,
-  "responseBodyShape": "array",
-  "source": "synthetic"
-}

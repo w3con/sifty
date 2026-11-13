@@ -1,9 +1,0 @@
-{
-  "name": "sifty-worker-documents",
-  "private": true,
-  "type": "module",
-  "description": "DOCX-to-text worker for the Go-core to TypeScript-worker protocol.",
-  "dependencies": {
-    "mammoth": "1.13.0"
-  }
-}

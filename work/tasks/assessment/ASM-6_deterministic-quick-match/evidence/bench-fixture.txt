@@ -1,6 +1,0 @@
-RUN label=synthetic-fixture goos=darwin goarch=arm64 cpus=14 jobs_total=2273 eligible=2212 selected=300 input_bytes=1584529 profile_id=local profile_revision=2 target_roles=2 skills=3 cash_min=90000 rules_version=quickmatch.rules/1 rules_identity=3e4be6348c9f1f46d3d921b33146e003c7f2a0355633a335164fba20e6664ede policy_version=source-policy/1+2f62927a36099c380c0cad44f7ee68fe492d81bbd691cb1ff7bdf8c711abc2d2
-PHASE extraction_actual n=300 total_ms=115.33 p50_ms=0.349 p95_ms=0.604 max_ms=0.850 avg_ms=0.384 
-PHASE evaluate_pure n=300 total_ms=4.76 p50_ms=0.008 p95_ms=0.048 max_ms=0.305 avg_ms=0.016 scored=300 unscored=0 avg_score=15.49
-PHASE full_fresh n=300 total_ms=353.24 p50_ms=0.898 p95_ms=1.342 max_ms=24.350 avg_ms=1.177 scored=300 unscored=0
-PHASE full_warm n=300 total_ms=160.10 p50_ms=0.507 p95_ms=0.740 max_ms=1.060 avg_ms=0.534 scored=300 unscored=0
-PHASE decorate_get_jobs n=2273 total_ms=502.82 decorated=2273 unscored=1973 stale=1973

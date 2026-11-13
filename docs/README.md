@@ -3,7 +3,8 @@
 Current entry points after the 2026-11 repository relocation:
 
 - [docs/MAP.md](MAP.md) — the current requirement-to-code navigation map. Start here when a change needs its affected frontend, backend, workers, storage, checks, decisions and task cards.
-- `product/` — historical product framing, including the archived 2026-11-01 map. Some notes retain pre-relocation paths and decisions.
+- [product/vision.md](product/vision.md) — the current product vision for development: three editions (self-hosted free, hosted with the user's keys, hosted all inclusive), where the cost sits, and what must be measured before prices are set.
+- `product/` — otherwise historical product framing, including the archived 2026-11-01 map. Some notes retain pre-relocation paths and decisions.
 - `architecture/` — the Go backend architecture, HTTP contract, runtime data directory and provenance, worker protocol, the parity audit and the development-setup research notes.
 - `../work/` — canonical task cards, decisions, backlog and the build roadmap (`../work/ROADMAP.md`); decisions are in `../work/decisions/`. `../work/incidents.md` is a local, ignored incident record and is not published.
 

@@ -6,6 +6,8 @@ Updated: 2026-11-11.
 
 ## Current planning work
 
+**Coordinator handoff — 2026-11-13:** state, environment rules and next steps for the next coordinator are in [HANDOFF-coordinator.md](HANDOFF-coordinator.md).
+
 **ASSESSMENT-8 released — 2026-11-13:** regional remote restrictions compared with work authorizations, main `eddc94a`; follow-up ASSESSMENT-9 (model-read restrictions stay unknown). **SETTINGS-8 released — 2026-11-12** (`b2cf419`). Next for the second executor: ASSESSMENT-9, then COLLECTION-2.
 
 **OPS-10 released — 2026-11-12:** production hang fixed (SQLite driver/libc update, status from cache, reader pool, health 503), main `f7190bf`. **SETTINGS-8 released — 2026-11-12:** CV analysis keeps skills, languages and work authorization; main `b2cf419`, production build `7648f55bf0cd-20261112T210932.500154Z`. Next: ASSESSMENT-8 (parallel with INBOX-2); check production health over the next days.

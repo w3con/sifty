@@ -21,3 +21,11 @@ The English development vision built from these notes is [`docs/product/vision.m
 ```
 
 Coordinator's key-storage options and recommendation are in `docs/product/vision.md` §5.3; not decided.
+
+## 2026-11-13 — keys, owner's answer
+
+```text
+Какая разница в сложности? Если она небольшая, можем сразу сделать оба вообще варианта. Но в целом сейчас все работает только у меня локально на компьютере. Поэтому можно оставить ключи в браузере. Смотри сам.
+```
+
+Coordinator's decision (left to the coordinator): nothing changes now; the difference is large (option b about 1–2 h, option a days); decided when the hosted editions start. Recorded in `docs/product/vision.md` §5.3.

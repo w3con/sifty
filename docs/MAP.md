@@ -295,11 +295,12 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [ASSESSMENT-7](../work/tasks/assessment/ASSESSMENT-7_pair-judge-trial/description.md) | R-ASM | backlog; plan in the card; for a separate agent in parallel with INBOX-2 | feeds ASSESSMENT-5; spec [quick-match §15](specs/quick-match.md) |
 | [ASSESSMENT-8](../work/tasks/assessment/ASSESSMENT-8_restricted-remote/description.md) | R-ASM | done; in main `eddc94a`, released 2026-11-13 | follow-up ASSESSMENT-9 |
 | [ASSESSMENT-9](../work/tasks/assessment/ASSESSMENT-9_model-location-restriction/description.md) | R-ASM | done; in main `66ae60d`, released 2026-11-13 | follow-up ASSESSMENT-10 |
-| [ASSESSMENT-10](../work/tasks/assessment/ASSESSMENT-10_restriction-labels-like-remote-us-only-and-us-cana/description.md) | R-ASM | backlog; provisional 1 h | restriction labels not resolved |
+| [ASSESSMENT-10](../work/tasks/assessment/ASSESSMENT-10_restriction-labels-like-remote-us-only-and-us-cana/description.md) | R-ASM | done; in main `105e82e`, released 2026-11-13 | compound restriction labels resolved; cities and time zones stay unknown |
 | [INBOX-2](../work/tasks/inbox/INBOX-2_listing-markup/description.md) | R-COL, R-SEARCH | backlog; owner approved the [plan](../work/tasks/inbox/INBOX-2_listing-markup/plan.md) with By section on 2026-11-11 | after ASSESSMENT-3; includes INBOX-3 as L.4b |
 | [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b) | INBOX-2 |
 | [OPS-9](../work/tasks/ops/OPS-9_finish-process-defects/description.md) | R-HARNESS, R-REL | backlog (scope agreed, estimate in the card) | found at the ASSESSMENT-3 finish |
 | [OPS-10](../work/tasks/ops/OPS-10_production-db-hang/description.md) | R-REL, R-ASM | done; in main `f7190bf`, released to production 2026-11-12 | follow-up: INBOX-2 L.4d (jobs list polling) |
+| [OPS-11](../work/tasks/ops/OPS-11_spec-coverage/description.md) | R-COL, R-SEARCH, R-TRI, R-APP, R-DATA, R-SET | in progress (coordinator); feature specs reviewed, owner decisions of 2026-11-13 applied in `work/OPS-11` | every product feature has a spec |
 | [SETTINGS-6](../work/tasks/settings/SETTINGS-6_edit-source-url/description.md) | R-SET, R-COL | backlog (proposed behaviour and estimate in the card) | small; after INBOX-2 |
 | [SETTINGS-7](../work/tasks/settings/SETTINGS-7_profile-file-delete/description.md) | R-SET | [done](../work/tasks/settings/SETTINGS-7_profile-file-delete/done.md); in main `320dbf9`, released to production 2026-11-12 | — |
 | [SETTINGS-8](../work/tasks/settings/SETTINGS-8_cv-fact-extraction/description.md) | R-SET | done; in main `b2cf419`, released to production 2026-11-12 | known limits in its attention.md |

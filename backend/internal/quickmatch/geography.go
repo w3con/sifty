@@ -8,27 +8,43 @@ import (
 	"github.com/w3con/sifty/internal/matchcontract"
 )
 
+// remoteNoRegionStated is the jobValue for a remote vacancy that carries no location label.
+const remoteNoRegionStated = "remote, no region stated"
+
 // evaluateGeography compares preferred locations and evaluates remote work restrictions.
 // The geography group has two overlapping paths:
 //
-//  1. Preferred locations (existing): applies when profile.Locations is non-empty; the
-//     location comparison is added to the group.
+//  1. Preferred locations: applies when profile.Locations is non-empty. When the vacancy is
+//     remoteUnrestricted the location comparison is replaced by a single unrestricted member
+//     (utility 1); otherwise the location comparison is added to the group, with an optional
+//     restriction member alongside it.
 //  2. Remote restriction: applies whenever the vacancy states a regional restriction and the
 //     owner has work authorizations or a current location, regardless of preferred locations.
 //     The restriction comparison is added in addition to any location member from path 1.
+//     When the vacancy is remoteUnrestricted and the owner has any geography data, a single
+//     unrestricted member (utility 1) replaces the restriction check.
 //
 // When only path 2 applies (no preferred locations), the group contributes only the restriction
-// verdict. When both apply, both members contribute and the group utility is their weighted mean.
+// verdict, or the unrestricted verdict when the vacancy is remoteUnrestricted. When both apply,
+// both members contribute and the group utility is their weighted mean (unless the unrestricted
+// shortcut fires, which produces a single member with utility 1).
 func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts, rules matchcontract.Rules) *groupEval {
 	g := &groupEval{group: matchcontract.GroupGeography, applicability: matchcontract.NotApplicable}
 
-	// Path 1: preferred locations (existing behaviour, unchanged).
+	// Path 1: preferred locations.
 	locations := sortedProfileLocations(profile.Locations)
 	if len(profile.Locations) > 0 && len(locations) == 0 {
 		g.applicability = matchcontract.ApplicabilityUnknown
 		return g
 	}
 	if len(locations) > 0 {
+		// Unrestricted remote matches any location preference; replace the location comparison
+		// (which cannot compare a worldwide label against a city or country) with a single match.
+		if classifyRemoteRestriction(facts, rules) == remoteUnrestricted {
+			g.applicability = matchcontract.Applicable
+			g.members = append(g.members, buildUnrestrictedMember(facts))
+			return g
+		}
 		g.applicability = matchcontract.Applicable
 		g.members = append(g.members, evaluateLocations(locations, facts))
 		// Path 2 in addition: add restriction member when owner has authorizations or current location.
@@ -40,16 +56,51 @@ func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontrac
 
 	// Path 2 only: no preferred locations; restriction check is the only geography member.
 	restriction := classifyRemoteRestriction(facts, rules)
-	if restriction == remoteUnrestricted || restriction == remoteNoRemote {
-		return g // not applicable; vacancy is unrestricted or has no remote
+	if restriction == remoteNoRemote {
+		return g // not applicable; vacancy has no remote work mode
 	}
 	ownerCountries, ownerPresent := ownerCoverageCountries(profile)
 	if !ownerPresent {
 		return g // owner has no data to compare against; not applicable
 	}
+	if restriction == remoteUnrestricted {
+		// Vacancy is unrestricted remote and owner has geography data: a match.
+		g.applicability = matchcontract.Applicable
+		g.members = append(g.members, buildUnrestrictedMember(facts))
+		return g
+	}
 	g.applicability = matchcontract.Applicable
 	g.members = append(g.members, evaluateRemoteRestriction(facts, rules, ownerCountries))
 	return g
+}
+
+// buildUnrestrictedMember returns the geography member for a vacancy whose remote work is
+// unrestricted (worldwide labels or no location label). The member always has utility 1 and
+// reason remote_unrestricted. The job value is taken from the first hiring location label; when
+// no labels are present (bare "Remote" with no location), it falls back to remoteNoRegionStated.
+func buildUnrestrictedMember(facts matchcontract.VacancyFacts) member {
+	utility := 1.0
+	m := member{
+		group:         matchcontract.GroupGeography,
+		criterion:     matchcontract.CriterionGeographyRemoteRestriction,
+		profileField:  "geography",
+		jobFact:       "hiringLocations",
+		applicability: matchcontract.Applicable,
+		weight:        1,
+		utility:       &utility,
+		reason:        matchcontract.ReasonRemoteUnrestricted,
+	}
+	if len(facts.Geography.HiringLocations) > 0 {
+		loc := facts.Geography.HiringLocations[0]
+		m.jobValue = loc.Label
+		m.section = loc.Evidence.Section
+		m.evidenceField = loc.Evidence.Field
+		m.evidenceQuote = loc.Evidence.Quote
+		m.reliability = loc.Evidence.Reliability
+	} else {
+		m.jobValue = remoteNoRegionStated
+	}
+	return m
 }
 
 // buildRestrictionMember evaluates the restriction member when a vacancy carries a remote

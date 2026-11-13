@@ -791,3 +791,271 @@ func TestLiveCompoundLabelResolution(t *testing.T) {
 		t.Logf("=== vacancy %d: verdict unchanged by ASSESSMENT-10 (expected) ===", targetID)
 	}
 }
+
+// TestLiveUnrestrictedRemote reports the impact of the INBOX-4 unrestricted-remote rule on the
+// production profile. It evaluates every vacancy with the current code (new behaviour: unrestricted
+// remote is a geography match). For each vacancy that now shows "unrestricted", the old score is
+// derived from the same evaluation run by recalculating without the geography group (the geography
+// group was not applicable before, contributing the midpoint 0.5; removing it and recalculating
+// gives the exact old score from the matching rules).
+//
+// The test reports:
+//   - total evaluated, count with verdict "unrestricted" (geography changed)
+//   - min / median / max Fits you delta
+//   - a sample of up to ten changed vacancies with label and quote
+//   - confirmation that vacancies 1136 and 17 remain not_covered (restricted, not unrestricted)
+//
+// Run as:
+//
+//	SIFTY_PROBE_DATA_DIR=.../scratch/data go test ./internal/matchsvc/ -run TestLiveUnrestrictedRemote -count=1 -v
+func TestLiveUnrestrictedRemote(t *testing.T) {
+	dataDir := os.Getenv("SIFTY_PROBE_DATA_DIR")
+	if dataDir == "" {
+		t.Skip("set SIFTY_PROBE_DATA_DIR to a copy of the data directory")
+	}
+
+	d, err := dirs.Resolve(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Open(filepath.Join(d.Root, "store.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	svc := New(st, config.NewHolder(cfg))
+	cur, err := profile.Current(st)
+	if err != nil || cur == nil {
+		t.Fatalf("profile: %v", err)
+	}
+	set, err := svc.activeSettings(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	realSnap := profile.QuickMatchSnapshot(cur)
+	t.Logf("profile: authorizations=%d locations=%d currentLocation=%v",
+		len(realSnap.Authorizations), len(realSnap.Locations), realSnap.CurrentLocation)
+
+	scoreStr := func(s *int) string {
+		if s == nil {
+			return "nil"
+		}
+		return fmt.Sprintf("%d", *s)
+	}
+
+	geoVerdict := func(r matchcontract.FitResult) string {
+		ls := map[string][]matchcontract.FitLine{
+			"Matches": r.Lists.Matches, "Mismatches": r.Lists.Mismatches,
+			"Missing": r.Lists.Missing, "ToClarify": r.Lists.ToClarify,
+		}
+		for name, lines := range ls {
+			for _, l := range lines {
+				if l.Criterion != matchcontract.CriterionGeographyRemoteRestriction {
+					continue
+				}
+				if l.Reason == matchcontract.ReasonRemoteUnrestricted {
+					return "unrestricted"
+				}
+				switch name {
+				case "Matches":
+					return "covered"
+				case "Mismatches":
+					return "not_covered"
+				case "ToClarify":
+					return "unknown"
+				}
+			}
+		}
+		return "not_applicable"
+	}
+
+	eval := func(j *model.Job) (matchcontract.FitResult, error) {
+		facts, err := svc.factsFor(j.ID, set)
+		if err != nil || facts == nil {
+			return matchcontract.FitResult{}, fmt.Errorf("facts: %w", err)
+		}
+		hash := matchcontract.HashDescription(j.Description)
+		in := matchcontract.FitInput{
+			Profile: realSnap, Source: matchcontract.SourceUsable,
+			Facts: facts, DescriptionHash: hash, Rules: set.rules,
+		}
+		ext, err := st.GetVacancyExtraction(j.ID, hash, vacancyai.ExtractorVersion())
+		if err != nil {
+			return matchcontract.FitResult{}, fmt.Errorf("extraction: %w", err)
+		}
+		if ext != nil {
+			merged, conflicts, mergeErr := jobextract.MergeModelConditions(*facts, ext.Conditions, set.rules.RestrictionPhrases)
+			if mergeErr != nil {
+				return matchcontract.FitResult{}, fmt.Errorf("merge: %w", mergeErr)
+			}
+			in.Facts, in.ConditionConflicts = &merged, conflicts
+		}
+		return quickmatch.EvaluateFit(in)
+	}
+
+	type record struct {
+		id       int64
+		company  string
+		title    string
+		verdict  string
+		scoreNew *int
+		// scoreOld is what the score would have been with geography not applicable.
+		// Computed by using a profile without geography data.
+		scoreOld *int
+		delta    int
+		label    string
+		quote    string
+	}
+
+	allJobs, err := st.List("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	evaluated := 0
+	var unrestricted []record
+
+	for _, j := range allJobs {
+		src := matchcontract.RetainedSource{
+			JobID: j.ID, Title: j.Title, Company: j.Company, Tags: j.Tags,
+			Description: j.Description, DescriptionStatus: j.DescriptionStatus,
+		}
+		if jobextract.SourceStateOf(src) != matchcontract.SourceUsable {
+			continue
+		}
+		res, err := eval(j)
+		if err != nil {
+			t.Logf("job %d eval: %v", j.ID, err)
+			continue
+		}
+		evaluated++
+		if geoVerdict(res) != "unrestricted" {
+			continue
+		}
+		// Compute old score: same FitsYou but without the geography group.
+		// In the old code, unrestricted remote was not applicable, contributing midpoint 0.5.
+		// We reproduce the old score by evaluating with a profile that has no geography data
+		// (no locations, no authorizations, no current location) which forces path 2 to return
+		// not applicable for unrestricted vacancies with no preferred locations.
+		oldSnap := realSnap
+		oldSnap.Locations = nil
+		oldSnap.Authorizations = nil
+		oldSnap.CurrentLocation = nil
+
+		facts, factsErr := svc.factsFor(j.ID, set)
+		if factsErr != nil || facts == nil {
+			continue
+		}
+		hash := matchcontract.HashDescription(j.Description)
+		inOld := matchcontract.FitInput{
+			Profile: oldSnap, Source: matchcontract.SourceUsable,
+			Facts: facts, DescriptionHash: hash, Rules: set.rules,
+		}
+		ext, extErr := st.GetVacancyExtraction(j.ID, hash, vacancyai.ExtractorVersion())
+		if extErr == nil && ext != nil {
+			merged, conflicts, mergeErr := jobextract.MergeModelConditions(*facts, ext.Conditions, set.rules.RestrictionPhrases)
+			if mergeErr == nil {
+				inOld.Facts, inOld.ConditionConflicts = &merged, conflicts
+			}
+		}
+		resOld, evalErr := quickmatch.EvaluateFit(inOld)
+		if evalErr != nil {
+			continue
+		}
+
+		delta := 0
+		if resOld.FitsYou.Score != nil && res.FitsYou.Score != nil {
+			delta = *res.FitsYou.Score - *resOld.FitsYou.Score
+		}
+
+		label, quote := "", ""
+		for _, l := range res.Lists.Matches {
+			if l.Criterion == matchcontract.CriterionGeographyRemoteRestriction &&
+				l.Reason == matchcontract.ReasonRemoteUnrestricted {
+				label = l.JobValue
+				quote = l.Quote
+				break
+			}
+		}
+		unrestricted = append(unrestricted, record{
+			id: j.ID, company: j.Company, title: j.Title,
+			verdict:  "unrestricted",
+			scoreNew: res.FitsYou.Score,
+			scoreOld: resOld.FitsYou.Score,
+			delta:    delta,
+			label:    label,
+			quote:    quote,
+		})
+	}
+
+	sort.Slice(unrestricted, func(a, b int) bool { return unrestricted[a].id < unrestricted[b].id })
+
+	var deltas []int
+	for _, r := range unrestricted {
+		deltas = append(deltas, r.delta)
+	}
+	sort.Ints(deltas)
+	minDelta, medianDelta, maxDelta := 0, 0, 0
+	if len(deltas) > 0 {
+		minDelta = deltas[0]
+		medianDelta = deltas[len(deltas)/2]
+		maxDelta = deltas[len(deltas)-1]
+	}
+
+	t.Logf("=== evaluated: %d; now unrestricted (geography match): %d ===", evaluated, len(unrestricted))
+	t.Logf("=== Fits you delta (old → new) — min: %d  median: %d  max: %d ===", minDelta, medianDelta, maxDelta)
+
+	sample := unrestricted
+	if len(sample) > 10 {
+		sample = sample[:10]
+	}
+	t.Logf("=== sample of %d vacancies (first by ID) ===", len(sample))
+	for _, r := range sample {
+		t.Logf("  job %d %s / %s: score %s→%s delta %+d label=%q",
+			r.id, r.company, r.title, scoreStr(r.scoreOld), scoreStr(r.scoreNew), r.delta, r.label)
+		if r.quote != "" {
+			t.Logf("    quote=%q", r.quote)
+		}
+	}
+
+	// Vacancies 1136 and 17 must remain not_covered (they are US-restricted, not worldwide).
+	for _, targetID := range []int64{1136, 17} {
+		found := false
+		for _, j := range allJobs {
+			if j.ID != targetID {
+				continue
+			}
+			src := matchcontract.RetainedSource{
+				JobID: j.ID, Title: j.Title, Company: j.Company, Tags: j.Tags,
+				Description: j.Description, DescriptionStatus: j.DescriptionStatus,
+			}
+			if jobextract.SourceStateOf(src) != matchcontract.SourceUsable {
+				t.Logf("vacancy %d: not in usable set", targetID)
+				found = true
+				break
+			}
+			res, evalErr := eval(j)
+			if evalErr != nil {
+				t.Logf("vacancy %d eval error: %v", targetID, evalErr)
+				found = true
+				break
+			}
+			v := geoVerdict(res)
+			t.Logf("=== vacancy %d %s / %s: verdict=%q score=%s ===",
+				targetID, j.Company, j.Title, v, scoreStr(res.FitsYou.Score))
+			if v == "unrestricted" {
+				t.Errorf("vacancy %d changed to unrestricted (unexpected: it is restricted)", targetID)
+			}
+			found = true
+		}
+		if !found {
+			t.Logf("vacancy %d not in store", targetID)
+		}
+	}
+}

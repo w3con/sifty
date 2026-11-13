@@ -83,6 +83,9 @@ func TestDumpRestrictionVerdicts(t *testing.T) {
 		for name, lines := range ls {
 			for _, l := range lines {
 				if l.Criterion == matchcontract.CriterionGeographyRemoteRestriction {
+					if l.Reason == matchcontract.ReasonRemoteUnrestricted {
+						return "unrestricted"
+					}
 					switch name {
 					case "Matches":
 						return "covered"
@@ -141,7 +144,11 @@ func TestDumpRestrictionVerdicts(t *testing.T) {
 			t.Logf("job %d eval error: %v", j.ID, evalErr)
 			continue
 		}
-		rows = append(rows, fmt.Sprintf("%d\t%s", j.ID, restrictionVerdict(res)))
+		scoreStr := "nil"
+		if res.FitsYou.Score != nil {
+			scoreStr = fmt.Sprintf("%d", *res.FitsYou.Score)
+		}
+		rows = append(rows, fmt.Sprintf("%d\t%s\t%s\t%s\t%s", j.ID, restrictionVerdict(res), scoreStr, j.Company, j.Title))
 	}
 
 	sort.Slice(rows, func(i, j int) bool {

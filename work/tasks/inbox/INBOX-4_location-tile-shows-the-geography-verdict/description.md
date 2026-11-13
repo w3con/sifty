@@ -2,7 +2,7 @@
 
 **Epic:** inbox
 **Created:** 2026-11-13
-**Status:** backlog
+**Status:** in progress
 **Kind:** idea
 
 ## Owner's words
@@ -45,8 +45,13 @@ Approved by the owner 2026-11-13: «да ... спланируй другие к�
 - Stored results are re-evaluated without a model call (the executor verifies whether rules identity or evaluator version changes and bumps a version only if needed).
 - Spec `docs/specs/quick-match.md` §14.1 (geography group applicability) and §4.1 describe the rule.
 
-- [ ] **G.1 — Unrestricted remote is a match** (30–40 min): the rule, the reason code, spec §14.1 and §4.1, the targeted test.
-- [ ] **G.2 — Check on a production copy** (15–20 min): extend the gated probe `backend/internal/matchsvc/live_restriction_test.go` or a sibling; report the counts and the sample.
-- [ ] **T.1 — Location tile verdict** (after INBOX-2 release, 20–30 min): `band.go` fills the Location tile verdict from the geography group (covered or unrestricted ✓, not covered ✕, unknown or not applicable ?); spec `vacancy-view.md` rule 11.
+- [x] **G.1 — Unrestricted remote is a match** (30–40 min): the rule, the reason code, spec §14.1 and §4.1, the targeted test.
+- [x] **G.2 — Check on a production copy** (15–20 min): extend the gated probe `backend/internal/matchsvc/live_restriction_test.go` or a sibling; report the counts and the sample.
+- [x] **G.3 — Remote markers and country codes** (20–30 min): coordinator review of G.2 found 375 vacancies still showing `unknown`; two root causes: (a) `TELECOMMUTE` (schema.org jobLocationType) is not in the vocabulary and `|` is not a separator, so "Anywhere | TELECOMMUTE" cannot be resolved; (b) ~19 vacancies carry every ISO 3166-1 alpha-2 code as individual hiring location labels (vacancy 1288: 250 labels), and any unknown code makes the whole list unknown. Fix: (1) add `|` to `separators` in `regions.default.yaml`; (2) add `telecommute` as alias of `worldwide` in `regions.default.yaml`; (3) add every ISO 3166-1 alpha-2 code not already in the vocabulary as an individual entry in `regions.default.yaml`. Additionally, 69 vacancies have no hiring locations in `match_job_facts`: investigate three (IDs 16, 25, 138) to understand their `unknown` verdict and report without changing. Extend `geography_unrestricted_test.go` with four real-label cases: "Anywhere | TELECOMMUTE" → unrestricted, "TELECOMMUTE" alone → unrestricted, "TELECOMMUTE | US" → not_covered, "DE | TELECOMMUTE" → not_covered. Update spec §4.1 (English only) to name the TELECOMMUTE alias and ISO alpha-2 resolution. Rerun `TestDumpRestrictionVerdicts` against main `62bad1b` and branch, write `report-G3.md`. Same loop: work-note, tick G.3, work-commit, bin/work-test.
+- **T.1 (moved to INBOX-5)** — Location tile verdict** (after INBOX-2 release, 20–30 min): `band.go` fills the Location tile verdict from the geography group (covered or unrestricted ✓, not covered ✕, unknown or not applicable ?); spec `vacancy-view.md` rule 11.
 
 **Estimate.** Complexity 2. Stage G: implementation 45–60 min, acceptance 15 min. Stage T: about 45 min including acceptance, after INBOX-2. No paid services, no model calls. Release is separate and needs the owner's «да».
+
+## Release decision (2026-11-13)
+
+Coordinator's question: «Ваше решение — когда выпускать: выпустить этап G сейчас, а плитку перенести в отдельную маленькую карточку после переделки, или выпустить всё вместе после плитки». Owner: «подумай сам, как тебе удобнее.» The coordinator chose to release stage G now; step T.1 moved to INBOX-5 (captured on main). This card ends with stage G: unrestricted remote counts as a geography match.

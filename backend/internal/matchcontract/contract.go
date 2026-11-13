@@ -581,6 +581,10 @@ const (
 	ReasonRemoteRestrictedCovered    = "remote_restricted_covered"
 	ReasonRemoteRestrictedNotCovered = "remote_restricted_not_covered"
 	ReasonRemoteRestrictedUnknown    = "remote_restricted_unknown"
+	// ReasonRemoteUnrestricted means the vacancy offers unrestricted remote work (worldwide labels
+	// or no location label) and the owner has at least one geography data point; it is always a
+	// match (utility 1) and appears in the Matches section.
+	ReasonRemoteUnrestricted = "remote_unrestricted"
 
 	// ReasonWorkModeRemoteRestricted means the work mode is remote but a regional restriction
 	// applies; the geography group carries the coverage verdict instead.

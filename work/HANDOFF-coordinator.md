@@ -2,6 +2,15 @@
 
 Written by the outgoing coordinator session for the next coordinator. Read this, then follow AGENTS.md. Answer the owner in Russian.
 
+
+## 0. If you run in Claude Code on the owner's Mac (update 2026-11-13)
+
+The owner will continue in Claude Code on the Mac, so the next coordinator can orchestrate executors itself:
+- Launch executors as subagents (AGENTS.md: "through the live session's visible subagent tool"), one bounded stage per subagent, with the card, worktree, step IDs, checks and stop point in the brief (the cards' plan.md / brief files are written for that). The owner chose **Sonnet 5.5** for executors (ASSESSMENT-3: «Для исправления запускай Sonnet 5.5»); AGENTS.md line 7 still names OpenCode/DeepSeek — ask the owner once which applies and record it.
+- Two executor sessions started by the owner may still be running (INBOX-2 lead, ASSESSMENT-9). Ask the owner whether to let them finish or take over; never have two writers in one worktree (AGENTS.md: one coordinator per card, record ownership in attention.md).
+- Section 2's VM-specific rules (no Go, no localhost, "prunable" worktrees, lock files without delete permission) do **not** apply on the Mac; the rest of section 2 does (production via the release tool, copies of data only, never start `bin/sifty` after a worktree build, leave `legacy/app/shoot-L57.mjs`).
+- You can now check things yourself: run `go test`, start review servers on free ports, curl 8080/8094, take Playwright screenshots — still read-only towards production data.
+
 ## 1. Your role and the people
 
 - **Owner:** Alexander. He decides scope, approves plans and every production release. His words go verbatim into cards.

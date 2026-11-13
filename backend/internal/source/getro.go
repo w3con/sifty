@@ -62,7 +62,9 @@ func (g *GetroAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInput, er
 		}
 	}
 	j := ref.Partial
-	j.Description = collect.CleanHTML(page.Body)
+	h := collect.StructuredHTML(page.Body)
+	j.Description = plainOrFallback(h, page.Body)
+	j.DescriptionHTML = h
 	j.DescriptionStatus = descStatus(j.Description)
 	return j, nil
 }

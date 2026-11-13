@@ -19,6 +19,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	_ "modernc.org/sqlite" // registers the "sqlite" driver name
 )
@@ -37,6 +38,13 @@ type Store struct {
 	// DB is the write connection (a pool of exactly one). Other packages prepare statements
 	// against it directly; the store layer owns only the schema and the connection lifecycle.
 	DB *sql.DB
+	// catalogueSeq is an in-memory monotonic counter that increments on every write visible in
+	// the jobs list (new vacancies, status changes, fit results, assessments, description reload,
+	// stop-word or block-rule changes). Its value is persisted to id_sequence('catalogue_seq')
+	// on each bump; the atomic is loaded from that row on Open() so the counter never goes
+	// backwards after a restart.
+	catalogueSeq atomic.Int64
+
 	// Read is the pool of read-only connections for plain reads. It sees committed data only.
 	// Anything inside a transaction, any write and any read whose result decides a write uses DB.
 	Read *sql.DB
@@ -114,10 +122,30 @@ func Open(path string) (*Store, error) {
 	}
 	ping.SetMaxOpenConns(1)
 	ping.SetMaxIdleConns(1)
-	return &Store{DB: db, Read: read, ping: ping}, nil
+	s := &Store{DB: db, Read: read, ping: ping}
+
+	// Load the persisted catalogue sequence so the counter never goes backwards after restart.
+	var seq int64
+	if err := db.QueryRow("SELECT value FROM id_sequence WHERE name='catalogue_seq'").Scan(&seq); err == nil {
+		s.catalogueSeq.Store(seq)
+	}
+
+	return s, nil
 }
 
 // Close releases all connection pools.
 func (s *Store) Close() error {
 	return errors.Join(s.ping.Close(), s.Read.Close(), s.DB.Close())
+}
+
+// BumpCatalogueSeq increments the catalogue version counter and persists it. Called after every
+// write visible in the jobs list. The persist is best-effort: the atomic is the authority.
+func (s *Store) BumpCatalogueSeq() {
+	next := s.catalogueSeq.Add(1)
+	_, _ = s.DB.Exec("UPDATE id_sequence SET value=? WHERE name='catalogue_seq'", next)
+}
+
+// CatalogueSeq returns the current catalogue version counter without a database query.
+func (s *Store) CatalogueSeq() (int64, error) {
+	return s.catalogueSeq.Load(), nil
 }

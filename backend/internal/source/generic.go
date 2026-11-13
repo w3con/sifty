@@ -94,21 +94,27 @@ func (g *GenericSource) Resolve(ctx context.Context, ref Ref) (model.JobInput, e
 			if j.OriginalURL == "" {
 				j.OriginalURL = ref.URL
 			}
+			j.Original = []byte(page.Body)
+			j.OriginalKind = "html/page"
 			return j, nil
 		}
 	}
 
-	// Fall back to cleaned HTML body.
+	// Fall back to structured HTML body.
 	j := ref.Partial
 	if j.OriginalURL == "" {
 		j.OriginalURL = ref.URL
 	}
-	j.Description = collect.CleanHTML(page.Body)
+	h := collect.StructuredHTML(page.Body)
+	j.Description = plainOrFallback(h, page.Body)
+	j.DescriptionHTML = h
 	if j.Description != "" {
 		j.DescriptionStatus = "available cleaned html"
 	} else {
 		j.DescriptionStatus = "missing"
 	}
+	j.Original = []byte(page.Body)
+	j.OriginalKind = "html/page"
 	return j, nil
 }
 

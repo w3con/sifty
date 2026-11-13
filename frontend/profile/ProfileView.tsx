@@ -462,6 +462,14 @@ function SkillsSection({profile, capabilities, editor}: {profile: Profile; capab
       <div className="profile-skill-chips">{(profile.data.absentSkills ?? []).map((skill) => <span key={skill.key} className="profile-skill absent">{skill.name}
         <button type="button" className="profile-skill-remove" aria-label={`Remove ${skill.name} from the skills you do not have`} title="Remove from this list" onClick={() => void editor.removeAbsentSkill(skill.key)}>×</button></span>)}</div>
     </div>}
+    {!draft && (profile.data.confirmedFacts ?? []).length > 0 && <div className="profile-absent-skills">
+      <h4>Confirmed by you</h4>
+      <p className="profile-absent-note">Marked from vacancies. These requirements are decided ✓ or ✕ by code without asking the model, and are listed here so you can remove them.</p>
+      <div className="profile-skill-chips">{(profile.data.confirmedFacts ?? []).map((fact) => <span key={fact.key} className={`profile-skill ${fact.have ? 'confirmed-have' : 'absent'}`}>
+        {fact.have ? '✓ ' : '✕ '}{fact.text}
+        <button type="button" className="profile-skill-remove" aria-label={`Remove confirmed fact: ${fact.text}`} title="Remove from this list" onClick={() => void editor.removeConfirmedFact(fact.key)}>×</button>
+      </span>)}</div>
+    </div>}
   </SectionShell>;
 }
 

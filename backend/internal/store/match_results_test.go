@@ -190,8 +190,8 @@ func TestMigrationV20PreservesQ1Data(t *testing.T) {
 	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil {
 		t.Fatalf("version: %v", err)
 	}
-	if version != 22 {
-		t.Fatalf("user_version = %d, want 22", version)
+	if version != 27 {
+		t.Fatalf("user_version = %d, want 27", version)
 	}
 	if p, err := s.CurrentProfile(); err != nil || p == nil || p.Revision != 1 {
 		t.Fatalf("profile lost: %+v err=%v", p, err)

@@ -2,7 +2,7 @@
 
 **Epic:** inbox
 **Created:** 2026-11-11
-**Status:** backlog
+**Status:** in progress
 **Kind:** bug
 
 ## Owner's words

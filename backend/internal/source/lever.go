@@ -90,17 +90,23 @@ func (l *LeverAdapter) Discover(ctx context.Context, listingURL string) ([]Ref, 
 			continue
 		}
 		desc := leverDescription(p)
+		dHTML := collect.StructuredHTML(desc)
 		refs = append(refs, Ref{
 			URL: p.HostedURL,
 			Partial: model.JobInput{
 				Title:             p.Text,
 				Company:           titleCase(slug),
 				OriginalURL:       p.HostedURL,
-				Description:       collect.CleanHTML(desc),
+				Description:       plainOrFallback(dHTML, desc),
+				DescriptionHTML:   dHTML,
 				DescriptionStatus: descStatus(desc),
 				Location:          p.Categories.Location,
 				PublishedAt:       model.NormalizePublishedAt(leverPublishedAt(p.CreatedAt)),
 				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(leverPublishedAt(p.CreatedAt)), "created_at"),
+				// Store the combined posting description from the Lever API so
+				// description_html can be re-derived without a network fetch.
+				Original:     []byte(desc),
+				OriginalKind: "html/api",
 			},
 		})
 	}
@@ -123,12 +129,18 @@ func (l *LeverAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInput, er
 	}
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
 		if j, ok := matchStructuredJob(jobs, ref); ok {
+			j.Original = []byte(page.Body)
+			j.OriginalKind = "html/page"
 			return j, nil
 		}
 	}
 	j := ref.Partial
-	j.Description = collect.CleanHTML(page.Body)
+	h := collect.StructuredHTML(page.Body)
+	j.Description = plainOrFallback(h, page.Body)
+	j.DescriptionHTML = h
 	j.DescriptionStatus = descStatus(j.Description)
+	j.Original = []byte(page.Body)
+	j.OriginalKind = "html/page"
 	return j, nil
 }
 

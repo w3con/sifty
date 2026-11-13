@@ -99,17 +99,23 @@ func (a *AshbyAdapter) Discover(ctx context.Context, listingURL string) ([]Ref, 
 		if !p.IsListed || p.Title == "" || p.JobURL == "" {
 			continue
 		}
+		dHTML := collect.StructuredHTML(p.DescriptionHTML)
 		refs = append(refs, Ref{
 			URL: p.JobURL,
 			Partial: model.JobInput{
 				Title:             p.Title,
 				Company:           companyName,
 				OriginalURL:       p.JobURL,
-				Description:       collect.CleanHTML(p.DescriptionHTML),
+				Description:       plainOrFallback(dHTML, p.DescriptionHTML),
+				DescriptionHTML:   dHTML,
 				DescriptionStatus: descStatus(p.DescriptionHTML),
 				Location:          p.LocationName,
 				PublishedAt:       model.NormalizePublishedAt(p.PublishedDate),
 				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(p.PublishedDate), "published_date"),
+				// Store the HTML description from the Ashby API so description_html
+				// can be re-derived without a network fetch.
+				Original:     []byte(p.DescriptionHTML),
+				OriginalKind: "html/api",
 			},
 		})
 	}
@@ -132,11 +138,17 @@ func (a *AshbyAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInput, er
 	}
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
 		if j, ok := matchStructuredJob(jobs, ref); ok {
+			j.Original = []byte(page.Body)
+			j.OriginalKind = "html/page"
 			return j, nil
 		}
 	}
 	j := ref.Partial
-	j.Description = collect.CleanHTML(page.Body)
+	h := collect.StructuredHTML(page.Body)
+	j.Description = plainOrFallback(h, page.Body)
+	j.DescriptionHTML = h
 	j.DescriptionStatus = descStatus(j.Description)
+	j.Original = []byte(page.Body)
+	j.OriginalKind = "html/page"
 	return j, nil
 }

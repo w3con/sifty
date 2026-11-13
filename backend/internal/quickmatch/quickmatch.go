@@ -96,7 +96,7 @@ func Evaluate(profile matchcontract.ProfileSnapshot, facts matchcontract.Vacancy
 
 	groups := []*groupEval{
 		evaluateRole(profile, facts),
-		evaluateCompensation(profile, facts),
+		evaluateCompensation(profile, facts, rules.ExchangeRates),
 		evaluateGeography(profile, facts, rules),
 		evaluateConditions(profile, facts, rules),
 	}

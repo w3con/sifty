@@ -16,10 +16,15 @@ const (
 	MatchFieldHeadline = "headline"
 	MatchFieldSkills   = "skills"
 	// MatchFieldSkillsAbsent carries a skill the owner has said they do not have.
-	MatchFieldSkillsAbsent   = "skillsAbsent"
-	MatchFieldExperience     = "experience"
-	MatchFieldLanguages      = "languages"
+	MatchFieldSkillsAbsent = "skillsAbsent"
+	MatchFieldExperience   = "experience"
+	MatchFieldLanguages    = "languages"
+	// MatchFieldAuthorizations carries a country and work-authorization status.
 	MatchFieldAuthorizations = "workAuthorizations"
+	// MatchFieldConfirmedHave carries a non-skill requirement the owner has confirmed they meet.
+	MatchFieldConfirmedHave = "confirmedHave"
+	// MatchFieldConfirmedDoNotHave carries a non-skill requirement the owner does not meet.
+	MatchFieldConfirmedDoNotHave = "confirmedDoNotHave"
 )
 
 // AbsentSkillPrefix opens the value of a skillsAbsent fact; the skill's name follows it.
@@ -103,6 +108,15 @@ func MatchFactsAt(p *Profile, now time.Time) []matchcontract.ProfileFact {
 			continue
 		}
 		add(MatchFieldAuthorizations, fmt.Sprintf("%s: %s", country, status))
+	}
+	for _, f := range d.ConfirmedFacts {
+		if text := strings.TrimSpace(f.Text); text != "" {
+			if f.Have {
+				add(MatchFieldConfirmedHave, text)
+			} else {
+				add(MatchFieldConfirmedDoNotHave, text)
+			}
+		}
 	}
 	return out
 }

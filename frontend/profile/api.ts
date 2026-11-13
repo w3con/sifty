@@ -1,5 +1,5 @@
 import {api} from '../api';
-import type {AbsentSkill, Capabilities, DocumentDeletion, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
+import type {AbsentSkill, Capabilities, ConfirmedFact, DocumentDeletion, Fact, FactDecision, Profile, ProfileDocument, SectionKey, SectionValues} from './contract';
 
 // Typed wrappers over the existing api() transport. Nothing here starts model work; only
 // analyzeDocument is an explicit user action that reaches the extraction provider.
@@ -26,6 +26,18 @@ export interface DerivedRefreshResult {
 }
 export const refreshProfileDerivedContext = (): Promise<DerivedRefreshResult> =>
   api('profile/derived/refresh', 'POST', {});
+
+// Records that the owner meets (have=true) or does not meet (have=false) a non-skill requirement.
+export interface ConfirmedFactResult {
+  profile: Profile;
+  changed: boolean;
+}
+export const addConfirmedFact = (text: string, have: boolean, jobId?: number): Promise<ConfirmedFactResult> =>
+  api('profile/confirmed-facts', 'POST', {text, have, ...(jobId ? {jobId} : {})});
+
+// Removes one confirmed fact by its normalized key.
+export const removeConfirmedFact = (key: string): Promise<ConfirmedFactResult> =>
+  api(`profile/confirmed-facts/${encodeURIComponent(key)}`, 'DELETE');
 
 export const listProfileDocuments = (): Promise<ProfileDocument[]> => api('profile/documents');
 export const uploadProfileDocument = (filename: string, contentBase64: string): Promise<ProfileDocument> =>

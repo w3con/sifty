@@ -1,0 +1,10 @@
+{
+  "description": "POST /api/profile/confirmed-facts — record that the owner meets or does not meet a non-skill requirement",
+  "method": "POST",
+  "path": "/api/profile/confirmed-facts",
+  "requestBody": {"text": "Financial, payments, or crypto-related systems experience", "have": true},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["profile", "changed"],
+  "source": "synthetic"
+}

@@ -72,8 +72,8 @@ func matchesFor(t *testing.T, e matchcontract.VacancyExtraction, revision int, v
 func TestModelPassTablesAreAdditive(t *testing.T) {
 	s, _, _ := modelJob(t)
 	var version int
-	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 22 {
-		t.Fatalf("user_version = %d (%v), want 22", version, err)
+	if err := s.DB.QueryRow("PRAGMA user_version").Scan(&version); err != nil || version != 27 {
+		t.Fatalf("user_version = %d (%v), want 27", version, err)
 	}
 	for _, table := range []string{"match_vacancy_extractions", "match_requirement_matches"} {
 		var n int

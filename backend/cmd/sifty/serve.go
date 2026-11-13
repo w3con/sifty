@@ -84,6 +84,24 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	}
 	defer func() { _ = s.Close() }()
 
+	// Backfill description_html for legacy rows; idempotent, local, no network.
+	if counts, err := s.BackfillDescriptionHTML(); err != nil {
+		log.Printf("startup: backfill description_html: %v", err)
+	} else if counts.Converted > 0 || counts.NeedsRefetch > 0 {
+		log.Printf("startup: backfill description_html: converted=%d needs_refetch=%d skipped=%d",
+			counts.Converted, counts.NeedsRefetch, counts.Skipped)
+	}
+
+	// Build section vocabulary and (re-)split all stored descriptions into sections.
+	// Idempotent: re-running produces identical rows and updates description_html
+	// for rows collected before the normaliser was introduced (L.5.1).
+	sectionVocab := background.ConfigSectionVocab(rawCfg.Sections)
+	if sc, err := s.BuildJobSections(context.Background(), sectionVocab); err != nil {
+		log.Printf("startup: build sections: %v", err)
+	} else {
+		store.LogSectionCounts(sc)
+	}
+
 	resolvedWorkersDir, _ := filepath.Abs(*workersDir)
 	profiles := profile.NewService(
 		s, cfgHolder,
@@ -93,11 +111,21 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	quickMatches := matchsvc.New(s, cfgHolder)
 	profiles.SetQuickMatchRefresher(quickMatches)
 	deps := &server.Deps{Store: s, Dirs: d, Cfg: cfgHolder, Profiles: profiles}
+	// Wire the enrich path with section-heading vocabulary so a refetched vacancy
+	// gets its sections populated in the same transaction as the description.
+	deps.EnrichFn = func(st *store.Store, id int64) (int64, error) {
+		return server.EnrichJob(st, deps.FetchClient, id, sectionVocab)
+	}
 	deps.CollectFn = func(source string, force bool) (int64, string, error) {
 		return background.TriggerAsync(s, d, cfgHolder.Get(), background.TriggerOpts{
 			Source: source,
 			Force:  force,
 			AfterCollect: func() error {
+				// Score newly collected vacancies first so the catalogue shows them quickly,
+				// then run the full recalculation for stale results.
+				if _, err := quickMatches.RescoreUnscoredFit(context.Background()); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
+					log.Printf("after collect: rescore unscored fit: %v", err)
+				}
 				return quickMatches.Recalculate(context.Background())
 			},
 		})
@@ -154,6 +182,11 @@ func runServe(args []string, stdout, stderr io.Writer) int {
 	prepW := background.NewPreparationWorker(s, d, cfgHolder, nil, nil, inspectFn)
 	sched := background.NewDailyScheduler(s, d, cfgHolder, nil, nil)
 	sched.SetAfterCollect(func() error {
+		// Score newly collected vacancies first so the catalogue shows them quickly,
+		// then run the full recalculation for stale results.
+		if _, err := quickMatches.RescoreUnscoredFit(context.Background()); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
+			log.Printf("scheduled after collect: rescore unscored fit: %v", err)
+		}
 		return quickMatches.Recalculate(context.Background())
 	})
 	assessW.Start()

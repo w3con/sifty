@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/w3con/sifty/internal/model"
@@ -34,9 +33,12 @@ func readGolden(t *testing.T, name string) []model.JobInput {
 
 func assertParity(t *testing.T, label string, got, want []model.JobInput) {
 	t.Helper()
-	if !reflect.DeepEqual(got, want) {
-		gj, _ := json.MarshalIndent(got, "", "  ")
-		wj, _ := json.MarshalIndent(want, "", "  ")
+	// Compare JSON representations rather than reflect.DeepEqual so that
+	// internal fields tagged json:"-" (Original, OriginalKind) are excluded from
+	// the comparison. The golden files do not carry those fields.
+	gj, err1 := json.MarshalIndent(got, "", "  ")
+	wj, err2 := json.MarshalIndent(want, "", "  ")
+	if err1 != nil || err2 != nil || string(gj) != string(wj) {
 		t.Fatalf("%s: Go output differs from the TypeScript golden\n--- got ---\n%s\n--- want ---\n%s", label, gj, wj)
 	}
 }

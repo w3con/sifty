@@ -1,0 +1,221 @@
+# Section heading vocabulary for the listing view (By section).
+# Each entry maps a class label to the heading patterns that belong to it.
+# Matching normalises apostrophes, ampersands, whitespace and trailing punctuation.
+# Three levels are tried in order:
+#   headings: exact match after normalisation.
+#   prefix:   heading starts with this word/phrase + space (e.g. "about chainlink").
+#   contains: heading contains this word as a whole word (e.g. "responsibilities").
+# Headings not found here are classified as "other".
+version: 1
+sections:
+  - class: About
+    headings:
+      - about us
+      - about the company
+      - about the team
+      - about the firm
+      - who we are
+      - company overview
+      - company background
+      - about
+      - our culture
+      - culture
+      - recent recognition
+      - our values
+      - get to know us
+      - our story
+      - what we do
+      - who we are as a company
+    prefix:
+      - about
+    contains:
+      - recognition
+  - class: Role
+    headings:
+      - the role
+      - role overview
+      - position overview
+      - about the position
+      - about the role
+      - role description
+      - job summary
+      - job overview
+      - summary
+      - overview
+      - role summary
+      - position description
+      - job description
+      - the opportunity
+      - role roadmap
+      - your mission
+      - how we work
+      - what success looks like
+      - role
+    contains:
+      - mission
+  - class: Responsibilities
+    headings:
+      - responsibilities
+      - key responsibilities
+      - your responsibilities
+      - what you'll do
+      - what you will do
+      - what you'll be doing
+      - what you will be doing
+      - your day-to-day
+      - day-to-day responsibilities
+      - duties
+      - job duties
+      - in this role
+      - what this role involves
+      - in this role you'll
+      - in this role you will
+      - your impact
+      - what you'll own
+      - what you will own
+      - what you'll be responsible for
+      - what you will be responsible for
+      - what you'll work on
+      - what you will work on
+    contains:
+      - responsibilities
+  - class: Requirements
+    headings:
+      - requirements
+      - job requirements
+      - required skills
+      - required qualifications
+      - minimum qualifications
+      - what we're looking for
+      - what we look for
+      - what you'll need
+      - what you need
+      - what you bring
+      - must have
+      - must haves
+      - basic qualifications
+      - qualifications
+      - who you are
+      - about you
+      - what you'll bring
+      - what you will bring
+      - skills and experience
+      - skills and qualifications
+      - experience and skills
+      - we're looking for candidates who have
+      - what will set you apart
+      - preferred skills and experience
+      - required
+      - what we are looking for
+      - who we're looking for
+      - required experience
+      - education
+    contains:
+      - requirements
+      - qualifications
+  - class: Nice to have
+    headings:
+      - nice to have
+      - nice-to-have
+      - preferred qualifications
+      - preferred skills
+      - preferred experience
+      - preferred
+      - bonus points
+      - good to have
+      - desired skills
+      - ideal candidate
+      - optional
+      - would be a plus
+      - nice to have experience
+      - nice-to-have experience
+      - nice to haves
+      - nice-to-haves
+      - you might also have
+      - strong candidates may have
+      - bonus if you have
+      - it's a plus if you have
+      - additional nice to haves
+  - class: Compensation
+    headings:
+      - compensation
+      - salary
+      - pay
+      - remuneration
+      - salary range
+      - total compensation
+      - what we pay
+      - base salary
+      - bonus
+      - pay transparency
+    contains:
+      - compensation
+      - salary
+  - class: Benefits
+    headings:
+      - benefits
+      - perks
+      - what we offer
+      - what we provide
+      - why us
+      - why join us
+      - why work with us
+      - our benefits
+      - employee benefits
+      - perks and benefits
+      - what's in it for you
+      - what is in it for you
+      - why you'll love it here
+      - what we bring
+      - what you get
+      - why join
+    prefix:
+      - why join
+    contains:
+      - benefits
+  - class: Location
+    headings:
+      - location
+      - where
+      - work location
+      - office location
+      - remote work
+      - remote policy
+      - work pattern
+      - travel and office policy
+  - class: Process
+    headings:
+      - process
+      - interview process
+      - hiring process
+      - our process
+      - selection process
+      - next steps
+      - how to apply
+      - application process
+      - apply for this job
+      - to apply
+  - class: Legal/EEO
+    headings:
+      - legal
+      - eeo
+      - equal opportunity
+      - equal employment opportunity
+      - equal opportunity employer
+      - disclaimer
+      - eeo statement
+      - diversity and inclusion
+      - diversity & inclusion
+      - global data privacy notice for job candidates
+      - data privacy notice
+      - privacy notice
+      - voluntary self-identification
+      - voluntary self-identification of disability
+      - commitment to equal opportunity
+      - for us applicants
+      - for eu applicants
+      - equal opportunities statement
+      - equal opportunities
+    contains:
+      - privacy notice
+      - self-identification

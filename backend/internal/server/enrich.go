@@ -37,6 +37,9 @@ func buildServerRegistry(client *fetch.Client) *source.Registry {
 	reg.Register(`(?:boards|job-boards)\.greenhouse\.io`, source.NewGreenhouseAdapter(client))
 	reg.Register(`jobs\.lever\.co`, source.NewLeverAdapter(client))
 	reg.Register(`jobs\.ashbyhq\.com`, source.NewAshbyAdapter(client))
+	reg.Register(source.Web3CareerPattern, source.NewWeb3CareersSource(client))
+	reg.Register(source.Remote3Pattern, source.NewRemote3Source(client))
+	reg.Register(source.WWRPattern, source.NewWWRSource(client))
 	return reg
 }
 
@@ -83,9 +86,17 @@ func ImportURL(s *store.Store, client *fetch.Client, rawURL string) (int64, erro
 	return s.Upsert(j, false)
 }
 
-// EnrichJob re-fetches the detail page for id and updates the job's description.
-// It returns the (resolved) job ID after the update.
-func EnrichJob(s *store.Store, client *fetch.Client, id int64) (int64, error) {
+// EnrichJob re-fetches the detail page for id through the source registry and
+// updates the job's description, description_html and original body. It returns
+// the (resolved) job ID after the update.
+//
+// This is the only path permitted to replace description of a legacy row (one
+// that has description_html IS NULL). The store.StoreRefetchResult call it uses
+// bypasses the Upsert legacy-row guard deliberately.
+//
+// vocab is the section-heading vocabulary; pass nil to skip section computation
+// (used in tests and legacy callers that do not need sections).
+func EnrichJob(s *store.Store, client *fetch.Client, id int64, vocab []collect.SectionClass) (int64, error) {
 	if client == nil {
 		client = getDefaultFetchClient()
 	}
@@ -95,56 +106,35 @@ func EnrichJob(s *store.Store, client *fetch.Client, id int64) (int64, error) {
 	}
 
 	ctx := context.Background()
-	page, blocked, err := client.GetDetailWithDiscipline(ctx, job.OriginalURL)
-	if err != nil {
-		return job.ID, fmt.Errorf("enrich: fetch %q: %w", job.OriginalURL, err)
+	reg := buildServerRegistry(client)
+	src := reg.For(hostOf(job.OriginalURL))
+
+	// Build a Ref from the existing job so the adapter can resolve it.
+	ref := source.Ref{
+		URL: job.OriginalURL,
+		Partial: model.JobInput{
+			OriginalURL: job.OriginalURL,
+			Title:       job.Title,
+			Company:     job.Company,
+		},
 	}
-	if blocked != nil {
-		return job.ID, fmt.Errorf("enrich: %q is blocked (%s)", job.OriginalURL, blocked.Reason)
+	j, err := src.Resolve(ctx, ref)
+	if err != nil {
+		return job.ID, fmt.Errorf("enrich: resolve %q: %w", job.OriginalURL, err)
+	}
+	if strings.HasPrefix(j.DescriptionStatus, "blocked:") {
+		return job.ID, fmt.Errorf("enrich: %q is blocked (%s)", job.OriginalURL, j.DescriptionStatus)
+	}
+	if j.Description == "" {
+		return job.ID, fmt.Errorf("enrich: resolve returned empty description for %q", job.OriginalURL)
 	}
 
-	// Try JSON-LD first; fall back to cleaned HTML. When the detail page carries
-	// several postings, use the one matching this job rather than another's data.
-	var description, status, published, publishedBasis string
-	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
-		if matched, ok := matchEnrichJob(jobs, job); ok {
-			description = matched.Description
-			status = matched.DescriptionStatus
-			published = matched.PublishedAt
-			publishedBasis = matched.PublishedBasis
-		}
-	}
-	if description == "" {
-		description = collect.CleanHTML(page.Body)
-		if description != "" {
-			status = "available cleaned html"
-		} else {
-			status = "missing"
-		}
+	if vocab != nil && j.DescriptionHTML != "" {
+		j.Sections = collect.SplitSections(j.DescriptionHTML, vocab)
 	}
 
-	// Fill a genuinely missing date together with its source basis, or fill a
-	// missing basis when the same date is confirmed. An established different
-	// date and all workflow fields stay untouched.
-	prevPublished, prevBasis := "", ""
-	if job.PublishedAt != nil {
-		prevPublished = *job.PublishedAt
-	}
-	if job.PublishedBasis != nil {
-		prevBasis = *job.PublishedBasis
-	}
-	keepPublished, keepBasis := prevPublished, prevBasis
-	if keepPublished == "" && published != "" {
-		keepPublished, keepBasis = published, publishedBasis
-	} else if keepPublished == published && keepBasis == "" && publishedBasis != "" {
-		keepBasis = publishedBasis
-	}
-	_, err = s.DB.Exec(`
-		UPDATE jobs SET description=?, description_status=?, published_at=?, published_basis=?
-		WHERE id=?`,
-		description, status, keepPublished, keepBasis, job.ID)
-	if err != nil {
-		return job.ID, fmt.Errorf("enrich: update job %d: %w", job.ID, err)
+	if err := s.StoreRefetchResult(job.ID, j); err != nil {
+		return job.ID, fmt.Errorf("enrich: store result for job %d: %w", job.ID, err)
 	}
 	return job.ID, nil
 }

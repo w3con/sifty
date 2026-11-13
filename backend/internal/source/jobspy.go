@@ -34,6 +34,14 @@ func (j *JobspySource) Discover(ctx context.Context, _ string) ([]Ref, error) {
 	}
 	refs := make([]Ref, 0, len(jobs))
 	for _, job := range jobs {
+		// The jobspy worker returns description as raw HTML from the source
+		// (LinkedIn etc.). Convert it through the structured form so both
+		// description (plain text for FTS/model) and description_html are set.
+		if job.Description != "" {
+			h := collect.StructuredHTML(job.Description)
+			job.DescriptionHTML = h
+			job.Description = plainOrFallback(h, job.Description)
+		}
 		refs = append(refs, Ref{
 			URL:     job.OriginalURL,
 			Partial: job,

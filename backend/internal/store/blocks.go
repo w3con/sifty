@@ -99,7 +99,12 @@ func (s *Store) BlockJob(jobID int64, dimension string) (*BlockRule, error) {
 	default:
 		return nil, fmt.Errorf("dimension must be \"company\"")
 	}
-	return s.AddBlockRule(kind, value)
+	rule, err := s.AddBlockRule(kind, value)
+	if err != nil {
+		return nil, err
+	}
+	s.BumpCatalogueSeq()
+	return rule, nil
 }
 
 // blockMatch checks whether a job matches any of the given block rules, returning (blocked, reason).

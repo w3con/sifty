@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-const targetVersion = 22
+const targetVersion = 27
 
 // baseSchema contains every CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS statement
 // needed to produce the complete Sifty schema through user_version 16 (later versions add
@@ -500,8 +500,78 @@ func migrate(db *sql.DB) error {
 		}
 	}
 
+	// Phase 12 — v23: additive structured HTML column for newly collected vacancies.
+	// NULL for all existing rows; L.3 will fill them from stored text without network.
+	// description (plain text) stays the input of search, Quick Match and model passes.
+	if version < 23 {
+		if err := addColumnIfMissing(db, "jobs", "description_html", "TEXT"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("PRAGMA user_version=23"); err != nil {
+			return fmt.Errorf("set user_version=23: %w", err)
+		}
+	}
+
+	// Phase 13 — v24: additive table job_originals stores the raw page body or feed
+	// item of each vacancy as received, gzip-compressed. Never returned by the API,
+	// never rendered; used to re-parse without a network fetch (spec §15.2.1).
+	if version < 24 {
+		if _, err := db.Exec(jobOriginalsSchema); err != nil {
+			return fmt.Errorf("apply job_originals schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=24"); err != nil {
+			return fmt.Errorf("set user_version=24: %w", err)
+		}
+	}
+
+	// Phase 14 — v25: additive needs_refetch column on jobs. Set by the local
+	// backfill for glued rows (single continuous text without structure) that
+	// require a page re-fetch to recover the full HTML. The refetch path clears it.
+	if version < 25 {
+		if err := addColumnIfMissing(db, "jobs", "needs_refetch", "INTEGER NOT NULL DEFAULT 0"); err != nil {
+			return err
+		}
+		if _, err := db.Exec("PRAGMA user_version=25"); err != nil {
+			return fmt.Errorf("set user_version=25: %w", err)
+		}
+	}
+
+	// Phase 15 — v26: additive job_sections table stores the description split into
+	// labelled blocks by heading. Derived from description_html via the section
+	// splitter; rebuilt by BuildJobSections at startup and written with each new
+	// vacancy in Upsert. Existing rows gain sections through the startup step.
+	if version < 26 {
+		if _, err := db.Exec(jobSectionsSchema); err != nil {
+			return fmt.Errorf("apply job_sections schema: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=26"); err != nil {
+			return fmt.Errorf("set user_version=26: %w", err)
+		}
+	}
+
+	// Phase 16 — v27: seed the catalogue_seq counter. The initial value is set to the
+	// current maximum job id so the counter is already past every existing vacancy.
+	// INSERT OR IGNORE ensures an existing row (from a previous partial run) is kept.
+	if version < 27 {
+		if _, err := db.Exec(`
+			INSERT OR IGNORE INTO id_sequence(name, value)
+			SELECT 'catalogue_seq', COALESCE(MAX(id), 0) FROM jobs`); err != nil {
+			return fmt.Errorf("seed catalogue_seq: %w", err)
+		}
+		if _, err := db.Exec("PRAGMA user_version=27"); err != nil {
+			return fmt.Errorf("set user_version=27: %w", err)
+		}
+	}
+
 	return nil
 }
+
+const jobSectionsSchema = `
+CREATE TABLE IF NOT EXISTS job_sections(
+  job_id   INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  sections TEXT    NOT NULL
+);
+`
 
 // fitResultSchema holds one two-score result per vacancy. The scalar columns repeat numbers that
 // are also inside the record so the catalogue can order and the worker can prioritise without
@@ -597,6 +667,19 @@ func addColumnIfMissing(db *sql.DB, table, column, definition string) error {
 	}
 	return nil
 }
+
+// jobOriginalsSchema creates the job_originals table, which stores the raw page
+// body or feed item of each vacancy, gzip-compressed, one row per vacancy.
+// The row is replaced on refetch. It is never selected by list/detail API endpoints
+// and is never indexed by FTS.
+const jobOriginalsSchema = `
+CREATE TABLE IF NOT EXISTS job_originals(
+  job_id     INTEGER PRIMARY KEY REFERENCES jobs(id) ON DELETE CASCADE,
+  kind       TEXT    NOT NULL,
+  fetched_at TEXT    NOT NULL,
+  body       BLOB    NOT NULL
+);
+`
 
 const quickMatchResultSchema = `
 CREATE TABLE IF NOT EXISTS match_job_results(

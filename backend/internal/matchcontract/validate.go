@@ -361,7 +361,15 @@ func (r Rules) Validate() error {
 	if !isFinite(r.UnknownGoalUtility) || r.UnknownGoalUtility < 0 || r.UnknownGoalUtility > 1 {
 		return fmt.Errorf("unknown goal utility must be within 0..1")
 	}
-	return r.VerdictUtility.validate()
+	if err := r.VerdictUtility.validate(); err != nil {
+		return err
+	}
+	for code, rate := range r.ExchangeRates {
+		if !isFinite(rate) || rate <= 0 {
+			return fmt.Errorf("exchange rate for %q must be finite and positive", code)
+		}
+	}
+	return nil
 }
 
 // Validate checks profile snapshot identity. Demographics are structurally absent.

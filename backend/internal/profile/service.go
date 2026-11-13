@@ -75,6 +75,10 @@ type Service struct {
 // or the result store.
 type QuickMatchRefresher interface {
 	Recalculate(ctx context.Context) error
+	// RecalculateJob rescores a single vacancy synchronously. Used by route handlers to give fast
+	// visual feedback after a profile change tied to a specific job, without waiting for a full
+	// catalogue rescore.
+	RecalculateJob(ctx context.Context, jobID int64) error
 }
 
 // SetQuickMatchRefresher wires the local recalculation effect used after a profile save. A nil
@@ -178,12 +182,13 @@ func (s *Service) Update(expected int, data ProfileData) (*Profile, error) {
 // two different sections saved at the same time cannot overwrite each other and the last explicit
 // Save of one section wins only for that section. A normalized no-op returns changed=false and
 // writes no revision, context or ranking. No model call or network fetch happens here.
+// Uses the fast path (no immediate full rescore); the route handler schedules a background rescore.
 func (s *Service) UpdateSection(name string, value json.RawMessage) (*Profile, bool, error) {
 	section, err := ParseSection(name)
 	if err != nil {
 		return nil, false, err
 	}
-	return s.updateSection(section, func(*Profile) (json.RawMessage, error) { return value, nil })
+	return s.updateSectionFast(section, func(*Profile) (json.RawMessage, error) { return value, nil })
 }
 
 // maxSkillNameRunes bounds a skill name added in one step.
@@ -208,7 +213,9 @@ func (s *Service) AddSkill(name, level string) (*Profile, bool, error) {
 	if !validSkillLevels[level] {
 		return nil, false, fmt.Errorf("unknown skill level %q", level)
 	}
-	return s.updateSection(SectionSkills, func(stored *Profile) (json.RawMessage, error) {
+	// updateSectionFast: the route handler (profile_api.go) rescores the specific job synchronously
+	// and schedules the full background rescore; the full Recalculate is not triggered here.
+	return s.updateSectionFast(SectionSkills, func(stored *Profile) (json.RawMessage, error) {
 		rows := append([]Skill(nil), stored.Data.Skills...)
 		for _, have := range rows {
 			if strings.EqualFold(strings.TrimSpace(have.Name), name) || (have.Key != "" && have.Key == skillKeyOf(name)) {
@@ -234,7 +241,8 @@ func (s *Service) AddAbsentSkill(name string) (*Profile, bool, error) {
 		return nil, false, fmt.Errorf("skill name is longer than %d characters", maxSkillNameRunes)
 	}
 	key := skillKeyOf(name)
-	return s.updateSection(SectionAbsentSkills, func(stored *Profile) (json.RawMessage, error) {
+	// updateSectionFast: same reasoning as AddSkill; the route handler handles the rescore.
+	return s.updateSectionFast(SectionAbsentSkills, func(stored *Profile) (json.RawMessage, error) {
 		for _, have := range stored.Data.Skills {
 			if have.Key == key || strings.EqualFold(strings.TrimSpace(have.Name), name) {
 				return nil, fmt.Errorf("%q is already among your skills", name)
@@ -248,6 +256,67 @@ func (s *Service) AddAbsentSkill(name string) (*Profile, bool, error) {
 		}
 		rows = append(rows, AbsentSkill{Key: key, Name: name})
 		return json.Marshal(rows)
+	})
+}
+
+// maxConfirmedFactTextRunes bounds the text of one confirmed fact.
+const maxConfirmedFactTextRunes = 200
+
+// AddConfirmedFact records that the owner has (have=true) or does not have (have=false) the
+// experience or qualification described by text, where a vacancy requirement is read. The key is
+// derived by NormalizeFactKey; a fact already stored (same key, same have) changes nothing and
+// reports changed=false. The fact is kept even if the skill with the same name exists: a
+// confirmed fact is a richer assertion than a skill entry.
+func (s *Service) AddConfirmedFact(text string, have bool) (*Profile, bool, error) {
+	text = strings.Join(strings.Fields(text), " ")
+	if text == "" {
+		return nil, false, fmt.Errorf("confirmed fact text is required")
+	}
+	if len([]rune(text)) > maxConfirmedFactTextRunes {
+		return nil, false, fmt.Errorf("confirmed fact text is longer than %d characters", maxConfirmedFactTextRunes)
+	}
+	key := NormalizeFactKey(text)
+	if key == "" {
+		return nil, false, fmt.Errorf("confirmed fact text normalizes to an empty key")
+	}
+	// updateSectionFast: same reasoning as AddSkill; the route handler handles the rescore.
+	return s.updateSectionFast(SectionConfirmedFacts, func(stored *Profile) (json.RawMessage, error) {
+		rows := append([]ConfirmedFact(nil), stored.Data.ConfirmedFacts...)
+		for _, f := range rows {
+			if f.Key == key && f.Have == have {
+				return json.Marshal(rows) // already there: no change
+			}
+		}
+		// A fact for the same key but opposite Have replaces the previous record.
+		for i, f := range rows {
+			if f.Key == key {
+				rows[i].Have = have
+				rows[i].Text = text
+				return json.Marshal(rows)
+			}
+		}
+		rows = append(rows, ConfirmedFact{Key: key, Text: text, Have: have})
+		return json.Marshal(rows)
+	})
+}
+
+// RemoveConfirmedFact removes one confirmed fact by its normalized key. A key not found changes
+// nothing and reports changed=false. The save uses the fast path (no immediate full rescore); the
+// route handler schedules a background rescore after this call.
+func (s *Service) RemoveConfirmedFact(key string) (*Profile, bool, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return nil, false, fmt.Errorf("confirmed fact key is required")
+	}
+	return s.updateSectionFast(SectionConfirmedFacts, func(stored *Profile) (json.RawMessage, error) {
+		rows := stored.Data.ConfirmedFacts
+		out := make([]ConfirmedFact, 0, len(rows))
+		for _, f := range rows {
+			if f.Key != key {
+				out = append(out, f)
+			}
+		}
+		return json.Marshal(out)
 	})
 }
 
@@ -317,6 +386,57 @@ func (s *Service) syncAfterSave(p *Profile) *Profile {
 	}
 	out.DerivedCurrent = out.ContextCurrent && out.FastRankingCurrent
 	return out
+}
+
+// syncAfterSaveFast returns the decorated profile without triggering the full catalogue rescore or
+// candidate context refresh. It is used by the quick-add endpoints (AddSkill, AddAbsentSkill,
+// AddConfirmedFact) when a jobId is supplied: the route handler then rescores that one job
+// synchronously and schedules a full background rescore, avoiding the 5–6 s full Recalculate.
+func (s *Service) syncAfterSaveFast(p *Profile) *Profile {
+	return s.decorate(p)
+}
+
+// updateSectionFast saves one section without triggering the full quick-match rescore or candidate
+// context refresh. The caller is responsible for rescoring the affected job and scheduling the
+// background full rescore.
+func (s *Service) updateSectionFast(section Section, build func(stored *Profile) (json.RawMessage, error)) (*Profile, bool, error) {
+	saved, changed, err := s.store.MutateProfile(LocalProfileID, func(current *store.ProfileRecord) (string, bool, string, string, error) {
+		stored, err := decodeProfile(current)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		value, err := build(stored)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		next := stored.Data
+		changed, err := applySection(&next, section, value)
+		if err != nil {
+			return "", false, "", "", err
+		}
+		if !changed {
+			return "", false, "", "", nil
+		}
+		if err := next.Validate(); err != nil {
+			return "", false, "", "", err
+		}
+		encoded, err := json.Marshal(next)
+		if err != nil {
+			return "", false, "", "", fmt.Errorf("marshal profile section: %w", err)
+		}
+		return string(encoded), true, "profile section update", "manual", nil
+	})
+	if err != nil {
+		return nil, false, err
+	}
+	savedProfile, err := decodeProfile(saved)
+	if err != nil {
+		return nil, false, err
+	}
+	if !changed {
+		return s.decorate(savedProfile), false, nil
+	}
+	return s.syncAfterSaveFast(savedProfile), true, nil
 }
 
 // SyncDerivedContext makes the derived context and fast ranking reflect the current stored

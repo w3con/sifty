@@ -162,6 +162,7 @@ func (s *Store) SaveMatchResult(jobID int64, r matchcontract.Result) error {
 	if err := tx.Commit(); err != nil {
 		return fmt.Errorf("commit quick match result for job %d: %w", jobID, err)
 	}
+	s.BumpCatalogueSeq()
 	return nil
 }
 

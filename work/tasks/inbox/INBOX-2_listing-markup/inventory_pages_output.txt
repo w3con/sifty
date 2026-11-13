@@ -1,0 +1,277 @@
+## paradigm-9  https://jobs.ashbyhq.com/fab2/d9edb922-6cae-4e65-9b20-ba452f3e2edf
+   HTTP 200, 47549 bytes, text/html;
+   title: Computer Vision Software Engineer @ Fab2
+   JSON-LD JobPosting description: raw HTML, 8554 chars, tags {'p': 60, 'ul': 22, 'li': 30, 'br': 2, 'strong': 9, 'em': 1}
+      decoded once: tags {'p': 60, 'ul': 22, 'li': 30, 'br': 2, 'strong': 9, 'em': 1}
+   page body tags (scripts removed): {}
+## paradigm-8  https://sg.linkedin.com/jobs/view/full-stack-software-engineer-at-amber-group-4483603544
+   HTTP 200, 243256 bytes, text/html;
+   title: Full-Stack Software Engineer at Amber Group — Singapore, Singapore | LinkedIn Jobs
+   BLOCK PAGE SIGNS present
+   JSON-LD JobPosting description: escaped HTML (&lt;p&gt;), 5573 chars, tags {}
+      decoded once: tags {'p': 11, 'ul': 3, 'li': 24, 'br': 5, 'strong': 3}
+   page body tags (scripts removed): {'h1': 1, 'h2': 6, 'h3': 41, 'h4': 28, 'p': 44, 'ul': 12, 'li': 118, 'br': 5, 'strong': 6, 'b': 1}
+## paradigm-1417  https://hk.linkedin.com/jobs/view/security-grc-specialist-at-bit-official-4484648707
+   HTTP 200, 225373 bytes, text/html;
+   title: Security GRC Specialist at BIT Official — Hong Kong, Hong Kong SAR | LinkedIn Jobs
+   BLOCK PAGE SIGNS present
+   JSON-LD JobPosting description: escaped HTML (&lt;p&gt;), 4347 chars, tags {}
+      decoded once: tags {'p': 13, 'ul': 2, 'li': 12, 'br': 3, 'strong': 9}
+   page body tags (scripts removed): {'h1': 1, 'h2': 5, 'h3': 43, 'h4': 28, 'p': 38, 'ul': 11, 'li': 106, 'br': 3, 'strong': 11, 'b': 1}
+## wellfound-13  https://wellfound.com/jobs/4901509-senior-software-engineer
+   HTTP 200, 57421 bytes, text/html;
+   title: Senior Software Engineer at Discernis • New York City | Wellfound
+   JSON-LD JobPosting description: raw HTML, 3476 chars, tags {'h3': 9, 'p': 5, 'ul': 5, 'ol': 1, 'li': 25, 'strong': 5}
+      decoded once: tags {'h3': 9, 'p': 5, 'ul': 5, 'ol': 1, 'li': 25, 'strong': 5}
+   page body tags (scripts removed): {'h1': 1, 'h2': 4, 'h3': 11, 'p': 8, 'ul': 13, 'ol': 1, 'li': 56, 'strong': 5}
+## wellfound-2610  https://wellfound.com/jobs/4995462-business-development-representative
+   HTTP 404, 34928 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><title>4
+## wellfound-2625  https://wellfound.com/jobs/4824213-md-agentic-fund-finance-operations
+   HTTP 200, 91494 bytes, text/html;
+   title: MD, Agentic Fund Finance & Operations at Equi • New York City | Wellfound
+   JSON-LD JobPosting description: raw HTML, 6933 chars, tags {'p': 17, 'ul': 3, 'li': 20, 'strong': 23}
+      decoded once: tags {'p': 17, 'ul': 3, 'li': 20, 'strong': 23}
+   page body tags (scripts removed): {'h1': 1, 'h2': 4, 'h3': 4, 'h4': 1, 'p': 21, 'ul': 11, 'li': 60, 'strong': 23}
+## wwr-rss  https://weworkremotely.com/remote-jobs.rss
+   HTTP 200, 2241132 bytes, application/rss+xml;
+   title: We Work Remotely: Remote jobs in design, programming, marketing and more
+   RSS items 100
+   feed description: wrapper=entity-escaped decoded form=plain, no newlines, 72 chars, tags {}
+   feed description: wrapper=entity-escaped decoded form=raw HTML, 8810 chars, tags {'h3': 5, 'p': 29, 'ul': 13, 'li': 40, 'br': 3, 'strong': 6}
+## wwr-2656  https://weworkremotely.com/remote-jobs/talentxd-director-of-affiliates
+   HTTP 403, 5697 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/htm
+## wwr-2168  https://yourresourcegroup.com/
+   HTTP 200, 40681 bytes, text/html
+   title: Your Resource Group — What’s yours should stay yours
+   no JSON-LD JobPosting (ld+json blocks: 1)
+   page body tags (scripts removed): {'h1': 1, 'h2': 5, 'h3': 13, 'p': 56, 'ul': 2, 'ol': 4, 'li': 24, 'br': 3, 'strong': 1, 'b': 9, 'em': 7}
+## remotive-1  https://remotive.com/remote-jobs/software-development/senior-back-end-developer-2091135
+   HTTP 200, 130404 bytes, text/html;
+   title: [Hiring] Senior Back-end Developer @Lemon.io
+   JSON-LD JobPosting description: raw HTML, 5473 chars, tags {'p': 33, 'ul': 2, 'ol': 1, 'li': 17, 'strong': 10}
+      decoded once: tags {'p': 33, 'ul': 2, 'ol': 1, 'li': 17, 'strong': 10}
+   page body tags (scripts removed): {'h1': 1, 'h2': 1, 'p': 52, 'ul': 6, 'ol': 1, 'li': 39, 'br': 2, 'strong': 16}
+## remotive-2676  https://remotive.com/remote/jobs/engineering/asset-integrity-engineer-6512294
+   HTTP 200, 120590 bytes, text/html;
+   title: [Hiring] Asset Integrity Engineer @Fyfe
+   JSON-LD JobPosting description: raw HTML, 4318 chars, tags {'p': 11, 'ul': 4, 'li': 17}
+      decoded once: tags {'p': 11, 'ul': 4, 'li': 17}
+   page body tags (scripts removed): {'h1': 1, 'h2': 2, 'p': 32, 'ul': 8, 'li': 39, 'br': 2, 'strong': 4}
+## remotive-api  https://remotive.com/api/remote-jobs?limit=2
+   HTTP 200, 234440 bytes, application/json;
+   json field /jobs[]/description: raw HTML, 28465 chars, tags {'p': 65, 'ul': 9, 'li': 38, 'br': 4}
+   json field /jobs[]/description: raw HTML, 15796 chars, tags {'p': 79, 'strong': 8}
+   json field /jobs[]/description: raw HTML, 28761 chars, tags {'p': 20, 'ul': 32, 'li': 37, 'br': 5}
+   json field /jobs[]/description: raw HTML, 2658 chars, tags {'p': 11, 'ul': 2, 'li': 18, 'br': 2, 'strong': 1, 'em': 1}
+## multicoin-622  https://jobs.multicoin.capital/companies/streamingfast/jobs/98024821-weld-engineering-manager-development
+   HTTP 200, 148349 bytes, text/html;
+   title: Weld Engineering Manager, Development @ StreamingFast | Multicoin Capital Job Board
+   JSON-LD JobPosting description: raw HTML, 5847 chars, tags {'ul': 4, 'li': 18, 'br': 44, 'strong': 5}
+      decoded once: tags {'ul': 4, 'li': 18, 'br': 44, 'strong': 5}
+   __NEXT_DATA__ present; long text fields: 3
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 360 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 5847 chars, tags {'ul': 4, 'li': 18, 'br': 44, 'strong': 5}
+      /props/pageProps/initialState/jobs/currentJob/organization/description: plain, no newlines, 390 chars, tags {}
+   page body tags (scripts removed): {'h2': 2, 'h4': 1, 'p': 5, 'ul': 9, 'li': 40, 'br': 44, 'strong': 5}
+## multicoin-625  https://jobs.multicoin.capital/companies/sei-labs-2/jobs/97251127-protocol-software-engineer-storage
+   HTTP 200, 138345 bytes, text/html;
+   title: Protocol Software Engineer - Storage @ Sei Labs | Multicoin Capital Job Board
+   JSON-LD JobPosting description: raw HTML, 2939 chars, tags {'p': 24, 'ul': 2, 'li': 11, 'br': 1, 'strong': 6}
+      decoded once: tags {'p': 24, 'ul': 2, 'li': 11, 'br': 1, 'strong': 6}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 360 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 2939 chars, tags {'p': 24, 'ul': 2, 'li': 11, 'br': 1, 'strong': 6}
+   page body tags (scripts removed): {'h2': 2, 'h4': 1, 'p': 26, 'ul': 7, 'li': 33, 'br': 1, 'strong': 6}
+## multicoin-639  https://jobs.multicoin.capital/companies/zama/jobs/95448990-it-administrator
+   HTTP 200, 129334 bytes, text/html;
+   title: IT Administrator @ Zama | Multicoin Capital Job Board
+   no JSON-LD JobPosting (ld+json blocks: 0)
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 360 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 631 chars, tags {'h2': 1, 'p': 3}
+   page body tags (scripts removed): {'h2': 3, 'h4': 1, 'p': 7, 'ul': 5, 'li': 22}
+## a16z-list  https://a16zfrontier.com/jobs/
+   HTTP 200, 883082 bytes, text/html
+   title: Browse jobs in our portfolio - a16z Frontier
+   no JSON-LD JobPosting (ld+json blocks: 0)
+   page body tags (scripts removed): {'h1': 2, 'h2': 3, 'h3': 11, 'p': 8, 'ul': 11, 'li': 37, 'br': 1, 'strong': 1}
+## a16z-450  https://jobs.ashbyhq.com/bettermoney/8898c5b2-7561-4f23-a274-342f4e389a17
+   HTTP 200, 28702 bytes, text/html;
+   title: Sr Backend Engineer @ The Better Money Company
+   JSON-LD JobPosting description: raw HTML, 6825 chars, tags {'h2': 7, 'p': 37, 'ul': 5, 'li': 31, 'br': 6, 'strong': 14}
+      decoded once: tags {'h2': 7, 'p': 37, 'ul': 5, 'li': 31, 'br': 6, 'strong': 14}
+   page body tags (scripts removed): {}
+## a16z-545  https://coinbase.com/careers/positions/6784618?gh_jid=6784618
+   HTTP 403, 5765 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/htm
+## hn-16  https://hacker-news.firebaseio.com/v0/item/49926618.json
+   HTTP 200, 1317 bytes, application/json;
+   json field /text: raw HTML, 1150 chars, tags {'p': 6}
+## hn-1275  https://hacker-news.firebaseio.com/v0/item/49928358.json
+   HTTP 200, 2389 bytes, application/json;
+   json field /text: raw HTML, 2271 chars, tags {'p': 10}
+## hn-1276  https://hacker-news.firebaseio.com/v0/item/49925260.json
+   HTTP 200, 910 bytes, application/json;
+   json field /text: raw HTML, 797 chars, tags {'p': 10}
+## electric-368  https://jobs.electriccapital.com/companies/mysten-labs/jobs/97594497-staff-security-engineer-walrus
+   HTTP 200, 165050 bytes, text/html;
+   title: Staff Security Engineer, Walrus @ Mysten Labs | Electric Capital Job Board
+   JSON-LD JobPosting description: raw HTML, 5013 chars, tags {'ul': 3, 'li': 15, 'br': 34, 'strong': 6, 'em': 10}
+      decoded once: tags {'ul': 3, 'li': 15, 'br': 34, 'strong': 6, 'em': 10}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 356 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 5013 chars, tags {'ul': 3, 'li': 15, 'br': 34, 'strong': 6, 'em': 10}
+   page body tags (scripts removed): {'h2': 1}
+## electric-10  https://jobs.ashbyhq.com/phantom/f4fcc35e-bdc0-498b-a5f0-ac553d146531
+   HTTP 200, 60509 bytes, text/html;
+   title: AI Engineer @ Phantom
+   JSON-LD JobPosting description: raw HTML, 10848 chars, tags {'h2': 4, 'p': 58, 'ul': 5, 'li': 37, 'br': 1, 'strong': 19, 'em': 3}
+      decoded once: tags {'h2': 4, 'p': 58, 'ul': 5, 'li': 37, 'br': 1, 'strong': 19, 'em': 3}
+   page body tags (scripts removed): {}
+## electric-410  https://jobs.electriccapital.com/companies/privy-2/jobs/89349814-engineering-manager-product
+   HTTP 200, 149340 bytes, text/html;
+   title: Engineering Manager, Product @ Privy | Electric Capital Job Board
+   JSON-LD JobPosting description: plain, no newlines, 28 chars, tags {}
+      decoded once: tags {}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 356 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/organization/description: plain, no newlines, 433 chars, tags {}
+   page body tags (scripts removed): {'h2': 1}
+## web3-27  https://web3.career/senior-smart-contract-engineer-coinlist/155815
+   HTTP 200, 363787 bytes, text/html;
+   title: Web3 Senior Smart Contract Engineer $170k - $190k Remote at CoinList
+   JSON-LD JobPosting description: plain, no newlines, 7419 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6843 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6644 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6355 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 7692 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 5139 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 5371 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 5317 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 4368 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 4968 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 4415 chars, tags {}
+      decoded once: tags {}
+   page body tags (scripts removed): {'h1': 1, 'h2': 4, 'h3': 16, 'h4': 10, 'p': 23, 'ul': 19, 'li': 80, 'br': 56, 'strong': 10}
+## web3-28  https://web3.career/analytics-engineer-bcbgroup/155406
+   HTTP 200, 34032 bytes, text/html;
+   title: Web3 Analytics Engineer $85k - $108k Remote at Bcbgroup
+   JSON-LD JobPosting description: plain, no newlines, 2540 chars, tags {}
+      decoded once: tags {}
+   page body tags (scripts removed): {'h1': 1, 'p': 22, 'ul': 11, 'li': 51}
+## web3-75  https://web3.career/senior-implementation-project-manager-launchpadtechnologiesinc/154177
+   HTTP 200, 353428 bytes, text/html;
+   title: Web3 Senior Implementation Project Manager Remote at Launchpadtechnologiesinc
+   JSON-LD JobPosting description: plain, no newlines, 6243 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 5270 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 3315 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 3399 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 2835 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 4351 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 7648 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6098 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6143 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 6667 chars, tags {}
+      decoded once: tags {}
+   JSON-LD JobPosting description: plain, no newlines, 4254 chars, tags {}
+      decoded once: tags {}
+   page body tags (scripts removed): {'h1': 1, 'h2': 4, 'h3': 16, 'h4': 10, 'p': 40, 'ul': 11, 'li': 51, 'br': 15}
+## framework-24  https://jobs.framework.ventures/companies/chainlink-2-7611ec12-a857-4ffb-9dfc-cae6a1bb558d/jobs/98205234-senior-strategic-account-manager-gtm
+   HTTP 200, 94582 bytes, text/html;
+   title: Senior Strategic Account Manager, GTM @ Chainlink | Framework Ventures Job Board
+   JSON-LD JobPosting description: raw HTML, 5596 chars, tags {'ul': 3, 'li': 17, 'br': 28, 'strong': 7, 'em': 2}
+      decoded once: tags {'ul': 3, 'li': 17, 'br': 28, 'strong': 7, 'em': 2}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 362 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 5596 chars, tags {'ul': 3, 'li': 17, 'br': 28, 'strong': 7, 'em': 2}
+   page body tags (scripts removed): {'h2': 2, 'p': 2, 'ul': 3, 'li': 17, 'br': 28, 'strong': 7, 'em': 2}
+## framework-732  https://jobs.framework.ventures/companies/chainlink-2-7611ec12-a857-4ffb-9dfc-cae6a1bb558d/jobs/98020844-security-engineer-product-security
+   HTTP 200, 94556 bytes, text/html;
+   title: Security Engineer, Product Security @ Chainlink | Framework Ventures Job Board
+   JSON-LD JobPosting description: raw HTML, 5472 chars, tags {'ul': 3, 'li': 16, 'br': 32, 'strong': 8, 'em': 2}
+      decoded once: tags {'ul': 3, 'li': 16, 'br': 32, 'strong': 8, 'em': 2}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 362 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 5472 chars, tags {'ul': 3, 'li': 16, 'br': 32, 'strong': 8, 'em': 2}
+   page body tags (scripts removed): {'h2': 2, 'p': 2, 'ul': 3, 'li': 16, 'br': 32, 'strong': 8, 'em': 2}
+## framework-805  https://jobs.framework.ventures/companies/chainlink-2-7611ec12-a857-4ffb-9dfc-cae6a1bb558d/jobs/84268485-research-internship
+   HTTP 200, 90262 bytes, text/html;
+   title: Research Internship @ Chainlink | Framework Ventures Job Board
+   JSON-LD JobPosting description: raw HTML, 4704 chars, tags {'ul': 4, 'li': 10, 'br': 36, 'strong': 9, 'em': 2}
+      decoded once: tags {'ul': 4, 'li': 10, 'br': 36, 'strong': 9, 'em': 2}
+   __NEXT_DATA__ present; long text fields: 2
+      /props/pageProps/network/tnSettings/tnSignUpWelcomeText: markdown, 362 chars, tags {}
+      /props/pageProps/initialState/jobs/currentJob/description: raw HTML, 4704 chars, tags {'ul': 4, 'li': 10, 'br': 36, 'strong': 9, 'em': 2}
+   page body tags (scripts removed): {'h2': 2, 'p': 4, 'ul': 4, 'li': 10, 'br': 36, 'strong': 9, 'em': 2}
+## ccj-21  https://cryptocurrencyjobs.co/engineering/ethena-labs-senior-staff-software-engineer
+   HTTP 200, 75963 bytes, text/html;
+   title: Senior/Staff Software Engineer at Ethena Labs - Cryptocurrency Jobs
+   JSON-LD JobPosting description: raw HTML, 3520 chars, tags {'p': 5, 'ul': 2, 'li': 14, 'strong': 3}
+      decoded once: tags {'p': 5, 'ul': 2, 'li': 14, 'strong': 3}
+   page body tags (scripts removed): {'h1': 1, 'h2': 8, 'h3': 60, 'h4': 12, 'p': 18, 'ul': 16, 'li': 112, 'strong': 3}
+## ccj-1343  https://cryptocurrencyjobs.co/operations/stratosphere-head-of-finance
+   HTTP 200, 70264 bytes, text/html;
+   title: Head of Finance at Stratosphere - Cryptocurrency Jobs
+   JSON-LD JobPosting description: raw HTML, 200 chars, tags {'p': 1}
+      decoded once: tags {'p': 1}
+   page body tags (scripts removed): {'h1': 1, 'h2': 8, 'h3': 61, 'h4': 12, 'p': 14, 'ul': 14, 'li': 93}
+## ccj-1375  https://cryptocurrencyjobs.co/operations/institute-of-free-technology-financial-controller
+   HTTP 200, 85717 bytes, text/html;
+   title: Financial Controller at Institute of Free Technology - Cryptocurrency Jobs
+   JSON-LD JobPosting description: raw HTML, 6777 chars, tags {'h2': 6, 'p': 6, 'ul': 3, 'ol': 1, 'li': 25, 'strong': 7}
+      decoded once: tags {'h2': 6, 'p': 6, 'ul': 3, 'ol': 1, 'li': 25, 'strong': 7}
+   page body tags (scripts removed): {'h1': 1, 'h2': 14, 'h3': 61, 'h4': 12, 'p': 19, 'ul': 17, 'ol': 1, 'li': 121, 'strong': 7}
+## remote3-1376  https://remote3.co/jobs/pr-jobs
+   HTTP 200, 61622 bytes, text/html;
+   title: Public Relations (PR) Jobs (97 new in Sep 2025)
+   no JSON-LD JobPosting (ld+json blocks: 0)
+   page body tags (scripts removed): {'h1': 1, 'p': 10}
+## remote3-1415  https://remote3.co/jobs/entry-level-jobs
+   HTTP 200, 61577 bytes, text/html;
+   title: Entry Level Jobs (97 new in Sep 2025)
+   no JSON-LD JobPosting (ld+json blocks: 0)
+   page body tags (scripts removed): {'h1': 1, 'p': 10}
+## remote3-7  https://remote3.co/remote-jobs/job-application-for-full-stack-software-engineer-compliance-at-ondo-finance-ondo-finance
+   HTTP 200, 99047 bytes, text/html;
+   title: Job Application for Full-Stack Software Engineer - Compliance at Ondo Finance at Ondo Finance - Remo
+   no JSON-LD JobPosting (ld+json blocks: 0)
+   page body tags (scripts removed): {'h1': 1, 'h2': 7, 'p': 23, 'ul': 5, 'li': 32, 'strong': 5}
+## cjl-1315  https://cryptojobslist.com/jobs/quantitative-developer-options-pricing-singapore-at-paradex
+   HTTP 403, 5782 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/htm
+## cjl-2605  https://cryptojobslist.com/jobs/junior-partner-venture-strategies-san-francisco-ca-at-pantera-capital
+   HTTP 403, 5833 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/htm
+## cjl-2421  https://cryptojobslist.com/jobs/asisstant-finance-manager-hong-kong-hong-kong-sar-at-crypto-com
+   HTTP 403, 5794 bytes, text/html;
+   NOT FETCHED (no retry): <!DOCTYPE html><html lang="en-US"><head><title>Just a moment...</title><meta http-equiv="Content-Type" content="text/htm
+## bt-159  https://app.usebraintrust.com/api/jobs/17956/
+   HTTP 200, 6146 bytes, application/json
+   json field /description: raw HTML, 2816 chars, tags {'p': 21, 'br': 3}
+## bt-185  https://app.usebraintrust.com/api/jobs/17788/
+   HTTP 200, 6282 bytes, application/json
+   json field /description: raw HTML, 3065 chars, tags {'p': 30, 'br': 4, 'strong': 5, 'b': 5}
+## bt-186  https://app.usebraintrust.com/api/jobs/17740/
+   HTTP 200, 9650 bytes, application/json
+   json field /description: raw HTML, 5513 chars, tags {'p': 60, 'br': 7, 'strong': 7, 'b': 7}

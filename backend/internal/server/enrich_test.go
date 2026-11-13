@@ -108,7 +108,7 @@ func TestEnrichFn(t *testing.T) {
 		t.Fatalf("fetch.New: %v", err)
 	}
 
-	returnedID, err := server.EnrichJob(s, c, seedID)
+	returnedID, err := server.EnrichJob(s, c, seedID, nil)
 	if err != nil {
 		t.Fatalf("EnrichJob: %v", err)
 	}

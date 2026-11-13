@@ -435,6 +435,12 @@ type Config struct {
 	Network   Network
 	// Skills is the vocabulary of the requirement matcher (skills.yaml, or the built-in default).
 	Skills Skills
+	// Sections is the heading vocabulary for the listing section splitter (sections.yaml, or the
+	// built-in default).
+	Sections SectionsDef
+	// VacancyView holds the exchange rates, contract word lists and offer vocabulary for the
+	// vacancy band and offer tiles (vacancy-view.yaml, or the built-in default).
+	VacancyView VacancyViewConfig
 }
 
 var validProviderTypes = map[string]bool{"opencode": true, "claude": true, "ollama": true, "compatible": true}
@@ -485,6 +491,16 @@ func Load(d dirs.Dirs) (*Config, error) {
 		return nil, err
 	}
 	c.Skills = skills
+	sections, err := loadSectionsDef(d)
+	if err != nil {
+		return nil, err
+	}
+	c.Sections = sections
+	vacancyView, err := loadVacancyViewConfig(d)
+	if err != nil {
+		return nil, err
+	}
+	c.VacancyView = vacancyView
 	if err := c.validate(); err != nil {
 		return nil, err
 	}

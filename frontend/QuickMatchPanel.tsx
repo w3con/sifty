@@ -130,8 +130,8 @@ function Section({title, lines, mark, onOpenProfile, onAddSkill, onDismissSkill,
               {done[name]
                 ? <span className="fit-tag">{done[name] === 'added' ? 'added to skills' : 'marked as not yours'}</span>
                 : <>
-                  <button className="fit-skill-action add" disabled={working !== null} data-tip={`I have this: add ${name} to my skills`} aria-label={`Add ${name} to my skills`} onClick={() => act(name, 'added')}>{working === name ? '…' : '✓'}</button>
-                  <button className="fit-skill-action dismiss" disabled={working !== null} data-tip={`I do not have this: remember it in my profile and stop offering ${name}`} aria-label={`I do not have ${name}`} onClick={() => act(name, 'dismissed')}>✕</button>
+                  <button className="fit-skill-action add" disabled={working !== null} title={`Add this skill to your profile`} data-tip={`I have this: add ${name} to my skills`} aria-label={`Add ${name} to my skills`} onClick={() => act(name, 'added')}>{working === name ? '…' : '+'}</button>
+                  <button className="fit-skill-action dismiss" disabled={working !== null} title={`Mark that you do not have this skill`} data-tip={`I do not have this: remember it in my profile and stop offering ${name}`} aria-label={`I do not have ${name}`} onClick={() => act(name, 'dismissed')}>−</button>
                 </>}
             </span>)}</span>}
             {section && <> <button className="link-button" onClick={() => onOpenProfile(section.id)}>Add to {section.label}</button></>}
@@ -159,7 +159,8 @@ function ToClarify({lines}: {lines: FitLine[]}) {
 // The two numbers of a catalogue row: Fits you, then You fit. The title spells both out in words.
 export function ScorePair({fit}: {fit?: FitView | null}) {
   const a = fitsYouCell(fit), b = youFitCell(fit);
-  if (youFitOff(fit)) {
+  // No result stored yet (new vacancy not yet rescored) or matching off: show Fits you only.
+  if (!fit || youFitOff(fit)) {
     return <span className="score-pair" role="group" aria-label={a.title} title={a.title}>
       <span className={`score fits-you${a.bucket === 'strong' ? ' strong' : ''}${a.previous ? ' previous' : ''}`}>{a.number}</span>
     </span>;

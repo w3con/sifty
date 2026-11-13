@@ -17,6 +17,7 @@ import {
   putProfileSection,
   refreshProfileDerivedContext,
   rejectProfileFact,
+  removeConfirmedFact as apiRemoveConfirmedFact,
   resolveProfileFact,
   retryDocument,
   profileAvatarUrl,
@@ -209,6 +210,17 @@ export function useProfileEditor() {
     }
   }, [applyNewerProfile]);
 
+  // Removes one confirmed fact by its normalized key.
+  const removeConfirmedFact = useCallback(async (key: string) => {
+    try {
+      const result = await apiRemoveConfirmedFact(key);
+      applyNewerProfile(result.profile);
+      setNotice('Removed.');
+    } catch (cause) {
+      setError(messageOf(cause));
+    }
+  }, [applyNewerProfile]);
+
   // A fact action can update the stored profile while section drafts are open. The drafts are
   // deliberately not marked stale: version comparison is not part of the editing workflow.
   const applyExternalProfile = useCallback((next: Profile) => {
@@ -236,7 +248,7 @@ export function useProfileEditor() {
 
   return {
     profile, capabilities, loading, error, notice, drafts, derivedRefreshing, derivedError,
-    load, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile, refreshDerived, removeAbsentSkill,
+    load, beginEdit, cancelEdit, changeDraft, saveSection, applyExternalProfile, refreshDerived, removeAbsentSkill, removeConfirmedFact,
     setError, setNotice,
   };
 }

@@ -87,7 +87,12 @@ func MergeModelConditions(f matchcontract.VacancyFacts, c matchcontract.Extracte
 		}
 	}
 	if v := c.Compensation; v != nil {
-		if cash, ok := cashText(v.Value, v.Quote); ok {
+		// Pass v.Value as the skip-check line so an extraction quote that also mentions equity
+		// (e.g. "$230k–$250k + equity") does not suppress the salary parse.  The model already
+		// classified this as compensation; the skip heuristic is for raw description text only.
+		// We restore the real quote in Evidence afterwards.
+		if cash, ok := cashText(v.Value, v.Value); ok {
+			cash.Evidence.Quote = v.Quote
 			cash.Evidence.Field = "model_extraction"
 			switch {
 			case out.Compensation.Cash == nil:

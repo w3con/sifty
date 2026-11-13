@@ -103,6 +103,47 @@ func mustGet(t *testing.T, s *store.Store, id int64) *model.Job {
 	return j
 }
 
+func TestRescoreUnscoredFitOnlyScoresNewVacancies(t *testing.T) {
+	s, svc := fitStore(t)
+
+	// Add two vacancies: one that already has a fit result, one that does not.
+	scored := addJob(t, s, "Rust Engineer", "You know Rust. You will build services.", "available structured description")
+	unscored := addJob(t, s, "Go Developer", "You know Go. You will build backends.", "available structured description")
+
+	// Score only the first vacancy manually so it has a stored result.
+	if err := svc.RescoreFit(context.Background(), scored); err != nil {
+		t.Fatalf("RescoreFit: %v", err)
+	}
+	// Confirm the second vacancy has no result.
+	if got, err := s.GetFitResult(unscored); err != nil || got != nil {
+		t.Fatalf("want no fit result for unscored vacancy before RescoreUnscoredFit: got=%+v err=%v", got, err)
+	}
+
+	// RescoreUnscoredFit must score only the unscored vacancy.
+	sum, err := svc.RescoreUnscoredFit(context.Background())
+	if err != nil {
+		t.Fatalf("RescoreUnscoredFit: %v", err)
+	}
+	if sum.Processed != 1 {
+		t.Errorf("Processed=%d, want 1 (only the vacancy without a stored result)", sum.Processed)
+	}
+	if sum.Failed != 0 {
+		t.Errorf("Failed=%d, want 0", sum.Failed)
+	}
+
+	// The unscored vacancy must now have a result.
+	got, err := s.GetFitResult(unscored)
+	if err != nil || got == nil {
+		t.Fatalf("want stored fit for unscored vacancy after RescoreUnscoredFit: got=%+v err=%v", got, err)
+	}
+
+	// The already-scored vacancy must still have its result (unchanged).
+	before, err := s.GetFitResult(scored)
+	if err != nil || before == nil {
+		t.Fatalf("scored vacancy lost its fit result: %v", err)
+	}
+}
+
 func TestSortByFitFollowsTheTriagePolicy(t *testing.T) {
 	score := func(fits, you *float64, youStatus matchcontract.ScoreStatus) *matchcontract.FitView {
 		v := &matchcontract.FitView{}

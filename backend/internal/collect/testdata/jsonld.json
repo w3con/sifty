@@ -4,7 +4,8 @@
     "company": "Acme Labs",
     "originalUrl": "https://acme.test/jobs/cto",
     "applyUrl": null,
-    "description": "Lead the engineering org.\nGo\nRust",
+    "description": "Lead the engineering org.\n\n- Go\n- Rust",
+    "descriptionHtml": "<p>Lead the engineering org.</p><ul><li>Go</li><li>Rust</li></ul>",
     "descriptionStatus": "available structured description",
     "location": "TELECOMMUTE · EU · Paris · IDF · France",
     "publishedAt": "2026-10-01",
@@ -18,6 +19,7 @@
     "originalUrl": "https://acme.test/jobs/be",
     "applyUrl": null,
     "description": "Build APIs",
+    "descriptionHtml": "<p>Build APIs</p>",
     "descriptionStatus": "available structured description",
     "location": "",
     "source": "Test Board"

@@ -153,8 +153,15 @@ func (m Matcher) Match(ctx context.Context, e matchcontract.VacancyExtraction, f
 	verdicts := make([]matchcontract.RequirementVerdict, len(e.Requirements))
 	var pending []int
 	codeMatched := 0
+	confirmedIdx := buildConfirmedFactsIndex(facts)
 	profileTerms := m.Vocabulary.indexProfile(facts)
 	for i, r := range e.Requirements {
+		if evidence, verdict, reason, ok := checkConfirmedFacts(r, confirmedIdx); ok {
+			ev := evidence
+			verdicts[i] = matchcontract.RequirementVerdict{Index: i, Verdict: verdict, Evidence: &ev, Reason: reason}
+			codeMatched++
+			continue
+		}
 		if evidence, verdict, reason, ok := m.Vocabulary.codeMatch(r, facts, profileTerms); ok {
 			ev := evidence
 			verdicts[i] = matchcontract.RequirementVerdict{Index: i, Verdict: verdict, Evidence: &ev, Reason: reason}

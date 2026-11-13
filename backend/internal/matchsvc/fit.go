@@ -84,6 +84,45 @@ func (s *Service) RescoreAllFit(ctx context.Context) (FitSummary, error) {
 	return out, err
 }
 
+// RescoreUnscoredFit scores only vacancies that have no stored two-score result. It is fast and
+// is intended to run before RescoreAllFit after a collection so that newly collected vacancies
+// get a result quickly, before the full rescore completes. It follows the same error handling
+// as RescoreAllFit: one vacancy's failure does not stop the others.
+func (s *Service) RescoreUnscoredFit(ctx context.Context) (FitSummary, error) {
+	var out FitSummary
+	if s == nil || s.store == nil {
+		return out, nil
+	}
+	err := s.cfg.WithSnapshot(func(cfg *config.Config) error {
+		current, err := profile.Current(s.store)
+		if err != nil {
+			return fmt.Errorf("fit: read profile: %w", err)
+		}
+		if current == nil {
+			return ErrNoProfile
+		}
+		set, err := s.activeSettings(cfg)
+		if err != nil {
+			return err
+		}
+		ids, err := s.store.JobIDsWithoutFitResult()
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			if err := ctx.Err(); err != nil {
+				return err
+			}
+			out.Processed++
+			if err := s.fitJob(*current, set, id); err != nil {
+				out.Failed++
+			}
+		}
+		return nil
+	})
+	return out, err
+}
+
 func (s *Service) fitJob(current profile.Profile, set settings, jobID int64) error {
 	job, err := s.store.Get(jobID)
 	if err != nil {

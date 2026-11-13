@@ -5,6 +5,7 @@
     "originalUrl": "https://acme.test/jobs/go",
     "applyUrl": null,
     "description": "Work on distributed systems",
+    "descriptionHtml": "<p>Work on distributed systems</p>",
     "descriptionStatus": "feed description; may be excerpt",
     "publishedAt": "2026-10-01T00:00:00Z",
     "publishedBasis": "pubDate",
@@ -16,6 +17,7 @@
     "originalUrl": "https://beta.test/jobs/platform",
     "applyUrl": null,
     "description": "A much longer and more detailed role description goes here with specifics",
+    "descriptionHtml": "<p>A much longer and more detailed role description goes here with specifics</p>",
     "descriptionStatus": "feed description; may be excerpt",
     "source": "Test Feed"
   }

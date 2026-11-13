@@ -1,0 +1,84 @@
+# vacancy-view.yaml — exchange rates and vocabulary for the vacancy band and offer tiles.
+#
+# This file is optional. When absent, the built-in defaults from
+# backend/internal/config/vacancy-view.default.yaml are used instead.
+#
+# Update the exchange rates below to reflect current market rates before using the money tile.
+# All rates express how many units of the named currency equal one EUR.
+
+# WARNING: The exchange rates below are PLACEHOLDER values and are NOT current market data.
+# The owner must update these values manually to reflect current rates.
+# All rates are relative to EUR (EUR = 1.0).
+exchangeRates:
+  EUR: 1.0
+  USD: 0.92   # placeholder – not market data
+  GBP: 1.17   # placeholder – not market data
+  CAD: 0.68   # placeholder – not market data
+  AUD: 0.60   # placeholder – not market data
+  CHF: 1.08   # placeholder – not market data
+  JPY: 0.0062 # placeholder – not market data
+
+contractWords:
+  # Explicit phrases that identify a freelance / contractor engagement.
+  # Single bare words like "contractor" are removed to avoid false positives
+  # ("government contractor", "1099 contractor").
+  contract:
+    - freelance
+    - "contract role"
+    - "contract position"
+    - "contract basis"
+    - "contract work"
+    - W-2
+    - "1099"
+  # Explicit phrases that identify a permanent (employment) engagement.
+  # Bare "permanent" is removed to avoid "permanent resident" false positives.
+  permanent:
+    - "permanent role"
+    - "permanent position"
+    - "employment contract"
+    - "full-time employment"
+  # Explicit phrases that identify a fixed-term engagement.
+  # Bare "fixed-term" and "fixed term" are removed; only the full phrase is kept.
+  fixedTerm:
+    - "fixed-term contract"
+    - "fixed term contract"
+    - CDD
+
+# Items to look for in the Compensation and Benefits sections.
+# key: short stable identifier used in code
+# label: display label shown in the tile
+# notStatedLabel: description shown when keyword is found but no specific value is extracted
+# keywords: case-insensitive substrings to look for in section text
+offerVocabulary:
+  - key: equity
+    label: Equity
+    notStatedLabel: Amount not stated
+    keywords: [equity, stock options, RSU, ESOP, shares, warrants, "stock grants"]
+  - key: health
+    label: Health
+    notStatedLabel: Plan not stated
+    keywords: [medical, dental, vision, "health insurance", healthcare]
+  - key: timeOff
+    label: Time off
+    notStatedLabel: Days not stated
+    keywords: [vacation, PTO, "paid time off", holiday, "annual leave", "time off"]
+  - key: retirement
+    label: Retirement
+    notStatedLabel: Plan not stated
+    keywords: ["401k", "401(k)", pension, retirement]
+  - key: learning
+    label: Learning
+    notStatedLabel: Budget not stated
+    keywords: [learning, training, education, conference, "development budget", "professional development"]
+  - key: equipment
+    label: Equipment
+    notStatedLabel: Budget not stated
+    keywords: [equipment, laptop, "home office", stipend, "setup budget", "office setup"]
+  - key: bonus
+    label: Bonus
+    notStatedLabel: Amount not stated
+    keywords: [bonus, "performance bonus", "annual bonus", "signing bonus"]
+  - key: flexible
+    label: Flexibility
+    notStatedLabel: Details not stated
+    keywords: ["flexible hours", "flexible schedule", "flexible working", "async", "asynchronous"]

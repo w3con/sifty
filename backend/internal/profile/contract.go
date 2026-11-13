@@ -353,6 +353,16 @@ type AbsentSkill struct {
 	Name string `json:"name"`
 }
 
+// ConfirmedFact is a non-skill requirement the owner has confirmed they meet (Have=true) or do not
+// meet (Have=false). Key is the normalized requirement text (lowercase, collapsed whitespace,
+// trimmed punctuation); Text is the original requirement text. Any vacancy requirement whose
+// normalized text matches a stored Key is decided ✓ or ✕ by code without asking the model.
+type ConfirmedFact struct {
+	Key  string `json:"key"`  // normalized text; used as a lookup key across vacancies
+	Text string `json:"text"` // original requirement text
+	Have bool   `json:"have"` // true = "You have: …", false = "You do not have: …"
+}
+
 // ProfileData is the complete typed profile contract. Empty strings, nil numbers and empty
 // slices mean "unknown"; they must not be displayed or scored as confirmed zero/false values.
 type ProfileData struct {
@@ -360,6 +370,7 @@ type ProfileData struct {
 	Demographics         Demographics      `json:"demographics"`
 	Skills               []Skill           `json:"skills"`
 	AbsentSkills         []AbsentSkill     `json:"absentSkills"`
+	ConfirmedFacts       []ConfirmedFact   `json:"confirmedFacts"`
 	Experience           []Experience      `json:"experience"`
 	TargetRoles          []string          `json:"targetRoles"`
 	TargetIndustries     []string          `json:"targetIndustries"`
@@ -387,6 +398,9 @@ func (p *ProfileData) Normalize() {
 	}
 	if p.AbsentSkills == nil {
 		p.AbsentSkills = []AbsentSkill{}
+	}
+	if p.ConfirmedFacts == nil {
+		p.ConfirmedFacts = []ConfirmedFact{}
 	}
 	if p.Experience == nil {
 		p.Experience = []Experience{}

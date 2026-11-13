@@ -1,0 +1,207 @@
+== 1. Totals (whole table, 2783 vacancies)
+&amp;                                126
+&lt; or tag-name&gt; (escaped)        73
+<p>/<li>/<br> tags                   161
+any entity                           168
+any real tag                         161
+contains newline                    2107
+kind:empty                            64
+kind:escaped                          13
+kind:glued                            57
+kind:html                            161
+kind:metadata                        381
+kind:newlines                       2107
+
+== 2. Kind per source (primary source = earliest sighting); columns are counts
+source                         total      html   escaped  newlines     glued  metadata     empty
+Paradigm                         836        80         0       697         0         1        58
+Wellfound                        400         0         0       399         1         0         0
+We Work Remotely                 265        27         0       237         0         0         1
+Remotive                         226         0         0       226         0         0         0
+Multicoin capital                192        20         0        47         1       122         2
+A16z                             172         0         0        37         9       124         2
+Hacker News — Who is hiring?     167         0         0       167         0         0         0
+Electric Capital                 141         5         0        79         0        57         0
+Web3 Careers                     132         2        13         6        46        65         0
+Framework ventures                89        27         0        54         0         7         1
+Cryptocurrency Jobs               65         0         0        61         0         4         0
+Remote3                           41         0         0        40         0         1         0
+CryptoJobList                     29         0         0        29         0         0         0
+Braintrust                        28         0         0        28         0         0         0
+ALL                             2783       161        13      2107        57       381        64
+
+== 3. Entities per source (rows containing the entity; whole table)
+source                          rows   &amp;    &gt;    &lt;  &nbsp;   other    any
+Paradigm                         836      32      60      60       0       0     67  
+Wellfound                        400       0       0       0       0       1      1  {'&L;': 1}
+We Work Remotely                 265      16       0       0      12       1     21  {'&ndash;': 1}
+Remotive                         226       0       0       0       0       0      0  
+Multicoin capital                192       5       1       0       0       0      6  
+A16z                             172       0       0       0       0       0      0  
+Hacker News — Who is hiring?     167       0       0       0       0       0      0  
+Electric Capital                 141       2       0       0       0       0      2  
+Web3 Careers                     132      44      13       0       0       0     44  
+Framework ventures                89      27       0       0       0       0     27  
+Cryptocurrency Jobs               65       0       0       0       0       0      0  
+Remote3                           41       0       0       0       0       0      0  
+CryptoJobList                     29       0       0       0       0       0      0  
+Braintrust                        28       0       0       0       0       0      0  
+ALL                             2783     126      74      60      12       2    168  {'&L;': 1, '&ndash;': 1}
+
+== 4. Structure hints inside plain text (rows with newlines or flat text; whole table)
+rows with bullet lines (-,*,bullet), numbered lines (1.), short lines ending with colon
+source                         bullets numbers   colon
+Paradigm                           292       9     478
+Wellfound                          299      13     105
+We Work Remotely                    19       5     160
+Remotive                            72       1     113
+Multicoin capital                    0       0      20
+A16z                                 0       0       9
+Hacker News — Who is hiring?        59       2      56
+Electric Capital                     1       1       5
+Web3 Careers                         0       0       1
+Framework ventures                   0       0       9
+Cryptocurrency Jobs                  0       0      18
+Remote3                              0       0       0
+CryptoJobList                        1       0       8
+Braintrust                          10       1      13
+ALL                                753      32     995
+
+== 4b. Markdown markers and page chrome inside stored text (rows; whole table)
+source                         # heading line | **bold** | [text](http link) | "All jobs" page chrome (WWR page body) | category-page text "Stop applying" (Remote3)
+Wellfound                      171 | 276 | 103 | 0 | 0
+We Work Remotely               1 | 3 | 0 | 221 | 0
+Remote3                        0 | 0 | 0 | 0 | 40
+Braintrust                     0 | 1 | 0 | 0 | 0
+ALL                            172 | 280 | 103 | 221 | 40
+
+== 5. Kind per source and description_status group
+    1  A16z                           available page description                                     newlines
+   36  A16z                           available structured description (JSON-LD / detail page)       newlines
+   14  A16z                           detail unavailable / blocked                                   metadata
+    2  A16z                           metadata only / pending / missing                              empty
+    9  A16z                           metadata only / pending / missing                              glued
+  110  A16z                           metadata only / pending / missing                              metadata
+   28  Braintrust                     available public API description                               newlines
+   29  CryptoJobList                  available structured description (JSON-LD / detail page)       newlines
+    4  Cryptocurrency Jobs            available structured description (JSON-LD / detail page)       metadata
+   61  Cryptocurrency Jobs            available structured description (JSON-LD / detail page)       newlines
+   14  Electric Capital               available cleaned html (page body)                             newlines
+    5  Electric Capital               available structured description (JSON-LD / detail page)       html
+    1  Electric Capital               available structured description (JSON-LD / detail page)       metadata
+   65  Electric Capital               available structured description (JSON-LD / detail page)       newlines
+   56  Electric Capital               metadata only / pending / missing                              metadata
+   27  Framework ventures             available structured description (JSON-LD / detail page)       html
+   54  Framework ventures             available structured description (JSON-LD / detail page)       newlines
+    1  Framework ventures             metadata only / pending / missing                              empty
+    7  Framework ventures             metadata only / pending / missing                              metadata
+    1  Hacker News — Who is hiring?   detail unavailable / blocked                                   newlines
+  166  Hacker News — Who is hiring?   hiring comment (Hacker News)                                   newlines
+   11  Multicoin capital              available cleaned html (page body)                             newlines
+   20  Multicoin capital              available structured description (JSON-LD / detail page)       html
+   17  Multicoin capital              available structured description (JSON-LD / detail page)       metadata
+   36  Multicoin capital              available structured description (JSON-LD / detail page)       newlines
+    2  Multicoin capital              detail unavailable / blocked                                   metadata
+    2  Multicoin capital              metadata only / pending / missing                              empty
+    1  Multicoin capital              metadata only / pending / missing                              glued
+  103  Multicoin capital              metadata only / pending / missing                              metadata
+  280  Paradigm                       available cleaned html (page body)                             newlines
+   80  Paradigm                       available structured description (JSON-LD / detail page)       html
+  417  Paradigm                       available structured description (JSON-LD / detail page)       newlines
+    8  Paradigm                       detail unavailable / blocked                                   empty
+   50  Paradigm                       metadata only / pending / missing                              empty
+    1  Paradigm                       metadata only / pending / missing                              metadata
+   40  Remote3                        available cleaned html (page body)                             newlines
+    1  Remote3                        metadata only / pending / missing                              metadata
+   73  Remotive                       available cleaned html (page body)                             newlines
+    1  Remotive                       available public API description                               newlines
+  152  Remotive                       available structured description (JSON-LD / detail page)       newlines
+  222  We Work Remotely               available cleaned html (page body)                             newlines
+   27  We Work Remotely               available structured description (JSON-LD / detail page)       html
+    1  We Work Remotely               detail unavailable / blocked                                   empty
+    2  We Work Remotely               detail unavailable / blocked                                   newlines
+   13  We Work Remotely               feed description (RSS)                                         newlines
+   13  Web3 Careers                   available structured description (JSON-LD / detail page)       escaped
+   46  Web3 Careers                   available structured description (JSON-LD / detail page)       glued
+    2  Web3 Careers                   available structured description (JSON-LD / detail page)       html
+    6  Web3 Careers                   available structured description (JSON-LD / detail page)       newlines
+   12  Web3 Careers                   detail unavailable / blocked                                   metadata
+   53  Web3 Careers                   metadata only / pending / missing                              metadata
+    1  Wellfound                      available cleaned html (page body)                             newlines
+  300  Wellfound                      available public search description (Wellfound)                newlines
+    1  Wellfound                      available structured description (JSON-LD / detail page)       glued
+   98  Wellfound                      available structured description (JSON-LD / detail page)       newlines
+
+== 6. Median length (characters) per source and kind
+Paradigm                       html=3865 newlines=7438 metadata=107 empty=0
+Wellfound                      newlines=4887 glued=431
+We Work Remotely               html=5135 newlines=7070 empty=0
+Remotive                       newlines=3717
+Multicoin capital              html=6701 newlines=4087 glued=309 metadata=129 empty=0
+A16z                           newlines=4998 glued=329 metadata=155 empty=0
+Hacker News — Who is hiring?   newlines=1179
+Electric Capital               html=5351 newlines=5017 metadata=119
+Web3 Careers                   html=6296 escaped=8523 newlines=4606 glued=5276 metadata=27
+Framework ventures             html=5670 newlines=5038 metadata=80 empty=0
+Cryptocurrency Jobs            newlines=4404 metadata=138
+Remote3                        newlines=1435 metadata=39
+CryptoJobList                  newlines=3333
+Braintrust                     newlines=2506
+
+== 7. Three stored samples per source (first 240 chars, repr; deterministic choice)
+-- Paradigm
+   id=9 kind=newlines status='available structured description' len=5244: "About fab2\nThe fab2 team can build anything. We design all the hardware and software needed to make chips and we make the fabs, tools, and components ourselves.\n\nWe're looking for exceptional, hands-on people who can iterate to the limits o"
+   id=8 kind=html status='available structured description' len=5051: '<p>AMBR is building an agentic fund administration platform where AI agents work alongside people to prepare work, coordinate workflows, and support operational decisions, with human review and approval.</p><p><br></p><p>We are looking for '
+   id=238 kind=metadata status='missing full description; listing metadata retai' len=107: 'Smart Contracts, Solidity, Quality Assurance, Liquidity, Fuzzing, Mechanics, Access Control, Infrastructure'
+-- Wellfound
+   id=13 kind=newlines status='available public search description' len=2977: '# About Discernis\n\nDiscernis builds AI for legal discovery at a scale where general legal AI tools fall apart. When a litigation team needs to know what a group of people knew, and when, across millions of emails, chats, and documents, our '
+   id=2610 kind=glued status='available structured description' len=431: 'We are seeking a driven, articulate, and highly productive Business Development Representative (BDR) to accelerate our market expansion. In this role, you will be the foundational point of contact for prospective clients and executive talen'
+   id=2625 kind=newlines status='available structured description' len=6146: 'Most fund finance seats are a person doing the work. This one is a person deciding what the work should be, then building the agents that do it.\n\nEqui runs alternative strategies through several layers of onshore and offshore vehicles. That'
+-- We Work Remotely
+   id=5 kind=newlines status='feed description; may be excerpt' len=4717: 'Headquarters: New York, NY\n\nURL: https://lemon.io\n\nAre you a talented Senior Developer looking for a remote job that lets you show your skills and get decent compensation? Look no further than Lemon.io — the marketplace that connects you wi'
+   id=2168 kind=html status='available structured description' len=1394: '<p>Account Executive - Inside Sales<br><strong>About US<br><br></strong>We are a financial services start up focusing on helping US consumers improve their credit.<br><br>Here you can feel good about helping people while working from home a'
+   id=2656 kind=newlines status='available cleaned html' len=5958: '×\n\n All jobs Sales and Marketing Director of Affiliates \n\n Director of Affiliates \n\nPosted 1 day ago\n About TalentXD TalentXD is a leading recruitment and advisory firm dedicated exclusively to the global iGaming ecosystem. We connect the p'
+-- Remotive
+   id=1 kind=newlines status='available structured description' len=4005: 'Oct 27, 2026 - Lemon.io is hiring a remote Senior Back-end Developer. 📍Location: Europe, USA, Canada, Australia, Singapore, Mexico, Saudi Arabia.\nLemon.io helps companies in the US and Europe hire experienced engineers, from funded startups'
+   id=2677 kind=newlines status='available structured description' len=3703: 'Role Description\n\n OnTrac is hiring an Enterprise Account Executive! Are you eager to join a dynamic and expanding company where you can both learn and make a meaningful impact? If you possess a strong sense of empathy, enjoy assisting othe'
+   id=2676 kind=newlines status='available structured description' len=3714: "Role Description\n\n Fyfe is strengthening its offshore asset integrity delivery capability, and we're looking for an Asset Integrity Engineer to support our growing portfolio of storage tank assessment work.\n\n Build specialist capability in "
+-- Multicoin capital
+   id=639 kind=metadata status='missing full description; listing metadata retai' len=46: 'Blockchain, Ethereum, Digital Asset Management'
+   id=625 kind=newlines status='available structured description; employer from ' len=2392: 'About Sei Labs\nSei Labs builds open sourced technology for the high-performance Sei Blockchain, the first parallelized EVM Layer 1 blockchain designed to scale with the industry. The unique optimizations built into Sei enable Web3 applicati'
+   id=622 kind=html status='available structured description; employer from ' len=5806: '<strong>Hadrian - Manufacturing the Future<br><br></strong>Hadrian is building autonomous factories to reindustrialize America. By combining AI, advanced software, robotics, and full-stack manufacturing, we help aerospace and defense compan'
+-- A16z
+   id=453 kind=metadata status='detail unavailable: Error: HTTP 404' len=114: 'Ethical Hacker, Smart Contracts, Semantic Web, Global Teams, Written Communication Skills, English, Infrastructure'
+   id=450 kind=newlines status='available structured description' len=4935: 'TL;DR\nThe next wave of stablecoin adoption is payments. We are building a stablecoin clearinghouse to make stablecoins move like money, not a trading asset. We need a backend engineer who can own the systems that move real value: mint and b'
+   id=545 kind=glued status='indexed skills metadata; full description pendin' len=419: 'API Development, Database Caching, gRPC, Terraform, Audit, Access Management, Infrastructure, Orchestration, Service Design, Amazon Web Services, Databases, Cloud Native, Quality Assurance, Artificial Intelligence, GraphQL, Python, Continuo'
+-- Hacker News — Who is hiring?
+   id=16 kind=newlines status='available hiring comment (not employer verified)' len=858: 'FUTO | https://futo.tech/ | Austin, TX | REMOTE(Worldwide) or ONSITE | Full Time\nFUTO is an organization dedicated to developing, both through internal engineering and investment, technologies that frustrate centralization and industry cons'
+   id=1276 kind=newlines status='available complete hiring comment (author-suppli' len=758: "Diffusion | All | SF Bay (Redwood City) | On site (office!), full-time\nJustin here, founder @ Diffusion. Formerly co-founder & CTO @ StrongDM.\nWe're finding the steepest gradients in the economy between model capability and deployed practic"
+   id=1275 kind=newlines status='available complete hiring comment (author-suppli' len=1549: "Qualcomm | Canada | Full Time | Engineer | Remote(Canada)| QEMU\nMy team is looking to hire a ~entry-level software developer to help us design and extend QEMU support [1] for the Hexagon DSP [2]. We're looking for candidates who have experi"
+-- Electric Capital
+   id=10 kind=newlines status='available structured description; employer from ' len=7762: 'Phantom is on a mission to connect the world to the freedom of open markets. Tens of millions of people all over the world use Phantom to access global markets that never close, including perpetuals, prediction markets, tokenized assets, st'
+   id=410 kind=metadata status='available structured description; board associat' len=28: 'Engineering Manager, Product'
+   id=368 kind=html status='available structured description; employer from ' len=4976: 'Mysten Labs’ mission is to advance the internet through step-function improvements in what technology makes possible. We build foundational infrastructure and products that give people, businesses, and developers new ways to interact, trans'
+-- Web3 Careers
+   id=75 kind=metadata status='detail unavailable: Error: HTTP 429' len=34: 'project manager non tech senior +1'
+   id=28 kind=glued status='available structured description' len=2535: 'The Role You ll be the second person in BCB s data function, working directly with the Head of Data &amp; Analytics. You ll own reports and dbt models end-to-end, from source to dashboard, and help move our reporting onto Omni. We run AI-he'
+   id=27 kind=escaped status='available structured description' len=6867: 'strong&gt;About CoinList br&gt; br&gt; /strong&gt;CoinList is building the distribution network for onchain capital markets. Through its Passage platform, CoinList provides the infrastructure that lets any wallet, app, or platform embed acc'
+-- Framework ventures
+   id=24 kind=newlines status='available structured description; board associat' len=5179: 'About Chainlink\n\nChainlink is the industry-standard oracle platform bringing the capital markets onchain and powering the majority of decentralized finance (DeFi). The Chainlink stack provides the essential data, interoperability, complianc'
+   id=732 kind=html status='available structured description; employer from ' len=5434: '<strong>About Chainlink<br><br></strong>Chainlink is the industry-standard oracle platform bringing the capital markets onchain and powering the majority of decentralized finance (DeFi). The Chainlink stack provides the essential data, inte'
+   id=805 kind=metadata status='indexed skills metadata; board association: Chai' len=117: 'Computer Science, Algorithms, Data Structures, Discrete Mathematics, Software Development, Mechanism Design, Solidity'
+-- Cryptocurrency Jobs
+   id=21 kind=newlines status='available structured description' len=3298: 'Role Overview\n\nWe’re building a new engineering team at Ethena to own a money-movement product built on top of our stablecoin infrastructure. As the Staff/Senior Engineer, you own the correctness and evolution of the money-paths at the core'
+   id=1343 kind=metadata status='available structured description' len=187: 'Lead and oversee Stratosphere’s finance function, ensuring the effective management of financial operations, reporting, budgeting, and cash flow while supporting our strategic objectives.'
+   id=1375 kind=newlines status='available structured description' len=6282: 'About Us\n\nInstitute of Free Technology is a mission-driven tech startup studio. We take ideas from the drawing board to market with financial, technical, legal, people operations, and brand-building support at every step.\n\nOur startups are '
+-- Remote3
+   id=1376 kind=newlines status='available cleaned html' len=1449: 'Public Relations (PR) Jobs (97 new in Sep 2025) ✌\nDiscover top Public Relations (PR) jobs including entry level and senior positions in Sep 2025. Browse listings from leading companies and land your next job.\n\nStop applying — get discovered'
+   id=7 kind=metadata status='missing full description; listing metadata retai' len=39: 'at Ondo Finance - Full-Time - Worldwide'
+   id=1415 kind=newlines status='available cleaned html' len=1429: 'Entry Level Jobs (97 new in Sep 2025) ✌\nDiscover top Entry Level jobs including entry level and senior positions in Sep 2025. Browse listings from leading companies and land your next job.\n\nStop applying — get discovered by hiring agents.Bu'
+-- CryptoJobList
+   id=1315 kind=newlines status='available structured description' len=2093: 'RANKED 12th BEST STARTUP EMPLOYER SINGAPORE\nTECHINASIA Awards 2026\nParadex is a high-performance decentralized exchange incubated by \nYou will bridge the gap between rigorous financial engineering and the high-performance backend systems re'
+   id=2605 kind=newlines status='available structured description' len=1932: 'Pantera Capital is hiring a Junior Partner for our San Francisco office to focus on early-stage investment opportunities in both venture and early-stage tokens. As an Junior Partner, you will learn about the venture capital and hedge fund i'
+   id=2421 kind=newlines status='available structured description' len=1899: 'Responsibilities\nPrepare month-end closing,\xa0reconciliations and financial reporting on a timely basis\nPrepare audit schedules and perform financial analysis as required\nCoordinate with the internal and external parties to handle day-to-day '
+-- Braintrust
+   id=159 kind=newlines status='available public API description' len=2443: 'Advance frontier AI through research and engineering across synthetic and agentic data, reinforcement learning, post-training, model understanding, benchmarks and evaluation. You will investigate high-impact questions, build research-grade '
+   id=186 kind=newlines status='available public API description' len=4357: 'Open to candidates based in the US, Canada, and LATAM.\n\nRole Overview\nWe are hiring a senior independent contractor to design and ship production-grade AI agents that automate real business processes. This is a hands-on building role for so'
+   id=185 kind=newlines status='available public API description' len=2462: 'AI Build Consultant:\n2–8 hrs/week (scalable)\nPST overlap required\n\nAbout the Opportunity:\nWork directly with a serial Silicon Valley founder — with multiple exits — who is actively incubating a portfolio of new AI companies within his studi'

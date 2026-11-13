@@ -41,6 +41,7 @@ func (s *Store) Assessment(id int64, data any) error {
 		return err
 	}
 	tx = nil
+	s.BumpCatalogueSeq()
 	return nil
 }
 
@@ -77,6 +78,7 @@ func (s *Store) AssessmentFailure(id int64, message string, metadata map[string]
 		return err
 	}
 	tx = nil
+	s.BumpCatalogueSeq()
 	return nil
 }
 

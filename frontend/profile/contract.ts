@@ -144,11 +144,21 @@ export interface AbsentSkill {
   name: string;
 }
 
+// A non-skill requirement the owner has confirmed they meet (have=true) or do not meet
+// (have=false). key is the normalized requirement text; text is the original. The same
+// requirement in every vacancy is then decided ✓ or ✕ by code without asking the model.
+export interface ConfirmedFact {
+  key: string;
+  text: string;
+  have: boolean;
+}
+
 export interface ProfileData {
   identity: Identity;
   demographics?: Demographics;
   skills: Skill[];
   absentSkills?: AbsentSkill[];
+  confirmedFacts?: ConfirmedFact[];
   experience: Experience[];
   targetRoles: string[];
   targetIndustries: string[];

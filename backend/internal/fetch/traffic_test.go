@@ -107,6 +107,45 @@ func TestTrafficCooldown(t *testing.T) {
 	}
 }
 
+// TestCloudflare403NoHTTPRetry verifies that a Cloudflare-style 403 response
+// is recorded as a block and that no second HTTP request is made: the domain
+// enters a 24-hour cooldown and all subsequent calls are refused before
+// reaching the network.
+func TestCloudflare403NoHTTPRetry(t *testing.T) {
+	var hits int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprint(w, "<!DOCTYPE html><title>Just a moment...</title>") // Cloudflare body
+	}))
+	defer srv.Close()
+
+	var nowMS int64 = 0
+	var sleptMS int64 = 0
+	c := controlledClient(t, &nowMS, &sleptMS, srv)
+
+	// First request — server returns 403, client records it as blocked.
+	_, blocked, err := c.GetDetailWithDiscipline(context.Background(), srv.URL+"/job/123")
+	if err != nil {
+		t.Fatalf("first request: %v", err)
+	}
+	if blocked == nil || blocked.Reason != "403" {
+		t.Fatalf("expected BlockedResult reason=403, got %v", blocked)
+	}
+	if n := atomic.LoadInt32(&hits); n != 1 {
+		t.Fatalf("expected 1 HTTP request after first call, got %d", n)
+	}
+
+	// Second request — domain is on cooldown; no HTTP request must be made.
+	_, _, err2 := c.GetDetailWithDiscipline(context.Background(), srv.URL+"/job/123")
+	if err2 == nil {
+		t.Fatal("expected cooldown error on second call, got nil")
+	}
+	if n := atomic.LoadInt32(&hits); n != 1 {
+		t.Fatalf("expected still 1 HTTP request after second (cooled-down) call, got %d", n)
+	}
+}
+
 func TestTrafficBackoff(t *testing.T) {
 	// A server that always returns a network-level error is hard to arrange with httptest.
 	// Instead, test the backoff by driving the discipline directly.

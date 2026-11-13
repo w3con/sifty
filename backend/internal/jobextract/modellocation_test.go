@@ -14,7 +14,7 @@ import (
 // remote restriction from a bare place name, and a restriction quote ("US/Canada only") staying
 // "To clarify" because the phrases were lost between regions.default.yaml and the rules.
 func TestModelLocationUsableOnlyWhenQuoteStatesRestriction(t *testing.T) {
-	rules, err := matchconfig.Rules(config.DefaultQuickMatch())
+	rules, err := matchconfig.Rules(config.DefaultQuickMatch(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

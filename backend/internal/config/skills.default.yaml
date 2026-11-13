@@ -200,6 +200,26 @@ not_answerable_from_cv:
   - writing skills
   - verbal
 
+# Maximum word count for a phrase to be classified as a skill name rather than an activity when
+# the owner clicks ✓ from a vacancy row. A phrase with more words goes to "Confirmed by you".
+max_skill_name_words: 3
+
+# Word endings that mark a word as a verb form (activity, not a skill name). A multi-word phrase
+# in which any word ends with one of these is treated as an activity and goes to "Confirmed by you".
+verb_endings:
+  - ing
+
+# Words ending in a verb_ending that work as modifiers (adjectives) rather than activity verbs
+# when they appear inside a multi-word phrase and have at least one following word.
+# "AI coding tools" → "coding" is a modifier → phrase is a skill.
+# "Coding" alone → no following word → treated as an activity → confirmed fact.
+modifier_words:
+  - coding
+  - testing
+  - scripting
+  - streaming
+  - programming
+
 groups:
   # Programming languages
   - name: Go

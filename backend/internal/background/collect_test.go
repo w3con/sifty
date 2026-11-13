@@ -82,7 +82,7 @@ func TestDefaultCollect(t *testing.T) {
 		{Name: "example", URL: srv.URL, Enabled: &trueVal},
 	}
 
-	total, err := collectSources(context.Background(), st, sites, reg, "")
+	total, err := collectSources(context.Background(), st, sites, reg, "", nil)
 	if err != nil {
 		t.Fatalf("collectSources: %v", err)
 	}
@@ -109,7 +109,7 @@ func TestDefaultCollect(t *testing.T) {
 	}
 
 	// A duplicate URL must not produce a second record.
-	total2, err := collectSources(context.Background(), st, sites, reg, "")
+	total2, err := collectSources(context.Background(), st, sites, reg, "", nil)
 	if err != nil {
 		t.Fatalf("second collectSources: %v", err)
 	}
@@ -205,7 +205,7 @@ func TestCollectSkipsStopWordPostings(t *testing.T) {
 		t.Fatalf("AddStopWord: %v", err)
 	}
 
-	total, err := collectSources(context.Background(), st, sites, reg, "")
+	total, err := collectSources(context.Background(), st, sites, reg, "", nil)
 	if err != nil {
 		t.Fatalf("collectSources: %v", err)
 	}
@@ -228,7 +228,7 @@ func TestCollectSkipsStopWordPostings(t *testing.T) {
 	if err := st.RemoveStopWord(sw.ID); err != nil {
 		t.Fatalf("RemoveStopWord: %v", err)
 	}
-	if _, err := collectSources(context.Background(), st, sites, reg, ""); err != nil {
+	if _, err := collectSources(context.Background(), st, sites, reg, "", nil); err != nil {
 		t.Fatalf("second collectSources: %v", err)
 	}
 	if err := st.DB.QueryRow("SELECT count(*) FROM jobs").Scan(&rowCount); err != nil {
@@ -280,7 +280,7 @@ func TestCollectSetsMatchScore(t *testing.T) {
 
 	// A query that matches "Fractional CTO" but not "Product Manager".
 	matchQuery := store.BuildFTSQuery([]string{"Fractional CTO", "CTO"})
-	total, err := collectSources(context.Background(), st, sites, reg, matchQuery)
+	total, err := collectSources(context.Background(), st, sites, reg, matchQuery, nil)
 	if err != nil {
 		t.Fatalf("collectSources: %v", err)
 	}
@@ -368,7 +368,7 @@ func TestANDQueryNarrows(t *testing.T) {
 	andExprs := []config.SearchExpression{{And: []string{"Blockchain", "CTO"}}}
 	andQuery := store.BuildFTSQueryExprs(expressionsForTest(andExprs))
 
-	total, err := collectSources(context.Background(), st, sites, reg, andQuery)
+	total, err := collectSources(context.Background(), st, sites, reg, andQuery, nil)
 	if err != nil {
 		t.Fatalf("collectSources: %v", err)
 	}
@@ -400,7 +400,7 @@ func TestANDQueryNarrows(t *testing.T) {
 	st2 := newTestStore(t)
 	orExprs := []config.SearchExpression{{Or: []string{"Blockchain", "CTO"}}}
 	orQuery := store.BuildFTSQueryExprs(expressionsForTest(orExprs))
-	if _, err := collectSources(context.Background(), st2, sites, reg, orQuery); err != nil {
+	if _, err := collectSources(context.Background(), st2, sites, reg, orQuery, nil); err != nil {
 		t.Fatalf("OR collectSources: %v", err)
 	}
 	ctoOr := matchScoreFor(t, st2, "Blockchain CTO")
@@ -450,7 +450,7 @@ func TestCollectDoesNotEnqueue(t *testing.T) {
 	sites := []config.Source{{Name: "example", URL: srv.URL, Enabled: &trueVal}}
 
 	// Collection must not enqueue anything.
-	if _, err := collectSources(context.Background(), st, sites, reg, ""); err != nil {
+	if _, err := collectSources(context.Background(), st, sites, reg, "", nil); err != nil {
 		t.Fatalf("collectSources: %v", err)
 	}
 	if n := queuedCount(t, st); n != 0 {

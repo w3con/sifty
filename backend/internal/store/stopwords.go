@@ -39,6 +39,7 @@ func (s *Store) AddStopWord(word string) (*StopWord, error) {
 	).Scan(&sw.ID, &sw.Word, &sw.CreatedAt); err != nil {
 		return nil, fmt.Errorf("get stop word: %w", err)
 	}
+	s.BumpCatalogueSeq()
 	return &sw, nil
 }
 
@@ -78,6 +79,7 @@ func (s *Store) RemoveStopWord(id int64) error {
 	if n, _ := res.RowsAffected(); n == 0 {
 		return fmt.Errorf("stop word %d not found", id)
 	}
+	s.BumpCatalogueSeq()
 	return nil
 }
 

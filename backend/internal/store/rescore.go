@@ -34,6 +34,7 @@ func (s *Store) RescoreForProfile(matchQuery string, profileRevision int) error 
 			WHERE NOT EXISTS (SELECT 1 FROM match_job_results r WHERE r.job_id=jobs.id)`, profileRevision); err != nil {
 			return fmt.Errorf("rescore: reset scores: %w", err)
 		}
+		s.BumpCatalogueSeq()
 		return nil
 	}
 
@@ -114,6 +115,7 @@ func (s *Store) RescoreForProfile(matchQuery string, profileRevision int) error 
 		return fmt.Errorf("rescore: commit: %w", err)
 	}
 	tx = nil
+	s.BumpCatalogueSeq()
 	return nil
 }
 

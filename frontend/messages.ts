@@ -12,3 +12,11 @@ const BROKEN = [
 
 export const messageKind = (text: string | null | undefined): MessageKind =>
   text && BROKEN.some((rule) => rule.test(text)) ? 'broken' : 'retry';
+
+// messageText returns the user-facing text for an error message string.
+// All messages pass through unchanged; browser-level network errors are classified by
+// their class (ServerUnreachableError) in the caller, not by message text.
+export const messageText = (raw: string): string => raw;
+
+// SERVER_DOWN_TEXT is the user-facing notice shown when Sifty's own server is unreachable.
+export const SERVER_DOWN_TEXT = 'Sifty server is not responding. Retrying…';

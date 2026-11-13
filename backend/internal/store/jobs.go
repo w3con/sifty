@@ -83,17 +83,18 @@ func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
 
 	row := q.QueryRow(`
 		SELECT id, identity, title, company, original_url, apply_url, description,
-		       description_status, location, published_at, published_basis, expires_at, status,
+		       description_status, description_html, location, published_at, published_basis, expires_at, status,
 		       first_seen, last_seen, assessment, assessment_error,
 		       apply_status, tags, seen_at, applied_at, match_score, match_profile_revision,
-		       outcome_reason
+		       outcome_reason, needs_refetch
 		FROM jobs WHERE id=?`, id)
 
 	var r struct {
 		id, identity, title, company, originalURL string
 		applyURL                                  sql.NullString
 		description, descriptionStatus            string
-		location, publishedAt, publishedBasis    sql.NullString
+		descriptionHTML                           sql.NullString
+		location, publishedAt, publishedBasis     sql.NullString
 		expiresAt                                 sql.NullString
 		status, firstSeen, lastSeen               string
 		assessment, assessmentError               sql.NullString
@@ -102,13 +103,15 @@ func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
 		idInt                                     int64
 		matchScore                                int
 		matchProfileRevision                      int
+		needsRefetch                              int
 	}
 	err = row.Scan(
 		&r.idInt, &r.identity, &r.title, &r.company, &r.originalURL, &r.applyURL,
-		&r.description, &r.descriptionStatus, &r.location, &r.publishedAt, &r.publishedBasis, &r.expiresAt,
+		&r.description, &r.descriptionStatus, &r.descriptionHTML,
+		&r.location, &r.publishedAt, &r.publishedBasis, &r.expiresAt,
 		&r.status, &r.firstSeen, &r.lastSeen, &r.assessment, &r.assessmentError,
 		&r.applyStatus, &r.tagsJSON, &r.seenAt, &r.appliedAt, &r.matchScore, &r.matchProfileRevision,
-		&r.outcomeReason,
+		&r.outcomeReason, &r.needsRefetch,
 	)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("job %d not found", id)
@@ -247,6 +250,12 @@ func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
 		}
 	}
 
+	var descHTML *string
+	if r.descriptionHTML.Valid && r.descriptionHTML.String != "" {
+		v := r.descriptionHTML.String
+		descHTML = &v
+	}
+
 	job := &model.Job{
 		ID:                   r.idInt,
 		Title:                r.title,
@@ -263,6 +272,7 @@ func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
 		ApplyURL:             applyURLPtr,
 		ApplyStatus:          r.applyStatus.String,
 		Description:          r.description,
+		DescriptionHTML:      descHTML,
 		DescriptionStatus:    r.descriptionStatus,
 		Location:             loc,
 		PublishedAt:          pubAt,
@@ -277,6 +287,7 @@ func getOn(q queryer, id int64, derived derivedState) (*model.Job, error) {
 		Assessment:           assessmentObj,
 		AssessmentError:      assessmentErr,
 		Sources:              sources,
+		NeedsRefetch:         r.needsRefetch != 0,
 	}
 
 	// Compute block status. Failure to load rules is non-fatal: the job is returned unblocked.
@@ -494,11 +505,13 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 		}
 		_, err = tx.Exec(`
 			INSERT INTO jobs(id, identity, title, company, original_url, apply_url,
-			                 description, description_status, location, published_at, published_basis, expires_at,
+			                 description, description_status, description_html,
+			                 location, published_at, published_basis, expires_at,
 			                 first_seen, last_seen, apply_status, tags)
-			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+			VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 			nextID, identity, j.Title, j.Company, originalCanon, nullStr(applyCanon),
-			j.Description, j.DescriptionStatus, nullStr(j.Location),
+			j.Description, j.DescriptionStatus, nullStr(j.DescriptionHTML),
+			nullStr(j.Location),
 			nullStr(j.PublishedAt), nullStr(j.PublishedBasis), nullStr(j.ExpiresAt),
 			t, t, applyStatus, string(tagsJSON),
 		)
@@ -595,12 +608,25 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 			!strings.ContainsAny(strings.ToLower(j.DescriptionStatus), "metadata|pending|missing|unavailable")
 
 		var prevDesc, prevDescStatus, prevPublished, prevPublishedBasis string
-		_ = tx.QueryRow("SELECT description, description_status, COALESCE(published_at,''), COALESCE(published_basis,'') FROM jobs WHERE id=?", id).
-			Scan(&prevDesc, &prevDescStatus, &prevPublished, &prevPublishedBasis)
+		var prevDescHTML sql.NullString
+		_ = tx.QueryRow("SELECT description, description_status, description_html, COALESCE(published_at,''), COALESCE(published_basis,'') FROM jobs WHERE id=?", id).
+			Scan(&prevDesc, &prevDescStatus, &prevDescHTML, &prevPublished, &prevPublishedBasis)
 		previousReady := len(prevDesc) >= 100 &&
 			!strings.ContainsAny(strings.ToLower(prevDescStatus), "metadata|pending|missing|unavailable")
 
 		replace := freshDescription || (!previousReady && len(j.Description) >= len(prevDesc))
+
+		// Critical invariant: for vacancies collected before the description_html column was
+		// added (description_html IS NULL = "legacy row"), the stored description must stay
+		// byte-identical. The new converter produces different output than the old CleanHTML,
+		// so a replace would change every description hash and trigger re-extraction of ~2800
+		// vacancies in the ASSESSMENT-3 worker. Guard: only allow description/description_html
+		// updates when the row already carries a description_html value (i.e. was collected by
+		// the new converter). Legacy rows get their description_html filled by L.3 locally.
+		legacyRow := !prevDescHTML.Valid
+
+		// actualReplace: apply existing richness logic only for non-legacy rows.
+		actualReplace := replace && !legacyRow
 
 		// Keep an established source date and its basis. Fill only a genuinely
 		// missing date; do not attach a new origin to an old/different date.
@@ -615,10 +641,12 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 			UPDATE jobs SET last_seen=?, apply_url=COALESCE(?,apply_url),
 			  description=CASE WHEN ? THEN ? ELSE description END,
 			  description_status=CASE WHEN ? THEN ? ELSE description_status END,
+			  description_html=CASE WHEN ? THEN ? ELSE description_html END,
 			  expires_at=CASE WHEN ?!='' THEN ? ELSE expires_at END,
 			  published_at=?, published_basis=? WHERE id=?`,
 			t, nullStr(applyCanon),
-			boolInt(replace), j.Description, boolInt(replace), j.DescriptionStatus,
+			boolInt(actualReplace), j.Description, boolInt(actualReplace), j.DescriptionStatus,
+			boolInt(actualReplace), nullStr(j.DescriptionHTML),
 			j.ExpiresAt, nullStr(j.ExpiresAt), nullStr(keepPublished), nullStr(keepBasis), id,
 		); err != nil {
 			return 0, fmt.Errorf("update job: %w", err)
@@ -655,6 +683,22 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 		}
 	}
 
+	// Save the raw original body when the adapter provided one, within the same
+	// transaction as the vacancy row so both are committed atomically.
+	if len(j.Original) > 0 {
+		if err := saveOriginalInTx(tx, id, j.OriginalKind, t, j.Original); err != nil {
+			return 0, fmt.Errorf("save original: %w", err)
+		}
+	}
+
+	// Save description sections when the caller computed them (requires the vocab
+	// from configuration; see background/collect.go for the compute point).
+	if len(j.Sections) > 0 {
+		if err := saveSectionsInTx(tx, id, j.Sections); err != nil {
+			return 0, fmt.Errorf("save sections: %w", err)
+		}
+	}
+
 	// Record a snapshot.
 	snapJSON, _ := json.Marshal(j)
 	if _, err := tx.Exec(
@@ -675,6 +719,7 @@ func (s *Store) Upsert(j model.JobInput, restore bool) (int64, error) {
 		_, _ = s.DB.Exec("DELETE FROM jobs_fts WHERE rowid=?", dup)
 	}
 	s.refreshFTS(id)
+	s.BumpCatalogueSeq()
 
 	return id, nil
 }
@@ -707,6 +752,7 @@ func (s *Store) Seen(id int64) (*model.Job, error) {
 		"UPDATE jobs SET seen_at=COALESCE(seen_at,?) WHERE id=?", now(), job.ID); err != nil {
 		return nil, fmt.Errorf("mark seen: %w", err)
 	}
+	s.BumpCatalogueSeq()
 	return s.getW(job.ID)
 }
 
@@ -821,6 +867,7 @@ func (s *Store) StatusWithReason(id int64, status string, confirmed bool, reason
 		}
 	}
 
+	s.BumpCatalogueSeq()
 	return s.getW(id)
 }
 
@@ -987,6 +1034,7 @@ func (s *Store) Delete(id int64) (int64, []string, error) {
 		_, _ = s.DB.Exec("DELETE FROM jobs_fts WHERE rowid=?", rID)
 	}
 
+	s.BumpCatalogueSeq()
 	return id, nil, nil
 }
 
@@ -1084,6 +1132,7 @@ func (s *Store) HealthListContext(ctx context.Context) ([]map[string]any, error)
 	return out, nil
 }
 
+
 // PurgeArchive deletes applied roles whose applied_at exceeds the retention window.
 func (s *Store) PurgeArchive(clock time.Time) ([]int64, []map[string]any) {
 	rows, err := s.DB.Query("SELECT id, applied_at FROM jobs WHERE status='applied'")
@@ -1126,6 +1175,69 @@ func (s *Store) PurgeArchive(clock time.Time) ([]int64, []map[string]any) {
 		}
 	}
 	return deleted, skipped
+}
+
+// StoreRefetchResult updates description, description_html, description_status,
+// needs_refetch and the original body for the vacancy identified by id.
+// This is the only path that may replace description of a row that has no
+// description_html (the "legacy row guard" in Upsert only guards the collection
+// path; the refetch path is explicitly allowed to replace it). The caller must
+// have resolved id from a prior Get call. The FTS index is refreshed after commit.
+func (s *Store) StoreRefetchResult(id int64, j model.JobInput) error {
+	t := now()
+	tx, err := s.DB.Begin()
+	if err != nil {
+		return fmt.Errorf("begin refetch tx: %w", err)
+	}
+	defer func() {
+		if tx != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if _, err := tx.Exec(`
+		UPDATE jobs
+		SET description=?, description_status=?, description_html=?, needs_refetch=0
+		WHERE id=?`,
+		j.Description, j.DescriptionStatus, nullStr(j.DescriptionHTML), id,
+	); err != nil {
+		return fmt.Errorf("refetch update job %d: %w", id, err)
+	}
+
+	// Update published_at / published_basis only when they add new information.
+	if j.PublishedAt != "" {
+		if _, err := tx.Exec(`
+			UPDATE jobs
+			SET published_at=COALESCE(NULLIF(published_at,''),?),
+			    published_basis=COALESCE(NULLIF(published_basis,''),?)
+			WHERE id=?`,
+			j.PublishedAt, j.PublishedBasis, id,
+		); err != nil {
+			return fmt.Errorf("refetch update published %d: %w", id, err)
+		}
+	}
+
+	if len(j.Original) > 0 {
+		if err := saveOriginalInTx(tx, id, j.OriginalKind, t, j.Original); err != nil {
+			return fmt.Errorf("refetch save original %d: %w", id, err)
+		}
+	}
+
+	if len(j.Sections) > 0 {
+		if err := saveSectionsInTx(tx, id, j.Sections); err != nil {
+			return fmt.Errorf("refetch save sections %d: %w", id, err)
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("commit refetch %d: %w", id, err)
+	}
+	tx = nil
+
+	// Refresh FTS index so the updated description is searchable.
+	s.refreshFTS(id)
+	s.BumpCatalogueSeq()
+	return nil
 }
 
 // --- helpers ---

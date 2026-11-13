@@ -45,6 +45,7 @@ func (s *Store) SaveFitResult(jobID int64, r matchcontract.FitResult, key FitKey
 		r.FitsYou.RawScore, r.YouFit.RawScore, matchcontract.SchemaVersion, string(blob), now()); err != nil {
 		return fmt.Errorf("store fit result for job %d: %w", jobID, err)
 	}
+	s.BumpCatalogueSeq()
 	return nil
 }
 
@@ -136,6 +137,28 @@ func (s *Store) ModelWorkRows() ([]ModelWorkRow, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// JobIDsWithoutFitResult returns every vacancy id that has no stored two-score result. The list is
+// used to quickly score only newly collected vacancies without iterating the full catalogue.
+func (s *Store) JobIDsWithoutFitResult() ([]int64, error) {
+	rows, err := s.DB.Query(`SELECT id FROM jobs WHERE id NOT IN (SELECT job_id FROM match_fit_results) ORDER BY id`)
+	if err != nil {
+		return nil, fmt.Errorf("list unscored job ids: %w", err)
+	}
+	defer rows.Close()
+	var out []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("scan unscored job id: %w", err)
+		}
+		out = append(out, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate unscored job ids: %w", err)
+	}
+	return out, nil
 }
 
 // CountExtractionsSince counts the extractions stored at or after the given UTC timestamp

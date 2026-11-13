@@ -95,6 +95,96 @@ func TestMergeModelConditionsLetsTheDeterministicFactWinAndKeepsTheConflict(t *t
 	}
 }
 
+// TestMergeModelConditionsZeroFactsWithSalaryExtraction covers the routes.go fix for
+// vacancy IDs that have no stored VacancyFacts (facts == nil): routes.go seeds mergedFacts
+// from extraction metadata, then calls MergeModelConditions — which must populate Cash from
+// the extraction's compensation condition and produce a valid, verifiable hash.
+func TestMergeModelConditionsZeroFactsWithSalaryExtraction(t *testing.T) {
+	// Mirrors the seed routes.go builds when facts == nil but extraction != nil.
+	zero := matchcontract.VacancyFacts{
+		SchemaVersion:    matchcontract.SchemaVersion,
+		JobID:            1011,
+		ExtractorVersion: matchcontract.ExtractorVersion,
+		RawSourceHash:    "deadbeef",
+	}
+	merged, conflicts, err := jobextract.MergeModelConditions(zero, matchcontract.ExtractedConditions{
+		Compensation: cond("USD 150,000 - 250,000 per year gross", "base salary $150,000–$250,000"),
+	}, nil)
+	if err != nil {
+		t.Fatalf("MergeModelConditions on zero facts: %v", err)
+	}
+	if len(conflicts) != 0 {
+		t.Fatalf("unexpected conflicts: %+v", conflicts)
+	}
+	cash := merged.Compensation.Cash
+	if cash == nil {
+		t.Fatal("cash must be populated from extraction when facts are zero")
+	}
+	if cash.Min == nil || *cash.Min != 150000 {
+		t.Errorf("cash.Min = %v, want 150000", cash.Min)
+	}
+	if cash.Max == nil || *cash.Max != 250000 {
+		t.Errorf("cash.Max = %v, want 250000", cash.Max)
+	}
+	if cash.Currency != "USD" {
+		t.Errorf("cash.Currency = %q, want USD", cash.Currency)
+	}
+	if err := merged.VerifyFactsHash(); err != nil {
+		t.Errorf("merged facts hash invalid: %v", err)
+	}
+}
+
+// TestCashTextCurrencySymbolDetection covers the fix for cashText losing currency when the
+// extraction value contains a "$" sign but no ISO code (e.g. "$230,000-$280,000 per year").
+// Also verifies that a bare number range with no sign or code leaves currency empty.
+func TestCashTextCurrencySymbolDetection(t *testing.T) {
+	zero := matchcontract.VacancyFacts{
+		SchemaVersion:    matchcontract.SchemaVersion,
+		JobID:            1011,
+		ExtractorVersion: matchcontract.ExtractorVersion,
+		RawSourceHash:    "deadbeef",
+	}
+
+	// "$230,000-$280,000 per year" — dollar sign in value, no ISO code → must resolve to USD.
+	merged, _, err := jobextract.MergeModelConditions(zero, matchcontract.ExtractedConditions{
+		Compensation: cond("$230,000-$280,000 per year", "The base salary is between $230,000-$280,000 per year."),
+	}, nil)
+	if err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+	cash := merged.Compensation.Cash
+	if cash == nil {
+		t.Fatal("cash must be populated")
+	}
+	if cash.Currency != "USD" {
+		t.Errorf("dollar sign: cash.Currency = %q, want USD", cash.Currency)
+	}
+	if cash.Min == nil || *cash.Min != 230000 || cash.Max == nil || *cash.Max != 280000 {
+		t.Errorf("dollar sign: cash range = %v–%v, want 230000–280000", cash.Min, cash.Max)
+	}
+
+	// "230,000-280,000 per year" — no sign, no code → currency must be empty (unknown).
+	zeroB := matchcontract.VacancyFacts{
+		SchemaVersion:    matchcontract.SchemaVersion,
+		JobID:            1012,
+		ExtractorVersion: matchcontract.ExtractorVersion,
+		RawSourceHash:    "deadbeef",
+	}
+	mergedB, _, err := jobextract.MergeModelConditions(zeroB, matchcontract.ExtractedConditions{
+		Compensation: cond("230,000-280,000 per year", "salary 230,000-280,000 per year"),
+	}, nil)
+	if err != nil {
+		t.Fatalf("merge no-sign: %v", err)
+	}
+	cashB := mergedB.Compensation.Cash
+	if cashB == nil {
+		t.Fatal("cash must be populated even without currency")
+	}
+	if cashB.Currency != "" {
+		t.Errorf("no sign/code: cash.Currency = %q, want empty", cashB.Currency)
+	}
+}
+
 func TestMergeModelConditionsIgnoresValuesItCannotReadAsTyped(t *testing.T) {
 	f := factsFor(t, "Nothing stated here.")
 	merged, conflicts, err := jobextract.MergeModelConditions(f, matchcontract.ExtractedConditions{

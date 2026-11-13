@@ -22,6 +22,10 @@ const ReasonMarkedAbsent = "You said you do not have this skill"
 // names several technologies, of which the profile lists some but not all.
 const ReasonSomeNamedSkills = "Only some of the named skills are in the profile"
 
+// ReasonSkillInProfile is the reason of a "match" decided by code because the owner has explicitly
+// added the skill by its exact offered name, regardless of whether the vocabulary knows it.
+const ReasonSkillInProfile = "Skill in your profile"
+
 // Vocabulary is the compiled form of config.Skills: which names are one technology, which words
 // show that an ambiguous name is a technology, which words carry no meaning for choosing profile
 // passages and which requirements a CV usually cannot answer. A nil Vocabulary is valid and
@@ -36,6 +40,13 @@ type Vocabulary struct {
 	notAnswerable []string
 	// categoryByStem maps the stem of an ordinary word ("cloud") to the technology groups it stands for.
 	categoryByStem map[string][]string
+	// maxSkillNameWords is the maximum word count for a phrase to be a skill (not a confirmed fact).
+	maxSkillNameWords int
+	// verbEndings lists word-ending strings that mark a word as a verb form (activity, not a skill).
+	verbEndings []string
+	// modifierWords lists -ing words that work as adjective modifiers inside a multi-word phrase.
+	// They are treated as activity indicators only when they appear as the sole word of the phrase.
+	modifierWords map[string]bool
 }
 
 type termInfo struct {
@@ -46,10 +57,31 @@ type termInfo struct {
 
 // NewVocabulary compiles the configured vocabulary.
 func NewVocabulary(s config.Skills) *Vocabulary {
+	maxSkillWords := s.MaxSkillNameWords
+	if maxSkillWords <= 0 {
+		maxSkillWords = 3
+	}
+	verbEndings := s.VerbEndings
+	if len(verbEndings) == 0 {
+		verbEndings = []string{"ing"}
+	}
+	modifierWords := map[string]bool{}
+	if len(s.ModifierWords) > 0 {
+		for _, w := range s.ModifierWords {
+			modifierWords[strings.ToLower(strings.TrimSpace(w))] = true
+		}
+	} else {
+		for _, w := range []string{"coding", "testing", "scripting", "streaming", "programming"} {
+			modifierWords[w] = true
+		}
+	}
 	v := &Vocabulary{
 		id: s.Identity(), terms: map[string]termInfo{}, groupTerms: map[string][]string{},
 		context: map[string]bool{}, generic: map[string]bool{}, maxWords: 1,
 		categoryByStem: map[string][]string{},
+		maxSkillNameWords: maxSkillWords,
+		verbEndings:       verbEndings,
+		modifierWords:     modifierWords,
 	}
 	for _, c := range s.Categories {
 		for _, w := range c.Words {
@@ -233,6 +265,23 @@ func joinLower(toks []token) string {
 	return strings.Join(parts, " ")
 }
 
+// isFullVocabMatch reports whether name is exactly a known vocabulary technology — the whole phrase
+// must match a single terms entry, not just contain one. Used by IsSkillName and isAlternativeName
+// to avoid false positives from substring matches (e.g. "Familiarity with Go" contains "Go" but is
+// not a vocabulary technology).
+func (v *Vocabulary) isFullVocabMatch(name string) bool {
+	if v == nil {
+		return false
+	}
+	name = strings.TrimSpace(name)
+	toks := tokenize(name)
+	if len(toks) == 0 {
+		return false
+	}
+	_, ok := v.terms[joinLower(toks)]
+	return ok
+}
+
 func (v *Vocabulary) ambiguousAccepted(text string, toks []token, covered []bool, h hit, info termInfo, whole bool) bool {
 	first, last := toks[h.from], toks[h.to-1]
 	if text[first.start:last.end] != info.exact {
@@ -317,10 +366,14 @@ type profileIndex struct {
 	// technology group and by the normalised name as the owner saw it on a vacancy.
 	absentByGroup map[string]int
 	absentByName  map[string]int
+	// haveByName maps the normalised skill name (as offered on a vacancy) to its index in facts,
+	// for skills the owner added by name that are not in the vocabulary. The same normalisation as
+	// absentByName is used (skillOfferName), so a name added from one vacancy is recognised on another.
+	haveByName map[string]int
 }
 
 func (v *Vocabulary) indexProfile(facts []matchcontract.ProfileFact) profileIndex {
-	idx := profileIndex{byGroup: map[string]int{}, absentByGroup: map[string]int{}, absentByName: map[string]int{}}
+	idx := profileIndex{byGroup: map[string]int{}, absentByGroup: map[string]int{}, absentByName: map[string]int{}, haveByName: map[string]int{}}
 	if v == nil {
 		return idx
 	}
@@ -332,6 +385,19 @@ func (v *Vocabulary) indexProfile(facts []matchcontract.ProfileFact) profileInde
 			for _, g := range groupsOf(v.scanName(f.Value)) {
 				if _, ok := skills[g]; !ok {
 					skills[g] = i
+				}
+			}
+			// Also index by offered name for skills not in the vocabulary (or vocabulary skills added
+			// by name). haveByName uses the same normalisation as absentByName for cross-vacancy matching.
+			// The fact value is "Name" or "Name (Level)"; strip the level suffix before normalising so
+			// that "Open source contributions (Proficient)" matches the requirement "Open source contributions".
+			factName := f.Value
+			if j := strings.Index(factName, " ("); j > 0 {
+				factName = factName[:j]
+			}
+			if name := skillOfferName(factName); name != "" {
+				if _, ok := idx.haveByName[name]; !ok {
+					idx.haveByName[name] = i
 				}
 			}
 		case profile.MatchFieldSkillsAbsent:
@@ -370,7 +436,7 @@ var yearsRe = regexp.MustCompile(`(?i)\b\d+\s*\+?\s*(years?|yrs?)\b`)
 // never a verdict.
 func (v *Vocabulary) codeMatch(r matchcontract.ExtractedRequirement, facts []matchcontract.ProfileFact, idx profileIndex) (matchcontract.ProfileEvidence, matchcontract.Verdict, string, bool) {
 	none := matchcontract.ProfileEvidence{}
-	if v == nil || (len(idx.byGroup) == 0 && len(idx.absentByGroup) == 0 && len(idx.absentByName) == 0) {
+	if v == nil || (len(idx.byGroup) == 0 && len(idx.absentByGroup) == 0 && len(idx.absentByName) == 0 && len(idx.haveByName) == 0) {
 		return none, "", "", false
 	}
 	if r.Kind != matchcontract.RequirementSkill && r.Kind != matchcontract.RequirementExperience {
@@ -416,10 +482,98 @@ func (v *Vocabulary) codeMatch(r matchcontract.ExtractedRequirement, facts []mat
 		}
 		anyOf = orPresent
 		if leftover && !anyOf {
-			// Part of the requirement is not a technology we know. The one thing code can still
-			// say is that the owner marked exactly this wording as a skill they do not have.
-			if i, ok := idx.absentByName[skillOfferName(r.Text)]; ok {
+			// Part of the requirement is not a technology we know. Code can still decide when the
+			// owner explicitly named this exact wording as a skill they have or do not have.
+			name := skillOfferName(r.Text)
+			if i, ok := idx.haveByName[name]; ok {
+				f := facts[i]
+				return matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}, matchcontract.VerdictMatch, ReasonSkillInProfile, true
+			}
+			if i, ok := idx.absentByName[name]; ok {
 				return absentEvidence(facts, i), matchcontract.VerdictNo, ReasonMarkedAbsent, true
+			}
+			// Try splitting the requirement text as a comma-separated list and check each part in
+			// haveByName. indexProfile indexes every MatchFieldSkills fact (vocabulary and non-vocab)
+			// into haveByName, so this covers profile skills added both via vocabulary and by name.
+			// "Python, Postgres, AWS, distributed systems" → check each part → all found → match.
+			parts := splitSkillParts(r.Text)
+			if len(parts) > 1 {
+				matchCount, firstIdx := 0, -1
+				for _, p := range parts {
+					pName := skillOfferName(p)
+					if i, ok := idx.haveByName[pName]; ok {
+						matchCount++
+						if firstIdx < 0 {
+							firstIdx = i
+						}
+					}
+				}
+				if firstIdx >= 0 {
+					f := facts[firstIdx]
+					ev := matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}
+					if matchCount == len(parts) {
+						return ev, matchcontract.VerdictMatch, ReasonSkillInProfile, true
+					}
+					return ev, matchcontract.VerdictPartial, ReasonSomeNamedSkills, true
+				}
+				// No part found in haveByName. Check if every comma-part is individually absent:
+				// pressing ✕ on "Python, Postgres" now records each part separately.
+				allPartsAbsent, firstAbsentIdx := true, -1
+				for _, p := range parts {
+					i, ok := v.absentFact(p, idx)
+					if !ok {
+						allPartsAbsent = false
+						break
+					}
+					if firstAbsentIdx < 0 {
+						firstAbsentIdx = i
+					}
+				}
+				if allPartsAbsent && firstAbsentIdx >= 0 {
+					return absentEvidence(facts, firstAbsentIdx), matchcontract.VerdictNo, ReasonMarkedAbsent, true
+				}
+			}
+			// Also try splitting by "/" for slash-separated alternatives (e.g. "Datadog / OpenSearch").
+			// splitSkillParts above splits only on "," and ";"; slash is a separate separator used for
+			// alternatives. For alternatives, any one part in haveByName → match (one is enough).
+			// Guard: every part must pass isAlternativeName (vocabulary-known OR single-word
+			// IsSkillName), consistent with ClassifySkillAdd, to avoid false positives from "/" in
+			// phrases like "research/analysis capabilities".
+			if strings.Contains(r.Text, "/") {
+				slashParts := splitBySlash(r.Text)
+				if len(slashParts) > 1 {
+					allValidSlashAlts := true
+					for _, p := range slashParts {
+						if !v.isAlternativeName(p) {
+							allValidSlashAlts = false
+							break
+						}
+					}
+					if allValidSlashAlts {
+						for _, p := range slashParts {
+							if i, ok := idx.haveByName[skillOfferName(p)]; ok {
+								f := facts[i]
+								return matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}, matchcontract.VerdictMatch, ReasonSkillInProfile, true
+							}
+						}
+						// No slash-part found in haveByName. Check if every part is individually absent:
+						// pressing ✕ on "Datadog / OpenSearch" now records each part separately.
+						allSlashAbsent, firstSlashAbsentIdx := true, -1
+						for _, p := range slashParts {
+							i, ok := v.absentFact(p, idx)
+							if !ok {
+								allSlashAbsent = false
+								break
+							}
+							if firstSlashAbsentIdx < 0 {
+								firstSlashAbsentIdx = i
+							}
+						}
+						if allSlashAbsent && firstSlashAbsentIdx >= 0 {
+							return absentEvidence(facts, firstSlashAbsentIdx), matchcontract.VerdictNo, ReasonMarkedAbsent, true
+						}
+					}
+				}
 			}
 			return none, "", "", false
 		}
@@ -444,7 +598,65 @@ func (v *Vocabulary) codeMatch(r matchcontract.ExtractedRequirement, facts []mat
 		return matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}, verdict, reason, true
 	}
 	// Nothing named is among the skills the owner has. When every named skill is one they said they
-	// do not have, the answer is theirs: "no".
+	// do not have, the answer is theirs: "no". Also check haveByName before giving up: the owner may
+	// have added a skill by name that the vocabulary does not know (groups is empty) or that is in the
+	// vocabulary but not in idx.byGroup (vocabulary skill added by name, groups non-empty but found==0).
+	if len(groups) == 0 {
+		if i, ok := idx.haveByName[skillOfferName(r.Text)]; ok {
+			f := facts[i]
+			return matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}, matchcontract.VerdictMatch, ReasonSkillInProfile, true
+		}
+	}
+	// For "X or Y" alternatives where no vocabulary group was found in the profile (found==0),
+	// check each or-part in haveByName. Any one part in the profile → match (for alternatives,
+	// one is enough). This handles the case where one alternative is vocabulary-known (e.g.
+	// "Elixir") but the owner chose the non-vocabulary one (e.g. "Erlang"), so groups is
+	// non-empty but found==0 and the len(groups)==0 block above was skipped.
+	//
+	// Guard: every part must pass isAlternativeName (vocabulary-known OR single-word IsSkillName),
+	// matching the check ClassifySkillAdd uses. This prevents "Go or no go decisions" from matching
+	// via haveByName["go"] when the vocabulary's ambiguous-name rule correctly rejected "Go" as a
+	// technology name in that phrase.
+	//
+	// Also check the full phrase in absentByName for the ✕ case: allAbsent may return early when
+	// vocabulary groups prevent it from reaching its own absentByName fallback.
+	if anyOf && found == 0 {
+		orParts := splitByOr(r.Text)
+		allValidAlts := len(orParts) >= 2
+		for _, p := range orParts {
+			if !v.isAlternativeName(p) {
+				allValidAlts = false
+				break
+			}
+		}
+		if allValidAlts {
+			for _, p := range orParts {
+				if i, ok := idx.haveByName[skillOfferName(p)]; ok {
+					f := facts[i]
+					return matchcontract.ProfileEvidence{Field: f.Field, Value: f.Value}, matchcontract.VerdictMatch, ReasonSkillInProfile, true
+				}
+			}
+			// Check full phrase in absentByName (backward compat: ✕ used to store the whole phrase).
+			if i, ok := idx.absentByName[skillOfferName(r.Text)]; ok {
+				return absentEvidence(facts, i), matchcontract.VerdictNo, ReasonMarkedAbsent, true
+			}
+			// Check if every individual or-part is absent (new behaviour: ✕ now stores each part).
+			allOrAbsent, firstOrAbsentIdx := true, -1
+			for _, p := range orParts {
+				i, ok := v.absentFact(p, idx)
+				if !ok {
+					allOrAbsent = false
+					break
+				}
+				if firstOrAbsentIdx < 0 {
+					firstOrAbsentIdx = i
+				}
+			}
+			if allOrAbsent && firstOrAbsentIdx >= 0 {
+				return absentEvidence(facts, firstOrAbsentIdx), matchcontract.VerdictNo, ReasonMarkedAbsent, true
+			}
+		}
+	}
 	if i, ok := v.allAbsent(r, groups, idx); ok {
 		return absentEvidence(facts, i), matchcontract.VerdictNo, ReasonMarkedAbsent, true
 	}

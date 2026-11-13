@@ -29,9 +29,19 @@ These shapes recur across endpoints and are defined once here.
   publishedAt: string|null, expiresAt: string|null,
   firstSeen: string, lastSeen: string, expired: boolean,
   assessment: Assessment|null, assessmentError: string|null,
-  sources: { name: string, url: string, seen: string }[]
+  sources: { name: string, url: string, seen: string }[],
+  descriptionHtml?: string,          // sanitised HTML subset; omitted when not stored
+  sections?: Section[]               // present only in GET /api/jobs/:id, never in the list
 }
 ```
+
+**Section** (element of the `sections` array in a single-job response):
+
+```
+{ heading?: string, class: string, content: string }
+```
+
+`class` is one of the vocabulary classes from `config/sections.yaml` (About, Role, Responsibilities, Requirements, Nice to have, Compensation, Benefits, Location, Process, Legal/EEO) or `"other"`. `heading` is absent for the preamble section that precedes the first heading. `content` is the sanitised HTML of the section body. See [docs/specs/listing-view.md](../specs/listing-view.md) for the full specification.
 
 **Assessment** (the `assessment` field of a role, when present):
 

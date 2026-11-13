@@ -2,12 +2,16 @@ package quickmatch
 
 import (
 	"math"
-	"strings"
 
 	"github.com/w3con/sifty/internal/matchcontract"
 )
 
-func evaluateCompensation(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts) *groupEval {
+// evaluateCompensation scores the compensation group. It converts the vacancy's stated
+// currency to the profile currency using the rules' exchange rates when the currencies differ.
+// Period inference: if period is empty and Max >= 10 000, year is assumed.
+// Tax-basis inference: if tax basis is empty it is treated as gross.
+// NeedsCorroboration facts proceed through comparison; only Unusable facts are refused.
+func evaluateCompensation(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts, rates map[string]float64) *groupEval {
 	g := &groupEval{group: matchcontract.GroupCompensation, applicability: matchcontract.NotApplicable}
 	p := profile.Compensation
 	if p == nil || p.Minimum == nil || *p.Minimum <= 0 {
@@ -34,31 +38,43 @@ func evaluateCompensation(profile matchcontract.ProfileSnapshot, facts matchcont
 	base.evidenceQuote = c.Evidence.Quote
 	base.reliability = c.Evidence.Reliability
 
-	if c.Evidence.Reliability != matchcontract.ReliabilityUsable {
+	if c.Evidence.Reliability == matchcontract.ReliabilityUnusable {
 		base.reason = matchcontract.ReasonCompensationUnusable
 		g.members = append(g.members, base)
 		return g
 	}
-	if p.Currency == "" || p.Period == "" || p.TaxBasis == "" ||
-		c.Currency == "" || c.Period == "" || c.TaxBasis == "" ||
-		!strings.EqualFold(p.Currency, c.Currency) ||
-		!strings.EqualFold(p.Period, c.Period) ||
-		!strings.EqualFold(p.TaxBasis, c.TaxBasis) {
-		base.reason = matchcontract.ReasonCompensationIncomparable
-		g.members = append(g.members, base)
-		return g
-	}
 
-	utility := math.Min(1, *c.Max / *p.Minimum)
-	if !isFinite(utility) || utility < 0 {
+	// Delegate conversion, tax-basis comparison and three-state verdict to EvaluateMoney.
+	// EvaluateMoney handles all of: tax-basis check, period inference, currency conversion.
+	out := EvaluateMoney(MoneyInput{
+		Min:      c.Min,
+		Max:      c.Max,
+		Currency: c.Currency,
+		Period:   c.Period,
+		TaxBasis: c.TaxBasis,
+	}, p, rates)
+
+	switch out.Verdict {
+	case "not_comparable":
 		base.reason = matchcontract.ReasonCompensationIncomparable
 		g.members = append(g.members, base)
 		return g
-	}
-	base.utility = &utility
-	base.reason = matchcontract.ReasonCompensationAligned
-	if utility < 1 {
+	case "ok":
+		utility := 1.0
+		base.utility = &utility
+		base.reason = matchcontract.ReasonCompensationAligned
+	case "mismatch":
+		utility := math.Min(1, out.ConvertedMax / *p.Minimum)
+		if !isFinite(utility) || utility < 0 {
+			base.reason = matchcontract.ReasonCompensationIncomparable
+			g.members = append(g.members, base)
+			return g
+		}
+		base.utility = &utility
 		base.reason = matchcontract.ReasonCompensationBelowMin
+	default: // "unclear"
+		// Minimum lies inside the range: not decided, treat as no data.
+		base.reason = matchcontract.ReasonCompensationRangeCovers
 	}
 	g.members = append(g.members, base)
 	return g

@@ -66,6 +66,24 @@ func (s *Store) SaveVacancyExtraction(e matchcontract.VacancyExtraction) error {
 	return nil
 }
 
+// GetLatestVacancyExtraction returns the most recently stored extraction for a job regardless of
+// source hash or extractor version, or nil when no extraction exists. Used by read-only display
+// paths that need any available conditions and requirements without re-running extraction.
+func (s *Store) GetLatestVacancyExtraction(jobID int64) (*matchcontract.VacancyExtraction, error) {
+	var blob string
+	err := s.Read.QueryRow(`
+		SELECT record FROM match_vacancy_extractions
+		WHERE job_id=? ORDER BY created_at DESC LIMIT 1`,
+		jobID).Scan(&blob)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("get latest extraction for job %d: %w", jobID, err)
+	}
+	return decodeExtraction(jobID, blob)
+}
+
 // GetVacancyExtraction returns the extraction made from exactly this retained source by exactly
 // this extractor version, or nil when there is none. A nil answer means the extraction pass must
 // run; a record with no requirements is a real answer and is returned.

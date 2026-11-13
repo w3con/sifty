@@ -460,19 +460,39 @@ func requirement(label, quote string, section matchcontract.Section) matchcontra
 	}
 }
 
+// cashSkipRe matches whole-word equity/bonus markers in a compensation quote. Word boundaries
+// prevent "ote" from matching "remote", "stock" alone from blocking "stock grants", etc.
+var cashSkipRe = regexp.MustCompile(`(?i)\b(bonus|equity|stock[- ]option|commission|estimate|survey|ote|allowance|relocation)\b`)
+
 func cashText(value, line string) (*matchcontract.CashFact, bool) {
 	lower := strings.ToLower(line)
-	for _, marker := range []string{"bonus", "equity", "stock", "option", "commission", "estimate", "survey", "ote", "benefit", "allowance", "relocation"} {
-		if strings.Contains(lower, marker) {
-			return nil, false
-		}
+	// Only skip if the quote is NOT about a salary/base/wage (equity-grant context check).
+	hasSalaryCtx := strings.Contains(lower, "salary") || strings.Contains(lower, " base ") || strings.Contains(lower, "wage")
+	if !hasSalaryCtx && cashSkipRe.MatchString(lower) {
+		return nil, false
 	}
+	// Detect currency from explicit ISO code first, then from symbol in value, then in line.
+	// Mirrors parseCashText in vacancyview/money.go — both must use the same detection order.
 	code := ""
 	if m := currencyCodeRe.FindString(value); m != "" {
 		code = strings.ToUpper(m)
+	} else if strings.ContainsRune(value, '$') {
+		code = "USD"
+	} else if strings.ContainsRune(value, '€') {
+		code = "EUR"
+	} else if strings.ContainsRune(value, '£') {
+		code = "GBP"
+	} else if m := currencyCodeRe.FindString(line); m != "" {
+		code = strings.ToUpper(m)
+	} else if strings.ContainsRune(line, '$') {
+		code = "USD"
+	} else if strings.ContainsRune(line, '€') {
+		code = "EUR"
+	} else if strings.ContainsRune(line, '£') {
+		code = "GBP"
 	}
 	matches := amountRe.FindAllStringSubmatchIndex(value, -1)
-	if len(matches) == 0 || len(matches) > 2 {
+	if len(matches) == 0 {
 		return nil, false
 	}
 	type amount struct {
@@ -492,9 +512,57 @@ func cashText(value, line string) (*matchcontract.CashFact, bool) {
 		}
 		amounts = append(amounts, amount{value: n, start: m[0], end: m[1]})
 	}
+	// When more than two amounts are present (multiple city/location ranges), take the global
+	// min across all lowers and the global max across all uppers as the overall range.
+	if len(amounts) > 2 {
+		if len(amounts)%2 != 0 {
+			return nil, false // odd count — unclear structure
+		}
+		globalMin := amounts[0].value
+		globalMax := amounts[0].value
+		for _, a := range amounts[1:] {
+			if a.value < globalMin {
+				globalMin = a.value
+			}
+			if a.value > globalMax {
+				globalMax = a.value
+			}
+		}
+		if globalMin >= 1000 && globalMax <= 10_000_000 {
+			period := cashPeriod(lower)
+			tax := ""
+			if strings.Contains(lower, "gross") {
+				tax = matchcontract.TaxGross
+			}
+			if strings.Contains(lower, "net") && !strings.Contains(lower, "gross") {
+				tax = matchcontract.TaxNet
+			}
+			usable := code != "" && period != "" && tax != ""
+			reliability := matchcontract.ReliabilityNeedsCorroboration
+			if usable {
+				reliability = matchcontract.ReliabilityUsable
+			}
+			cash := &matchcontract.CashFact{
+				Min: &globalMin, Max: &globalMax,
+				Currency: code, Period: period, TaxBasis: tax,
+				Basis: matchcontract.CashBasisRangeCeiling,
+				Evidence: matchcontract.Evidence{
+					Field: "description", Quote: line,
+					Section: matchcontract.SectionUnknown, Reliability: reliability,
+				},
+			}
+			return cash, true
+		}
+		return nil, false
+	}
 	rangePair := false
 	if len(amounts) == 2 {
-		between := strings.ToLower(strings.TrimSpace(value[amounts[0].end:amounts[1].start]))
+		// Strip currency symbols and whitespace so "$230,000-$280,000" parses the same as
+		// "$230,000 - $280,000" or "USD 230,000 to 280,000" (mirrors parseCashText in money.go).
+		rawSep := value[amounts[0].end:amounts[1].start]
+		between := strings.ToLower(strings.TrimFunc(rawSep, func(r rune) bool {
+			return r == '$' || r == '€' || r == '£' || r == ' ' || r == '\t' || r == ','
+		}))
 		switch between {
 		case "-", "–", "—", "to":
 			rangePair = true

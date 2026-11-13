@@ -1,17 +1,70 @@
 package server
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"log"
 	"mime"
 	"net/http"
 	"strings"
+	"sync"
 
 	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/store"
+	"github.com/w3con/sifty/internal/vacancyai"
 )
+
+// bgRescore serialises the background full-catalogue rescore that is queued after a quick
+// single-job rescore. At most one full rescore runs at a time; a second request while one is
+// running sets the pending flag so a second run follows immediately after the first completes.
+var bgRescore struct {
+	mu      sync.Mutex
+	running bool
+	pending bool
+}
+
+// scheduleBackgroundRescore queues a full catalogue rescore (candidate context + all jobs) to run
+// in background. Calls are coalesced: if a rescore is already running, one more is guaranteed to
+// follow it; if one is already pending, the extra call is a no-op.
+func scheduleBackgroundRescore(d *Deps) {
+	bgRescore.mu.Lock()
+	if bgRescore.running {
+		bgRescore.pending = true
+		bgRescore.mu.Unlock()
+		return
+	}
+	bgRescore.running = true
+	bgRescore.mu.Unlock()
+
+	go func() {
+		for {
+			if _, err := d.profileService().SyncDerivedContext(); err != nil {
+				log.Printf("background rescore: %v", err)
+			}
+
+			bgRescore.mu.Lock()
+			if !bgRescore.pending {
+				bgRescore.running = false
+				bgRescore.mu.Unlock()
+				return
+			}
+			bgRescore.pending = false
+			bgRescore.mu.Unlock()
+		}
+	}()
+}
+
+// rescoreJobAndScheduleBackground rescores a single job synchronously (fast) and queues a full
+// background rescore. Errors from the single-job rescore are logged but do not block the response.
+func rescoreJobAndScheduleBackground(d *Deps, jobID int64) {
+	if err := matchsvc.New(d.Store, d.Cfg).RecalculateJob(context.Background(), jobID); err != nil && !errors.Is(err, matchsvc.ErrNoProfile) {
+		log.Printf("quick rescore job %d: %v", jobID, err)
+	}
+	scheduleBackgroundRescore(d)
+}
 
 // registerProfileRoutes wires the typed local profile read/save contract plus the explicit
 // document/fact actions. No normal GET or PUT calls a model provider; only POST analyze does.
@@ -62,6 +115,7 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		scheduleBackgroundRescore(d)
 		writeJSON(w, http.StatusOK, saved)
 	})
 
@@ -85,35 +139,109 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			writeProfileError(w, err)
 			return
 		}
+		if changed {
+			scheduleBackgroundRescore(d)
+		}
 		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
 	})
 
-	// Adds one skill to the confirmed profile from where a requirement is read (a vacancy), in one
-	// step and without the profile editor. jobId, when given, asks the model worker to match that
-	// vacancy first; the rest of the catalogue follows in the usual order.
+	// Adds one skill (or a confirmed fact) from where a requirement is read on a vacancy. The
+	// endpoint classifies the name: a known vocabulary technology or a short non-verb phrase (≤ 3
+	// words without -ing forms) is added as a skill; anything else is recorded as a confirmed "have"
+	// fact. A comma-separated list of qualifying names is split into separate skills.
+	// When the requirement has alternatives (e.g. "Go or Rust") the endpoint returns
+	// action="offer_alternatives" and the UI presents each alternative as its own button.
+	// When jobId > 0, the single job is rescored synchronously before the response; a full
+	// catalogue rescore runs in background.
 	mux.HandleFunc("POST /api/profile/skills", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Name  string `json:"name"`
-			Level string `json:"level"`
-			JobID int64  `json:"jobId"`
+			Name         string   `json:"name"`
+			Level        string   `json:"level"`
+			JobID        int64    `json:"jobId"`
+			Alternatives []string `json:"alternatives"`
 		}
 		if err := readBody(r, &body); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		saved, changed, err := d.profileService().AddSkill(body.Name, body.Level)
-		if err != nil {
-			writeProfileError(w, err)
+
+		vocab := vacancyai.NewVocabulary(d.Cfg.Get().Skills)
+		cls := vocab.ClassifySkillAdd(body.Name, body.Alternatives)
+
+		if cls.HasAlternatives {
+			// Prefer alternatives detected from the name (e.g. "Go or Rust" → ["Go","Rust"]).
+			// Fall back to caller-supplied alternatives (from the job extraction result).
+			alts := cls.Alternatives
+			if len(alts) == 0 {
+				alts = body.Alternatives
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"action":       "offer_alternatives",
+				"alternatives": alts,
+			})
 			return
 		}
+
+		svc := d.profileService()
+		if cls.ConfirmedFact != "" {
+			// Phrase or activity: record as confirmed "have" fact.
+			saved, changed, err := svc.AddConfirmedFact(cls.ConfirmedFact, true)
+			if err != nil {
+				writeProfileError(w, err)
+				return
+			}
+			if body.JobID > 0 {
+				rescoreJobAndScheduleBackground(d, body.JobID)
+			}
+			writeJSON(w, http.StatusOK, map[string]any{
+				"profile":       saved,
+				"changed":       changed,
+				"action":        "fact_confirmed",
+				"factConfirmed": cls.ConfirmedFact,
+			})
+			return
+		}
+
+		// One or more skill names: add each.
+		var lastProfile *profile.Profile
+		anyChanged := false
+		for _, skillName := range cls.SkillsToAdd {
+			saved, changed, err := svc.AddSkill(skillName, body.Level)
+			if err != nil {
+				writeProfileError(w, err)
+				return
+			}
+			lastProfile = saved
+			if changed {
+				anyChanged = true
+			}
+		}
+		if lastProfile == nil {
+			cur, _ := svc.Get()
+			lastProfile = cur
+		}
 		if body.JobID > 0 {
+			rescoreJobAndScheduleBackground(d, body.JobID)
+		} else {
 			matchsvc.PrioritizeModelWork(body.JobID)
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
+		writeJSON(w, http.StatusOK, map[string]any{
+			"profile":     lastProfile,
+			"changed":     anyChanged,
+			"action":      "skills_added",
+			"skillsAdded": cls.SkillsToAdd,
+		})
 	})
 
-	// Records that the owner does not have a skill, from where a requirement for it is read. It is
-	// kept in the skills section of the profile; the same jobId rule applies as for adding a skill.
+	// Records that the owner does not have a skill or does not meet a non-vocabulary requirement.
+	// Classification mirrors the ✓ path (ClassifySkillAdd):
+	//   - "X or Y"/"X/Y" where every part is a valid alternative name → AddAbsentSkill for each part.
+	//   - Comma-separated list of skill names → AddAbsentSkill for each part.
+	//   - Single skill name → AddAbsentSkill.
+	//   - Phrase or activity → AddConfirmedFact(false).
+	// This ensures that pressing ✕ on "C++ or C" records "C++" and "C" as separate absent skills
+	// rather than the full phrase, so codeMatch can resolve the row on the next rescore.
+	// When jobId > 0, the single job is rescored synchronously before the response.
 	mux.HandleFunc("POST /api/profile/absent-skills", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			Name  string `json:"name"`
@@ -123,13 +251,107 @@ func registerProfileRoutes(mux Router, d *Deps) {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		saved, changed, err := d.profileService().AddAbsentSkill(body.Name)
+
+		vocab := vacancyai.NewVocabulary(d.Cfg.Get().Skills)
+		svc := d.profileService()
+		cls := vocab.ClassifySkillAdd(body.Name, nil)
+
+		var (
+			lastProfile *profile.Profile
+			anyChanged  bool
+			action      string
+		)
+		switch {
+		case cls.ConfirmedFact != "":
+			// Phrase or activity: confirmed "do not have" fact.
+			p, ch, err := svc.AddConfirmedFact(cls.ConfirmedFact, false)
+			if err != nil {
+				writeProfileError(w, err)
+				return
+			}
+			lastProfile, anyChanged = p, ch
+			action = "fact_confirmed_absent"
+		default:
+			// Skill name(s) or detected alternatives: add each to the absent-skills list.
+			// HasAlternatives → cls.Alternatives; SkillsToAdd → comma-parts or single name.
+			names := cls.SkillsToAdd
+			if cls.HasAlternatives {
+				names = cls.Alternatives
+			}
+			storedCount := 0
+			for _, name := range names {
+				p, ch, err := svc.AddAbsentSkill(name)
+				if err != nil {
+					writeProfileError(w, err)
+					return
+				}
+				lastProfile = p
+				if ch {
+					anyChanged = true
+					storedCount++
+				}
+			}
+			// When alternatives were detected and fewer were stored than expected, some
+			// alternatives share a normalised store key (e.g. "C++" and "C" both map to "c").
+			// Also store the full phrase so codeMatch can resolve the row via its vocabulary groups
+			// (the full phrase "C++ or C" indexes both C++ and C absent-groups).
+			if cls.HasAlternatives && storedCount < len(names) {
+				p, ch, err := svc.AddAbsentSkill(body.Name)
+				if err == nil {
+					lastProfile = p
+					if ch {
+						anyChanged = true
+					}
+				}
+			}
+			action = "absent_skill_recorded"
+		}
+		if body.JobID > 0 {
+			rescoreJobAndScheduleBackground(d, body.JobID)
+		} else {
+			matchsvc.PrioritizeModelWork(body.JobID)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": lastProfile, "changed": anyChanged, "action": action})
+	})
+
+	// Records that the owner meets or does not meet a non-skill requirement (experience,
+	// qualification, authorization, language, other). The same requirement (by normalized text)
+	// in every other vacancy is then decided by code without asking the model.
+	// When jobId > 0, the single job is rescored synchronously before the response.
+	mux.HandleFunc("POST /api/profile/confirmed-facts", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Text  string `json:"text"`
+			Have  bool   `json:"have"`
+			JobID int64  `json:"jobId"`
+		}
+		if err := readBody(r, &body); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		saved, changed, err := d.profileService().AddConfirmedFact(body.Text, body.Have)
 		if err != nil {
 			writeProfileError(w, err)
 			return
 		}
 		if body.JobID > 0 {
+			rescoreJobAndScheduleBackground(d, body.JobID)
+		} else {
 			matchsvc.PrioritizeModelWork(body.JobID)
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed, "action": "fact_confirmed"})
+	})
+
+	// Removes one confirmed fact by its normalized key. The response is returned immediately after
+	// the fast profile save; a full catalogue rescore runs in background (coalesced).
+	mux.HandleFunc("DELETE /api/profile/confirmed-facts/{key}", func(w http.ResponseWriter, r *http.Request) {
+		key := r.PathValue("key")
+		saved, changed, err := d.profileService().RemoveConfirmedFact(key)
+		if err != nil {
+			writeProfileError(w, err)
+			return
+		}
+		if changed {
+			scheduleBackgroundRescore(d)
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"profile": saved, "changed": changed})
 	})

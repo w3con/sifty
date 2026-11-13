@@ -486,8 +486,13 @@ type Rules struct {
 	PreferredWeight    float64           `json:"preferredWeight"`
 	UnknownGoalUtility float64           `json:"unknownGoalUtility"`
 	VerdictUtility     VerdictUtilities  `json:"verdictUtility"`
-	Regions            []RegionEntry     `json:"regions,omitempty"`
-	RestrictionPhrases []string          `json:"restrictionPhrases,omitempty"`
+	// ExchangeRates maps ISO 4217 upper-case currency codes to their value relative to EUR (the
+	// base; "EUR" maps to 1.0). The compensation evaluator uses it to convert a vacancy's stated
+	// currency into the profile currency before comparison. An empty map means cross-currency
+	// comparisons are incomparable rather than refused.
+	ExchangeRates      map[string]float64 `json:"exchangeRates,omitempty"`
+	Regions            []RegionEntry      `json:"regions,omitempty"`
+	RestrictionPhrases []string           `json:"restrictionPhrases,omitempty"`
 	// WrapperPrefixes are leading words stripped from a token before region lookup.
 	WrapperPrefixes []string `json:"wrapperPrefixes,omitempty"`
 	// TrailingQualifiers are suffixes stripped from a token before region lookup.
@@ -566,6 +571,7 @@ const (
 
 	ReasonCompensationAligned      = "compensation_aligned"
 	ReasonCompensationBelowMin     = "compensation_below_minimum"
+	ReasonCompensationRangeCovers  = "compensation_range_covers_minimum" // lower < min ≤ upper; not counted
 	ReasonCompensationMissing      = "compensation_job_missing"
 	ReasonCompensationIncomparable = "compensation_incomparable"
 	ReasonCompensationUnusable     = "compensation_fact_unusable"

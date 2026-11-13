@@ -67,7 +67,7 @@ func (s *Service) activeSettings(cfg *config.Config) (settings, error) {
 		cfg = &config.Config{}
 	}
 	q := cfg.Runtime.EffectiveQuickMatch()
-	rules, err := matchconfig.Rules(q)
+	rules, err := matchconfig.Rules(q, cfg.VacancyView.ExchangeRates)
 	if err != nil {
 		return settings{}, err
 	}

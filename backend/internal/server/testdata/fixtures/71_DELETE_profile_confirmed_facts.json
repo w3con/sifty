@@ -1,0 +1,10 @@
+{
+  "description": "DELETE /api/profile/confirmed-facts/{key} — remove one confirmed fact by its normalized key",
+  "method": "DELETE",
+  "path": "/api/profile/confirmed-facts/financial-payments-or-crypto-related-systems-experience",
+  "requestBody": {},
+  "responseStatus": 200,
+  "responseBodyShape": "object",
+  "requiredFields": ["profile", "changed"],
+  "source": "synthetic"
+}

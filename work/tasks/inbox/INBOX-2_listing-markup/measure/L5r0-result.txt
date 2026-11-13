@@ -1,0 +1,98 @@
+## Populations
+all rows 2814; excluded category pages 112; non-category 2702; with readable text (sections) 2638; of those new 2399
+statuses in non-category: {'rejected': 158, 'new': 2463, 'saved': 58, 'applied': 23}
+model extraction present (non-category): 2228 ; zero requirements: 118
+
+## Tile fill, population: all non-category (2702)
+| tile      | structured | +code in classified sections | +code in whole text | model only | structured+sections+model | structured+whole text+model | still 'not stated' |
+|---|---|---|---|---|---|---|---|
+| money     |   0.4 % |   7.7 % |  37.0 % |  32.9 % |  34.1 % |  38.2 % | 1671 ( 61.8 %) |
+| location  |  70.9 % |  71.0 % |  71.8 % |  55.6 % |  93.0 % |  93.1 % | 186 (  6.9 %) |
+| work_mode |  28.9 % |  34.8 % |  66.6 % |  49.5 % |  67.4 % |  72.3 % | 749 ( 27.7 %) |
+| contract  |   0.4 % |   4.4 % |  25.1 % |  20.6 % |  21.5 % |  26.5 % | 1986 ( 73.5 %) |
+
+## Tile fill, population: with readable text (2638)
+| tile      | structured | +code in classified sections | +code in whole text | model only | structured+sections+model | structured+whole text+model | still 'not stated' |
+|---|---|---|---|---|---|---|---|
+| money     |   0.5 % |   7.9 % |  37.9 % |  33.7 % |  35.0 % |  39.1 % | 1607 ( 60.9 %) |
+| location  |  72.4 % |  72.5 % |  73.3 % |  56.9 % |  95.1 % |  95.2 % | 127 (  4.8 %) |
+| work_mode |  29.5 % |  35.5 % |  68.1 % |  50.7 % |  68.9 % |  73.9 % | 688 ( 26.1 %) |
+| contract  |   0.4 % |   4.5 % |  25.7 % |  21.1 % |  22.0 % |  27.1 % | 1922 ( 72.9 %) |
+
+## Tile fill, population: of those status new (2399)
+| tile      | structured | +code in classified sections | +code in whole text | model only | structured+sections+model | structured+whole text+model | still 'not stated' |
+|---|---|---|---|---|---|---|---|
+| money     |   0.5 % |   8.3 % |  39.6 % |  35.1 % |  36.3 % |  40.8 % | 1421 ( 59.2 %) |
+| location  |  71.0 % |  71.1 % |  71.8 % |  58.0 % |  95.0 % |  95.0 % | 120 (  5.0 %) |
+| work_mode |  27.3 % |  33.3 % |  67.3 % |  51.1 % |  68.4 % |  73.3 % | 641 ( 26.7 %) |
+| contract  |   0.4 % |   4.6 % |  25.7 % |  20.9 % |  21.8 % |  27.1 % | 1748 ( 72.9 %) |
+
+## Money: stated, and comparable with the goal (currency + period or annual-size number)
+- all non-category (2702): a figure is stated for 1031 ( 38.2 %); of them comparable by code 995 ( 36.8 % of all)
+- with readable text (2638): a figure is stated for 1031 ( 39.1 %); of them comparable by code 995 ( 37.7 % of all)
+- of those status new (2399): a figure is stated for 978 ( 40.8 %); of them comparable by code 943 ( 39.3 % of all)
+
+## Baseline today: per goal criterion, verdict in the stored Fits you result (non-category)
+| criterion | match | mismatch | to clarify |
+|---|---|---|---|
+| compensation.cash | 0 | 0 | 2232 |
+| conditions.engagement | 104 | 450 | 1678 |
+| conditions.work_mode | 594 | 741 | 897 |
+| role.title | 1304 | 928 | 0 |
+  - compensation.cash to clarify reasons: {'compensation_job_missing': 1894, 'compensation_fact_unusable': 337, 'compensation_incomparable': 1}
+  - conditions.engagement to clarify reasons: {'engagement_missing': 1678}
+  - conditions.work_mode to clarify reasons: {'work_mode_missing': 887, 'work_mode_unusable': 10}
+
+## Sections: recognised groups (jobs with readable text)
+- Requirements: 596 ( 22.6 %)
+- Nice to have: 231 (  8.8 %)
+- Requirements or Nice to have: 633 ( 24.0 %)
+- Compensation: 179 (  6.8 %)
+- Benefits: 260 (  9.9 %)
+- Offer = Compensation or Benefits: 407 ( 15.4 %)
+- Responsibilities: 553 ( 21.0 %)
+- Location: 55 (  2.1 %)
+- both a requirements-type and an offer-type section: 268 ( 10.2 %); neither: 1866 ( 70.7 %)
+
+## What they offer: vocabulary hits (jobs with readable text)
+| item | in Compensation/Benefits sections | in whole text |
+|---|---|---|
+| salary | 196 (  7.4 %) | 994 ( 37.7 %) |
+| equity | 192 (  7.3 %) | 1040 ( 39.4 %) |
+| health | 225 (  8.5 %) | 1265 ( 48.0 %) |
+| time_off | 212 (  8.0 %) | 829 ( 31.4 %) |
+| retirement | 177 (  6.7 %) | 666 ( 25.2 %) |
+| learning | 35 (  1.3 %) | 262 (  9.9 %) |
+| equipment | 33 (  1.3 %) | 548 ( 20.8 %) |
+| bonus | 68 (  2.6 %) | 470 ( 17.8 %) |
+| flexible | 29 (  1.1 %) | 237 (  9.0 %) |
+- at least one offer item read from Compensation/Benefits sections: 329 ( 12.5 %)
+
+## Agreement of prototype code readers with the model's value (where the model stated one)
+- work mode, strict reader, on 1337 vacancies with a model value: reader found something in 1110 ( 83.0 %); contains the model's mode in 1009 ( 75.5 %); equals it exactly in 709 ( 53.0 %)
+- work mode, loose reader, on 1337 vacancies with a model value: reader found something in 1184 ( 88.6 %); contains the model's mode in 1071 ( 80.1 %); equals it exactly in 757 ( 56.6 %)
+- contract: model says employment in 450, contract/freelance in 104
+  - model 'employment': code sees employment words (permanent/W-2/employee benefits/employment contract) in 67, full-time only in 352, contract words in 41, nothing in 4
+  - model 'contract': code sees contract words in 56, nothing in 12
+- contract words found in whole text (strict-ish kinds), jobs: {'full-time': 615, 'contract': 360, 'part-time': 41, 'internship': 99, 'employment': 405}
+
+## Money and contract: extra checks
+- money: model stated a figure for 889; the code reader on the whole text also finds a figure in 855 ( 96.2 %)
+- money: code finds a figure where the model gave none: 142; (18 of them read by eye above: all were real pay figures)
+- contract type stated (all non-category, 2702): structured+model 556 ( 20.6 %); + explicit contract words in text 617 ( 22.8 %); only a schedule word (full-time/part-time) on top: 88 (  3.3 %)
+- contract type stated (with readable text, 2638): structured+model 556 ( 21.1 %); + explicit contract words in text 617 ( 23.4 %); only a schedule word (full-time/part-time) on top: 88 (  3.3 %)
+- contract type stated (of those status new, 2399): structured+model 502 ( 20.9 %); + explicit contract words in text 563 ( 23.5 %); only a schedule word (full-time/part-time) on top: 78 (  3.3 %)
+
+## Requirements: extraction and verdicts by code (stored fit results; matching pass is off)
+- vacancies with >=1 model-extracted requirement: 2110 of 2702 ( 78.1 %)
+- requirements in total: 19865; by code: match 1078 (  5.4 %), no 0 (  0.0 %), partial 71 (  0.4 %), unclear 18716 ( 94.2 %)
+- decided ✓/✕ by code (match + no): 1078 (  5.4 %)
+- vacancies where every requirement is decided by code: 6 (  0.3 %); with at least one undecided (needs the owner's ✓/✕): 2104 ( 99.7 %)
+- by requirement kind (verdict counts):
+   - skill: {'unclear': 9806, 'match': 1025, 'partial': 68}
+   - experience: {'unclear': 6188, 'match': 53, 'partial': 3}
+   - qualification: {'unclear': 1348}
+   - authorization: {'unclear': 630}
+   - other: {'unclear': 382}
+   - language: {'unclear': 362}
+- levels in extraction: {'required': 13435, 'preferred': 6430}

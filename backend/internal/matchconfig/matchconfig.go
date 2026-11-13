@@ -12,7 +12,10 @@ import (
 )
 
 // Rules converts the effective configuration block into validated evaluator rules.
-func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
+// rates maps ISO 4217 upper-case currency codes to their EUR-relative values and is taken
+// directly from config.VacancyViewConfig.ExchangeRates; nil is valid and means cross-currency
+// comparisons are incomparable.
+func Rules(q config.QuickMatch, rates map[string]float64) (matchcontract.Rules, error) {
 	r := matchcontract.Rules{
 		SchemaVersion:   matchcontract.SchemaVersion,
 		RulesVersion:    strings.TrimSpace(q.RulesVersion),
@@ -29,6 +32,7 @@ func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
 			matchcontract.GroupGeography:    q.Weights.Geography,
 			matchcontract.GroupConditions:   q.Weights.Conditions,
 		},
+		ExchangeRates: rates,
 	}
 	regions, err := q.EffectiveRegions()
 	if err != nil {

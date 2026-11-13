@@ -44,6 +44,17 @@ type Skills struct {
 	TechnologyContext []string        `yaml:"technology_context"     json:"technologyContext"`
 	GenericWords      []string        `yaml:"generic_words"          json:"genericWords"`
 	NotAnswerable     []string        `yaml:"not_answerable_from_cv" json:"notAnswerableFromCV"`
+	// MaxSkillNameWords is the maximum word count a phrase may have to be treated as a skill
+	// name when added from a vacancy row. Phrases with more words go to "Confirmed by you". 0 uses 3.
+	MaxSkillNameWords int      `yaml:"max_skill_name_words" json:"maxSkillNameWords"`
+	// VerbEndings lists word-ending strings whose presence in any word of a phrase marks it as an
+	// activity or description rather than a skill name (e.g. "ing"). Default: ["ing"].
+	VerbEndings       []string `yaml:"verb_endings"         json:"verbEndings"`
+	// ModifierWords lists -ing words that act as modifiers (adjectives) rather than activity verbs
+	// when they appear inside a multi-word phrase and are followed by at least one more word.
+	// "coding" in "AI coding tools" is a modifier; "coding" alone is an activity.
+	// Default: [coding, testing, scripting, streaming, programming].
+	ModifierWords     []string `yaml:"modifier_words"       json:"modifierWords"`
 	Groups            []SkillGroup    `yaml:"groups"                 json:"groups"`
 	Categories        []SkillCategory `yaml:"categories"          json:"categories"`
 }

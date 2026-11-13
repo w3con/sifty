@@ -1,10 +1,10 @@
 import React,{useEffect,useRef,useState} from 'react';
-import {messageKind} from './messages';
+import {messageKind, messageText, SERVER_DOWN_TEXT} from './messages';
 import {createRoot} from 'react-dom/client';
 import type {Job} from './model/core';
 import type {Stage} from './model/workflow';
 import {externalApplyUrl,archiveRetentionMs,validAppliedAt,outcomeReasonLabel,type OutcomeReason} from './model/workflow';
-import {api,blockJob} from './api';
+import {api,blockJob,isServerUnreachable} from './api';
 import {Filters} from './CatalogueFilters';
 import {emptySelection,filterCatalogue,migrateSelection,selectionCount,sortCatalogue,type CatalogueSelection} from './filters';
 import {publicationText} from './dates';
@@ -58,15 +58,15 @@ function App(){
   const [dismissedJobs,setDismissedJobs]=useState<Job[]>([]);
   const [assessmentOn,setAssessmentOn]=useState<boolean|null>(null),[savingAssessment,setSavingAssessment]=useState(false),[assessmentError,setAssessmentError]=useState('');
   const assessmentRevision=useRef(0),assessmentSaving=useRef(false);
-  const search=useRef<HTMLInputElement>(null),filterBox=useRef<HTMLDivElement>(null),writes=useRef(0),epoch=useRef(0),polling=useRef(false);
+  const search=useRef<HTMLInputElement>(null),filterBox=useRef<HTMLDivElement>(null),writes=useRef(0),epoch=useRef(0),polling=useRef(false),pollError=useRef(false),lastCatalogueSeq=useRef<number>(-1),lastPollRefresh=useRef<number>(0);
   const replaceJob=(j:Job)=>setJobs(old=>old.map(x=>x.id===j.id?j:x));
   // Reject snapshots started before a workflow write. Serialize polling and keep review state separate.
-  async function refresh(){const revision=epoch.current;const data=await api('jobs');if(!writes.current&&revision===epoch.current)setJobs(data);}
-  useEffect(()=>{api('filter-options').then(setOptions).catch(e=>setError(e.message));},[]);
+  async function refresh(){const revision=epoch.current;const data=await api('jobs','GET',undefined,30000);if(!writes.current&&revision===epoch.current)setJobs(data);}
+  useEffect(()=>{api('filter-options','GET',undefined,10000).then(setOptions).catch(e=>{if(!isServerUnreachable(e))setError(e.message);});},[]);
   // Fire one unforced collection on app mount so opening or reloading the app triggers a
   // throttled run; the server-side cooldown prevents repeated runs within the configured interval.
   useEffect(()=>{api('search','POST',{force:false}).catch(()=>{});},[]);
-  useEffect(()=>{let alive=true;async function poll(){if(polling.current)return;polling.current=true;const revision=assessmentRevision.current;try{const q=await api('queue');const a=await api('quick-match/analysis').catch(()=>null);if(alive){setQueue(q);setAnalysis(a);if(!assessmentSaving.current&&revision===assessmentRevision.current&&typeof q.enabled==='boolean')setAssessmentOn(q.enabled);await refresh();}}catch(e:any){if(alive)setError(e.message);}finally{polling.current=false;}}void poll();const timer=setInterval(poll,2500);return()=>{alive=false;clearInterval(timer);};},[]);
+  useEffect(()=>{let alive=true;async function poll(){if(polling.current)return;polling.current=true;const revision=assessmentRevision.current;try{const q=await api('queue','GET',undefined,10000);const a=await api('quick-match/analysis','GET',undefined,10000).catch(()=>null);if(alive){setQueue(q);setAnalysis(a);if(!assessmentSaving.current&&revision===assessmentRevision.current&&typeof q.enabled==='boolean')setAssessmentOn(q.enabled);}await api('health','GET',undefined,10000);if(alive){const seq:number=typeof q.catalogueSeq==='number'?q.catalogueSeq:-1;if(seq!==lastCatalogueSeq.current){const now=Date.now();if(now-lastPollRefresh.current>=10000){lastPollRefresh.current=now;await refresh();lastCatalogueSeq.current=seq;}}if(pollError.current){setError('');pollError.current=false;}}}catch(e:any){if(alive){pollError.current=true;setError(isServerUnreachable(e)?SERVER_DOWN_TEXT:messageText(e.message));}}finally{polling.current=false;}}void poll();const timer=setInterval(poll,2500);return()=>{alive=false;clearInterval(timer);};},[]);
   async function toggleAssessment(){
     if(assessmentSaving.current||assessmentOn===null)return;
     assessmentSaving.current=true;assessmentRevision.current++;setSavingAssessment(true);setAssessmentError('');

@@ -175,7 +175,8 @@ func TestExtractEvidenceAndSectionPreservation(t *testing.T) {
 		{"Salary survey: USD 80,000 - 100,000 per year gross", true, false, ""},
 		{"Base salary: from USD 80,000 per year gross", false, true, matchcontract.ReliabilityNeedsCorroboration},
 		{"Base salary: USD 80,000 per year", false, false, matchcontract.ReliabilityNeedsCorroboration},
-		{"Base salary: USD 80,000 - 100,000 per year gross plus bonus", true, false, ""},
+		// "plus bonus" no longer blocks extraction when "base salary" gives salary context.
+		{"Base salary: USD 80,000 - 100,000 per year gross plus bonus", false, false, matchcontract.ReliabilityUsable},
 	}
 	for _, tc := range cashCases {
 		c := src

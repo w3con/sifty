@@ -17,6 +17,7 @@ const (
 	SectionDemographics      Section = "demographics"
 	SectionSkills            Section = "skills"
 	SectionAbsentSkills      Section = "absent-skills"
+	SectionConfirmedFacts    Section = "confirmed-facts"
 	SectionExperience        Section = "experience"
 	SectionGoals             Section = "goals"
 	SectionCompensation      Section = "compensation"
@@ -31,7 +32,8 @@ const (
 // ParseSection validates a route/section name.
 func ParseSection(value string) (Section, error) {
 	switch Section(value) {
-	case SectionIdentity, SectionDemographics, SectionSkills, SectionAbsentSkills, SectionExperience, SectionGoals,
+	case SectionIdentity, SectionDemographics, SectionSkills, SectionAbsentSkills, SectionConfirmedFacts,
+		SectionExperience, SectionGoals,
 		SectionCompensation, SectionWork, SectionGeography, SectionLanguages,
 		SectionAvailability, SectionDealbreakers, SectionOtherRequirements:
 		return Section(value), nil
@@ -145,6 +147,12 @@ func mergeSection(data *ProfileData, section Section, value json.RawMessage) err
 			}
 		}
 		data.Skills = kept
+	case SectionConfirmedFacts:
+		rows, err := mergeConfirmedFacts(value)
+		if err != nil {
+			return fmt.Errorf("confirmed facts: %w", err)
+		}
+		data.ConfirmedFacts = rows
 	case SectionExperience:
 		incoming, err := mergeExperience(data.Experience, value)
 		if err != nil {
@@ -455,6 +463,8 @@ func sectionSnapshot(data ProfileData, section Section) any {
 			Skills []Skill
 			Absent []AbsentSkill
 		}{data.Skills, data.AbsentSkills}
+	case SectionConfirmedFacts:
+		return data.ConfirmedFacts
 	case SectionExperience:
 		return data.Experience
 	case SectionGoals:
@@ -501,6 +511,42 @@ func mergeAbsentSkills(value json.RawMessage) ([]AbsentSkill, error) {
 		out = append(out, r)
 	}
 	return out, nil
+}
+
+// mergeConfirmedFacts decodes the list of confirmed facts. The list is replaced as a whole;
+// a row without a key gets one from its text, and duplicate keys are kept once.
+func mergeConfirmedFacts(value json.RawMessage) ([]ConfirmedFact, error) {
+	var rows []ConfirmedFact
+	if err := json.Unmarshal(value, &rows); err != nil {
+		return nil, err
+	}
+	out := make([]ConfirmedFact, 0, len(rows))
+	seen := map[string]bool{}
+	for _, r := range rows {
+		r.Text = strings.Join(strings.Fields(r.Text), " ")
+		if r.Text == "" {
+			continue
+		}
+		if strings.TrimSpace(r.Key) == "" {
+			r.Key = NormalizeFactKey(r.Text)
+		}
+		if r.Key == "" || seen[r.Key] {
+			continue
+		}
+		seen[r.Key] = true
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+// NormalizeFactKey derives a lookup key from a requirement text: lowercase, collapsed whitespace,
+// trimmed leading/trailing punctuation. Exported so the service and the vacancyai matcher use
+// the same normalization.
+func NormalizeFactKey(s string) string {
+	s = strings.ToLower(strings.TrimSpace(s))
+	s = strings.Join(strings.Fields(s), " ")
+	s = strings.Trim(s, ".,;:!?–—-'\"()")
+	return s
 }
 
 // withoutSkills drops from the absences every skill that is now among the skills the owner has.

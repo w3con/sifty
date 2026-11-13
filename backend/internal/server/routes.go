@@ -20,11 +20,15 @@ import (
 	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/dirs"
 	"github.com/w3con/sifty/internal/fetch"
+	"github.com/w3con/sifty/internal/jobextract"
+	"github.com/w3con/sifty/internal/matchconfig"
+	"github.com/w3con/sifty/internal/matchcontract"
 	"github.com/w3con/sifty/internal/matchsvc"
 	"github.com/w3con/sifty/internal/model"
 	"github.com/w3con/sifty/internal/profile"
 	"github.com/w3con/sifty/internal/records"
 	"github.com/w3con/sifty/internal/store"
+	"github.com/w3con/sifty/internal/vacancyview"
 	"github.com/w3con/sifty/internal/version"
 )
 
@@ -138,6 +142,46 @@ func RegisterRoutes(mux Router, d *Deps) {
 		}
 		jobList := []*model.Job{job}
 		matchsvc.New(d.Store, d.Cfg).Decorate(jobList)
+		// Attach sections only for the single-job response to keep the list payload small.
+		var sections []model.Section
+		if ss, serr := d.Store.GetSections(id); serr == nil && len(ss) > 0 {
+			job.Sections = ss
+			sections = ss
+		}
+		// Compute the Fits you band and What they offer tiles.
+		cfg := d.Cfg.Get()
+		jobLocation := ""
+		if job.Location != nil {
+			jobLocation = *job.Location
+		}
+		currentProfile, _ := profile.Current(d.Store)
+		snapshot := profile.QuickMatchSnapshot(currentProfile)
+		facts, _ := d.Store.GetMatchFacts(id)
+		extraction, _ := d.Store.GetLatestVacancyExtraction(id)
+		// Seed mergedFacts: use stored facts when available; otherwise seed from extraction
+		// metadata so MergeModelConditions can fill compensation (Validate requires SchemaVersion,
+		// JobID, ExtractorVersion and RawSourceHash).  When neither exists, skip the merge.
+		var mergedFacts matchcontract.VacancyFacts
+		if facts != nil {
+			mergedFacts = *facts
+		} else if extraction != nil {
+			mergedFacts.SchemaVersion = matchcontract.SchemaVersion
+			mergedFacts.JobID = extraction.JobID
+			mergedFacts.ExtractorVersion = extraction.ExtractorVersion
+			mergedFacts.RawSourceHash = extraction.SourceHash
+		}
+		// Apply model-extracted conditions regardless of whether stored facts exist.
+		// Vacancies without a Fits you result may still have model extraction (e.g. id 1011).
+		if extraction != nil {
+			rules, _ := matchconfig.Rules(cfg.Runtime.EffectiveQuickMatch(), cfg.VacancyView.ExchangeRates)
+			if mf, _, err := jobextract.MergeModelConditions(mergedFacts, extraction.Conditions, rules.RestrictionPhrases); err == nil {
+				mergedFacts = mf
+			}
+		}
+		// ComputeBand handles empty/partial VacancyFacts gracefully (tiles show location, etc.).
+		job.Band = vacancyview.ComputeBand(snapshot, mergedFacts, sections, jobLocation, cfg.VacancyView)
+		money := vacancyview.MoneyFromSections(snapshot, mergedFacts, sections, cfg.VacancyView.ExchangeRates)
+		job.WhatTheyOffer = vacancyview.ComputeOfferItems(sections, cfg.VacancyView, &money)
 		writeJSON(w, http.StatusOK, job)
 		return nil
 	}))
@@ -246,7 +290,7 @@ func RegisterRoutes(mux Router, d *Deps) {
 		if enrichFn == nil {
 			// Default: re-fetch the detail page and update the description.
 			enrichFn = func(s *store.Store, id int64) (int64, error) {
-				return EnrichJob(s, d.FetchClient, id)
+				return EnrichJob(s, d.FetchClient, id, nil)
 			}
 		}
 		result, err := ex.Run(func() (any, error) {
@@ -1213,11 +1257,16 @@ func queueStatus(s *store.Store) (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	seq, err := s.CatalogueSeq()
+	if err != nil {
+		return nil, err
+	}
 	return map[string]any{
-		"enabled": state.Enabled,
-		"counts":  counts,
-		"rows":    rows,
-		"runtime": run,
+		"enabled":      state.Enabled,
+		"counts":       counts,
+		"rows":         rows,
+		"runtime":      run,
+		"catalogueSeq": seq,
 	}, nil
 }
 

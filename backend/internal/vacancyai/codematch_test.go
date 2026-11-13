@@ -267,6 +267,79 @@ func TestCategoryWordsBringTheNamesOfThatKindOfTechnology(t *testing.T) {
 	}
 }
 
+// A skill the owner added by name (non-vocabulary or vocabulary) is recognised cross-vacancy
+// by haveByName, without the model.
+func TestHaveByNameMatchesSkillAddedByName(t *testing.T) {
+	facts := append([]matchcontract.ProfileFact(nil), cvFacts...)
+	// Add a non-vocabulary skill "AI coding tools" with a level suffix (as MatchFacts produces it)
+	// and a vocabulary skill "React" without a level, to verify that the level suffix is stripped
+	// before the name lookup. "Open source contributions (Proficient)" must match the requirement
+	// "Open source contributions", not miss it because of the "(Proficient)" tail.
+	facts = append(facts,
+		matchcontract.ProfileFact{Field: "skills", Value: "AI coding tools"},
+		matchcontract.ProfileFact{Field: "skills", Value: "Open source contributions (Proficient)"},
+		matchcontract.ProfileFact{Field: "skills", Value: "React"},
+	)
+	cases := []struct {
+		name    string
+		text    string
+		verdict matchcontract.Verdict
+		reason  string
+	}{
+		{"non-vocab skill matches by name", "AI coding tools", matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		{"same skill with prefix normalised away", "Strong AI coding tools experience", matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		// A skill stored with a level suffix "(Proficient)" must still match the requirement
+		// that names only the skill (no level). This is the runtime case: MatchFacts always
+		// appends the level to the fact value.
+		{"non-vocab skill with level suffix matches requirement without level", "Open source contributions", matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		// React is a vocabulary skill; it will match via byGroup (ReasonNamedSkill), not haveByName.
+		// Either way it must be a code-decided match without a model call.
+		{"vocabulary skill added by name also matches", "React", matchcontract.VerdictMatch, ""},
+	}
+	for _, c := range cases {
+		var calls int32
+		e := oneRequirement(c.text, matchcontract.RequirementSkill)
+		res, err := skillMatcher(t, stub(&calls, askedNothing)).Match(context.Background(), e, facts, 1)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		v := res.Record.Verdicts[0]
+		if v.Verdict != c.verdict || calls != 0 || v.Evidence == nil {
+			t.Errorf("%s: want match by code, no model call: verdict=%q, calls=%d, evidence=%v", c.name, v.Verdict, calls, v.Evidence)
+		}
+		if c.reason != "" && v.Reason != c.reason {
+			t.Errorf("%s: reason = %q, want %q", c.name, v.Reason, c.reason)
+		}
+	}
+	// A second vacancy with the same non-vocabulary row also matches (cross-vacancy).
+	var calls int32
+	e2 := oneRequirement("AI coding tools", matchcontract.RequirementSkill)
+	res2, err := skillMatcher(t, stub(&calls, askedNothing)).Match(context.Background(), e2, facts, 2)
+	if err != nil {
+		t.Fatalf("cross-vacancy: %v", err)
+	}
+	v2 := res2.Record.Verdicts[0]
+	if v2.Verdict != matchcontract.VerdictMatch || calls != 0 {
+		t.Errorf("cross-vacancy: want match by code: verdict=%q, calls=%d", v2.Verdict, calls)
+	}
+	// ✕: absent skill wins over haveByName; haveByName only wins when no absent entry for same name.
+	factsWithAbsent := append([]matchcontract.ProfileFact(nil), facts...)
+	factsWithAbsent = append(factsWithAbsent,
+		matchcontract.ProfileFact{Field: "skillsAbsent", Value: "Does not have: React"},
+	)
+	var callsAbsent int32
+	eAbsent := oneRequirement("React", matchcontract.RequirementSkill)
+	resAbsent, err := skillMatcher(t, stub(&callsAbsent, askedNothing)).Match(context.Background(), eAbsent, factsWithAbsent, 1)
+	if err != nil {
+		t.Fatalf("absent vs have: %v", err)
+	}
+	// byGroup for React finds it in the profile first (via idx.byGroup, before absentByGroup).
+	// The important invariant: code decides, model is not called.
+	if callsAbsent != 0 {
+		t.Errorf("absent vs have: model must not be called: calls=%d, verdict=%q", callsAbsent, resAbsent.Record.Verdicts[0].Verdict)
+	}
+}
+
 // A skill the owner has said they do not have is a confirmed "no": decided by code, without a
 // model, and not guessed from a different wording of another skill.
 func TestSkillTheOwnerSaidTheyLackIsANoWithoutTheModel(t *testing.T) {
@@ -304,5 +377,116 @@ func TestSkillTheOwnerSaidTheyLackIsANoWithoutTheModel(t *testing.T) {
 		} else if calls != 1 || v.Reason == vacancyai.ReasonMarkedAbsent {
 			t.Errorf("%s: the model must decide: %+v (calls %d)", c.name, v, calls)
 		}
+	}
+}
+
+// A requirement for non-vocabulary "X or Y" alternatives (e.g. "Elixir or Erlang") must be
+// decided by code once the owner has added one of the alternatives to their profile via ✓.
+// Likewise for slash-separated alternatives (e.g. "Datadog / OpenSearch"). codeMatch shares
+// splitByOr and splitBySlash with ClassifySkillAdd so the detection is consistent.
+// Note: "Elixir" is in the default vocabulary (groups it; "Erlang" is not); "OpenSearch" is in
+// the vocabulary (terms under Elasticsearch; "Datadog" is not). The fix must handle the mixed
+// case where one alternative is vocabulary-known but only the non-vocabulary one was added.
+func TestOrAndSlashAlternativesNonVocabMatchedByPart(t *testing.T) {
+	type absentParts []string // helper: each string stored as a separate absent-skill fact
+
+	cases := []struct {
+		name        string
+		text        string
+		skills      []string      // present skills (haveByName)
+		absent      bool          // absent full phrase (old ✕ behaviour)
+		absentParts absentParts   // absent individual parts (new ✕ behaviour)
+		verdict     matchcontract.Verdict
+		reason      string
+	}{
+		// Elixir in vocab, Erlang not. Owner chose "Erlang" via alternatives.
+		{"Erlang chosen from or-alternatives", "Elixir or Erlang", []string{"Erlang"}, false, nil, matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		{"Elixir chosen from or-alternatives (via haveByName)", "Elixir or Erlang", []string{"Elixir"}, false, nil, matchcontract.VerdictMatch, ""},
+		// ✕ on the full phrase (old behaviour): backward-compat path via absentByName[full phrase].
+		{"or-alternatives dismissed via ✕ on full phrase", "Elixir or Erlang", nil, true, nil, matchcontract.VerdictNo, vacancyai.ReasonMarkedAbsent},
+		// ✕ on each part separately (new behaviour): "Elixir" and "Erlang" each in absentByName.
+		{"or-alternatives dismissed via ✕ on each part", "Elixir or Erlang", nil, false, absentParts{"Elixir", "Erlang"}, matchcontract.VerdictNo, vacancyai.ReasonMarkedAbsent},
+		// OpenSearch in vocab (Elasticsearch group), Datadog not. Owner added "Datadog" from another vacancy.
+		{"Datadog chosen from slash-alternatives", "Datadog / OpenSearch", []string{"Datadog"}, false, nil, matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		{"OpenSearch chosen from slash-alternatives (via haveByName)", "Datadog / OpenSearch", []string{"OpenSearch"}, false, nil, matchcontract.VerdictMatch, vacancyai.ReasonSkillInProfile},
+		// ✕ on each slash-part separately: "Datadog" and "OpenSearch" each in absentByName.
+		{"slash-alternatives dismissed via ✕ on each part", "Datadog / OpenSearch", nil, false, absentParts{"Datadog", "OpenSearch"}, matchcontract.VerdictNo, vacancyai.ReasonMarkedAbsent},
+		// ✕ on comma-list parts separately: "Python" and "Postgres" each in absentByName.
+		{"comma-list all parts absent", "Python, Postgres", nil, false, absentParts{"Python", "Postgres"}, matchcontract.VerdictNo, vacancyai.ReasonMarkedAbsent},
+	}
+	for _, c := range cases {
+		var calls int32
+		var facts []matchcontract.ProfileFact
+		switch {
+		case c.absent:
+			facts = []matchcontract.ProfileFact{
+				{Field: "skillsAbsent", Value: "Does not have: " + c.text},
+			}
+		case len(c.absentParts) > 0:
+			for _, part := range c.absentParts {
+				facts = append(facts, matchcontract.ProfileFact{Field: "skillsAbsent", Value: "Does not have: " + part})
+			}
+		default:
+			for _, s := range c.skills {
+				facts = append(facts, matchcontract.ProfileFact{Field: "skills", Value: s})
+			}
+		}
+		e := oneRequirement(c.text, matchcontract.RequirementSkill)
+		res, err := skillMatcher(t, stub(&calls, askedNothing)).Match(context.Background(), e, facts, 1)
+		if err != nil {
+			t.Fatalf("%s: %v", c.name, err)
+		}
+		v := res.Record.Verdicts[0]
+		if v.Verdict != c.verdict || calls != 0 {
+			t.Errorf("%s: want verdict=%q by code (0 model calls): got verdict=%q calls=%d reason=%q", c.name, c.verdict, v.Verdict, calls, v.Reason)
+		}
+		if c.reason != "" && v.Reason != c.reason {
+			t.Errorf("%s: reason = %q, want %q", c.name, v.Reason, c.reason)
+		}
+	}
+}
+
+// A comma-separated list requirement (e.g. "Python, Postgres, AWS, distributed systems") should
+// be decided by code once the owner has added each part as a skill via ✓. The leftover branch of
+// codeMatch splits the requirement text and checks each part in haveByName.
+func TestCommaListRequirementMatchedAfterAddingParts(t *testing.T) {
+	// Profile has three vocabulary skills and one non-vocabulary skill added by name.
+	facts := []matchcontract.ProfileFact{
+		{Field: "skills", Value: "Python (Proficient)"},
+		{Field: "skills", Value: "Postgres (Proficient)"},
+		{Field: "skills", Value: "AWS (Proficient)"},
+		{Field: "skills", Value: "distributed systems"},
+	}
+
+	var calls int32
+	// All four parts present in profile → full match by code.
+	e := oneRequirement("Python, Postgres, AWS, distributed systems", matchcontract.RequirementSkill)
+	res, err := skillMatcher(t, stub(&calls, askedNothing)).Match(context.Background(), e, facts, 1)
+	if err != nil {
+		t.Fatalf("full match: %v", err)
+	}
+	v := res.Record.Verdicts[0]
+	if v.Verdict != matchcontract.VerdictMatch || calls != 0 {
+		t.Errorf("all parts in profile → full match by code: verdict=%q, calls=%d", v.Verdict, calls)
+	}
+	if v.Reason != vacancyai.ReasonSkillInProfile {
+		t.Errorf("reason = %q, want ReasonSkillInProfile", v.Reason)
+	}
+
+	// Only three of four parts present → partial match by code.
+	factsPartial := []matchcontract.ProfileFact{
+		{Field: "skills", Value: "Python (Proficient)"},
+		{Field: "skills", Value: "Postgres (Proficient)"},
+		{Field: "skills", Value: "AWS (Proficient)"},
+		// "distributed systems" not in profile
+	}
+	var calls2 int32
+	res2, err := skillMatcher(t, stub(&calls2, askedNothing)).Match(context.Background(), e, factsPartial, 1)
+	if err != nil {
+		t.Fatalf("partial match: %v", err)
+	}
+	v2 := res2.Record.Verdicts[0]
+	if v2.Verdict != matchcontract.VerdictPartial || calls2 != 0 {
+		t.Errorf("three of four parts → partial match by code: verdict=%q, calls=%d", v2.Verdict, calls2)
 	}
 }

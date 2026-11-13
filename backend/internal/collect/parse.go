@@ -143,9 +143,14 @@ func buildStructured(o map[string]any, pageURL, source string) (model.JobInput, 
 		status = "available structured description"
 	}
 	published := model.NormalizePublishedAt(getString(o, "datePosted"))
+	descHTML := StructuredHTML(descRaw)
+	descPlain := PlainFromStructured(descHTML)
+	if descPlain == "" {
+		descPlain = text(descRaw)
+	}
 	return model.JobInput{
 		Title: text(title), Company: text(company), OriginalURL: original, ApplyURL: nil,
-		Description: text(descRaw), DescriptionStatus: status,
+		Description: descPlain, DescriptionHTML: descHTML, DescriptionStatus: status,
 		Location: strings.Join(dedupe(locs), " · "), PublishedAt: published,
 		PublishedBasis: model.PublicationBasis(published, "datePosted"),
 		ExpiresAt:      getString(o, "validThrough"), Source: source,
@@ -205,10 +210,20 @@ func ParseFeed(xmlText, pageURL, source string) []model.JobInput {
 			published, basis = it.published, "published"
 		}
 		published = model.NormalizePublishedAt(published)
+		feedDescHTML := StructuredHTML(desc)
+		feedDescPlain := PlainFromStructured(feedDescHTML)
+		if feedDescPlain == "" {
+			feedDescPlain = text(desc)
+		}
 		result = append(result, model.JobInput{
 			Title: role, Company: company, OriginalURL: link, ApplyURL: nil,
-			Description: text(desc), DescriptionStatus: "feed description; may be excerpt",
+			Description: feedDescPlain, DescriptionHTML: feedDescHTML,
+			DescriptionStatus: "feed description; may be excerpt",
 			PublishedAt: published, PublishedBasis: model.PublicationBasis(published, basis), Source: source,
+			// Store the raw feed item description so the structured form can be
+			// re-derived from stored data without a network fetch.
+			Original:     []byte(desc),
+			OriginalKind: "rss/item",
 		})
 	}
 	return result

@@ -85,17 +85,23 @@ func (g *GreenhouseAdapter) Discover(ctx context.Context, listingURL string) ([]
 		if j.Title == "" || j.AbsoluteURL == "" {
 			continue
 		}
+		dHTML := collect.StructuredHTML(j.Content)
 		refs = append(refs, Ref{
 			URL: j.AbsoluteURL,
 			Partial: model.JobInput{
 				Title:             j.Title,
 				Company:           slug, // refined by Resolve if company name is available
 				OriginalURL:       j.AbsoluteURL,
-				Description:       collect.CleanHTML(j.Content),
+				Description:       plainOrFallback(dHTML, j.Content),
+				DescriptionHTML:   dHTML,
 				DescriptionStatus: descStatus(j.Content),
 				Location:          j.Location.Name,
 				PublishedAt:       model.NormalizePublishedAt(j.FirstPublished),
 				PublishedBasis:    model.PublicationBasis(model.NormalizePublishedAt(j.FirstPublished), "first_published"),
+				// Store the job content from the board API so description_html can
+				// be re-derived without a network fetch.
+				Original:     []byte(j.Content),
+				OriginalKind: "html/api",
 			},
 		})
 	}
@@ -121,12 +127,18 @@ func (g *GreenhouseAdapter) Resolve(ctx context.Context, ref Ref) (model.JobInpu
 	// Try JSON-LD on the detail page.
 	if jobs := collect.StructuredJobs(page.Body, page.URL, ""); len(jobs) > 0 {
 		if j, ok := matchStructuredJob(jobs, ref); ok {
+			j.Original = []byte(page.Body)
+			j.OriginalKind = "html/page"
 			return j, nil
 		}
 	}
 	j := ref.Partial
-	j.Description = collect.CleanHTML(page.Body)
+	h := collect.StructuredHTML(page.Body)
+	j.Description = plainOrFallback(h, page.Body)
+	j.DescriptionHTML = h
 	j.DescriptionStatus = descStatus(j.Description)
+	j.Original = []byte(page.Body)
+	j.OriginalKind = "html/page"
 	return j, nil
 }
 

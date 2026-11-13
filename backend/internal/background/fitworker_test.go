@@ -84,8 +84,36 @@ func (f *fitFixture) infer(_ context.Context, _ assess.Provider, request string,
 	if strings.Contains(request, "REQUIREMENTS (DATA)") {
 		f.matchings++
 		var verdicts []string
-		for i := 0; strings.Contains(request, fmt.Sprintf("\n%d. [", i)); i++ {
-			verdicts = append(verdicts, fmt.Sprintf(`{"index":%d,"verdict":"match","evidenceId":"P1","reason":"fits"}`, i))
+		for i := 0; ; i++ {
+			marker := fmt.Sprintf("\n%d. [", i)
+			lineStart := strings.Index(request, marker)
+			if lineStart < 0 {
+				break
+			}
+			lineStart++ // skip the leading \n
+			lineEnd := strings.Index(request[lineStart:], "\n")
+			var line string
+			if lineEnd >= 0 {
+				line = request[lineStart : lineStart+lineEnd]
+			} else {
+				line = request[lineStart:]
+			}
+			// Extract the first offered fact ID: "| facts: P3, P7" → "P3".
+			// If no P-prefixed facts are offered, return "no" with empty evidenceId (valid for skills).
+			evidenceID, verdict := "", "no"
+			if idx := strings.Index(line, " | facts: P"); idx >= 0 {
+				factPart := strings.TrimPrefix(line[idx+len(" | facts: "):], "")
+				if end := strings.IndexAny(factPart, ", \n"); end >= 0 {
+					factPart = factPart[:end]
+				}
+				if strings.HasPrefix(factPart, "P") {
+					evidenceID = factPart
+					verdict = "match"
+				}
+			}
+			verdicts = append(verdicts, fmt.Sprintf(
+				`{"index":%d,"verdict":%q,"evidenceId":%q,"reason":"fits"}`, i, verdict, evidenceID,
+			))
 		}
 		*raw = json.RawMessage(`{"verdicts":[` + strings.Join(verdicts, ",") + `]}`)
 		return nil
@@ -98,7 +126,13 @@ func (f *fitFixture) infer(_ context.Context, _ assess.Provider, request string,
 	case strings.Contains(desc, "WELCOME"):
 		*raw = json.RawMessage(`{"requirements":[],"conditions":{"compensation":null,"workMode":null,"engagement":null,"location":null,"timezone":null,"hours":null}}`)
 	default:
-		*raw = json.RawMessage(`{"requirements":[{"text":"Rust","kind":"skill","level":"required","quote":"You know Rust.","alternatives":[]}],"conditions":{"compensation":null,"workMode":null,"engagement":null,"location":null,"timezone":null,"hours":null}}`)
+		// Use "TypeScript" rather than "Rust" (which is in the profile): indexProfile now indexes
+		// all MatchFieldSkills facts into haveByName, so a profile-known skill name is resolved by
+		// code without a model matching call. The test checks that the matching pass runs for 2 jobs,
+		// which requires a requirement code cannot decide (a skill absent from the profile).
+		// The quote must be text that appears in the job descriptions (ruleDesc / otherDoc) so that
+		// extraction-result validation passes. "You know Rust." is present in both descriptions.
+		*raw = json.RawMessage(`{"requirements":[{"text":"TypeScript","kind":"skill","level":"required","quote":"You know Rust.","alternatives":[]}],"conditions":{"compensation":null,"workMode":null,"engagement":null,"location":null,"timezone":null,"hours":null}}`)
 	}
 	return nil
 }
@@ -194,8 +228,10 @@ func TestWorkerScoresBothPassesEndToEndAndLeavesTheAssessmentQueueAlone(t *testi
 	}
 	for _, id := range []int64{a, b} {
 		fit, _ := f.s.GetFitResult(id)
-		if fit.Result.YouFit.Status != matchcontract.ScoreScored || fit.Result.YouFit.Counts.Match != 1 {
-			t.Errorf("job %d You fit = %+v, want scored with one match", id, fit.Result.YouFit)
+		// TypeScript is not in the profile → matching stub returns "no" with empty evidenceId (valid
+		// for a skill requirement). The requirement is decided by the matching pass.
+		if fit.Result.YouFit.Status != matchcontract.ScoreScored || fit.Result.YouFit.Counts.No != 1 {
+			t.Errorf("job %d You fit = %+v, want scored with one decided 'no'", id, fit.Result.YouFit)
 		}
 	}
 	if fit, _ := f.s.GetFitResult(none); fit.Result.YouFit.Status != matchcontract.ScoreNoRequirements {

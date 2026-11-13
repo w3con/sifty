@@ -91,3 +91,9 @@ Waiting for the owner's approval. Specification: `docs/specs/application.md` §3
 - [ ] **A.6 — Check on a production copy** (30–45 min): lookup over the copied Shortlist with the owner's Tavily key; counts by method; ten-link sample read; spec and map updated.
 
 **Estimate.** Complexity 5. Implementation 5–6.5 h, coordinator acceptance 30 min. Paid use: Tavily queries — about 150–200 in A.6 (59 vacancies × 2–3), plus a few dozen in development; model confirmations only for ambiguous matches (extraction-stage model). Release is separate and needs the owner's «да».
+
+## Approval (2026-11-13)
+
+Owner: «1. Утвердить план первого этапа. - утверждаю» and «2. Разрешить примерно 150–200 запросов к Tavily для проверки. - разрешаю». The plan above (A.1–A.6) is approved; paid Tavily use approved for development and the A.6 check.
+
+Search keys: the owner saved `TAVILY_API_KEY` and `BRAVE_API_KEY` in `data/config/secrets.env` (production data folder, git-ignored, mode 600; the file name had a trailing space, renamed by the coordinator). The server does not read this file yet; A.3 adds reading it. Executors use the keys from a copy of the data folder and never print them.

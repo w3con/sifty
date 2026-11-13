@@ -2,7 +2,7 @@
 
 **Epic:** assessment
 **Created:** 2026-11-13
-**Status:** backlog
+**Status:** in progress
 **Kind:** bug
 
 ## Owner's words
@@ -41,7 +41,7 @@ Approved by the owner 2026-11-13: «да, запускай ASSESSMENT-10 на So
 - Stored results are re-evaluated after the change without a model call (rules identity or evaluator version changes; the executor verifies which and bumps a version only if needed).
 - Spec `docs/specs/quick-match.md` §4.1 describes the label forms.
 
-- [ ] **N.1 — Label forms** (30–40 min): the rule above, the configuration keys, spec §4.1, one targeted test. Needed because these labels are the reason the nine vacancies stay "?".
-- [ ] **N.2 — Check on a production copy** (15–20 min): extend the gated probe `backend/internal/matchsvc/live_restriction_test.go`; report the counts "?" → ✕ and "?" → ✓ and every changed vacancy. Needed to show the outcome on real data and catch over-splitting.
+- [x] **N.1 — Label forms** (30–40 min): the rule above, the configuration keys, spec §4.1, one targeted test. Needed because these labels are the reason the nine vacancies stay "?".
+- [x] **N.2 — Check on a production copy** (15–20 min): extend the gated probe `backend/internal/matchsvc/live_restriction_test.go`; report the counts "?" → ✕ and "?" → ✓ and every changed vacancy. Needed to show the outcome on real data and catch over-splitting.
 
 **Estimate.** Complexity 2: one pure function and vocabulary; the risk is wrong splitting, covered by the real-label test and the probe. AI time: preparation 15 min (done), implementation 45–60 min, coordinator acceptance 15 min; total about 1.25–1.5 h. No paid services, no model calls. Release is separate and needs the owner's «да».

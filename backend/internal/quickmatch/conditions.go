@@ -20,7 +20,7 @@ func evaluateConditions(profile matchcontract.ProfileSnapshot, facts matchcontra
 	g.applicability = matchcontract.Applicable
 
 	if hasWorkModes {
-		restricted := hasRemoteWithRestriction(facts, rules.Regions)
+		restricted := hasRemoteWithRestriction(facts, rules)
 		g.members = append(g.members, evaluateWorkModes(profile.WorkModes, facts, restricted))
 	}
 	if hasEngagement {

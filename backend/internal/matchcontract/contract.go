@@ -488,6 +488,13 @@ type Rules struct {
 	VerdictUtility     VerdictUtilities  `json:"verdictUtility"`
 	Regions            []RegionEntry     `json:"regions,omitempty"`
 	RestrictionPhrases []string          `json:"restrictionPhrases,omitempty"`
+	// WrapperPrefixes are leading words stripped from a token before region lookup.
+	WrapperPrefixes []string `json:"wrapperPrefixes,omitempty"`
+	// TrailingQualifiers are suffixes stripped from a token before region lookup.
+	TrailingQualifiers []string `json:"trailingQualifiers,omitempty"`
+	// Separators split a compound label into individual region tokens. Character separators
+	// match literally; letter separators match at word boundaries (case-insensitive).
+	Separators []string `json:"separators,omitempty"`
 }
 
 // ResultStatus distinguishes a numeric score, no usable evidence, and a stale saved result.

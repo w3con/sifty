@@ -5,6 +5,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/w3con/sifty/internal/config"
 	"github.com/w3con/sifty/internal/matchcontract"
 	"github.com/w3con/sifty/internal/quickmatch"
 )
@@ -430,6 +431,19 @@ func testRegions() []matchcontract.RegionEntry {
 func rulesWithRegions() matchcontract.Rules {
 	r := defaultRules()
 	r.Regions = testRegions()
+	// Load the default separators, qualifiers and prefixes so label splitting
+	// uses the same logic as production. Tests that call this function set their
+	// own minimal Regions but rely on the built-in splitting behaviour.
+	qm := config.QuickMatch{}
+	if sep, err := qm.EffectiveSeparators(); err == nil {
+		r.Separators = sep
+	}
+	if qual, err := qm.EffectiveTrailingQualifiers(); err == nil {
+		r.TrailingQualifiers = qual
+	}
+	if pfx, err := qm.EffectiveWrapperPrefixes(); err == nil {
+		r.WrapperPrefixes = pfx
+	}
 	return r
 }
 

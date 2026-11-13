@@ -531,3 +531,263 @@ func TestLiveRestrictionPhrases(t *testing.T) {
 		t.Log(line)
 	}
 }
+
+// TestLiveCompoundLabelResolution compares restriction verdicts under the pre-ASSESSMENT-10
+// resolver (hardcoded separators "/" and "," only, hardcoded qualifiers " only"/"-based"/" based",
+// no wrapper prefix stripping) against the full ASSESSMENT-10 resolver (configured separators,
+// qualifiers, wrapper prefixes and state aliases from regions.default.yaml). Both rule sets
+// share the same region vocabulary so that the only variable is the new splitting logic.
+//
+// It reports:
+//   - counts "?" → ✓ (remote_restricted_covered) and "?" → ✕ (remote_restricted_not_covered)
+//   - every changed vacancy with its model location label and quote
+//   - any other verdict line that changed in those vacancies (expected none)
+//   - any vacancy where the restriction verdict was unchanged but other lines changed (expected none)
+//   - vacancy 1136 (Relevant Healthcare) — must stay "not covered"
+//
+// Only vacancies with usable text and a stored model extraction are considered; vacancies
+// without extraction carry no model-read label and cannot be affected by ASSESSMENT-10.
+//
+// SIFTY_PROBE_DATA_DIR  absolute path to a copy of the data directory
+//
+// Run as:
+//
+//	SIFTY_PROBE_DATA_DIR=/Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-10/scratch/data \
+//	  go test ./internal/matchsvc/ -run TestLiveCompoundLabelResolution -count=1 -v
+func TestLiveCompoundLabelResolution(t *testing.T) {
+	dataDir := os.Getenv("SIFTY_PROBE_DATA_DIR")
+	if dataDir == "" {
+		t.Skip("set SIFTY_PROBE_DATA_DIR to an absolute path to a copy of the data directory")
+	}
+
+	d, err := dirs.Resolve(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := config.Load(d)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := store.Open(filepath.Join(d.Root, "store.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	svc := New(st, config.NewHolder(cfg))
+	cur, err := profile.Current(st)
+	if err != nil || cur == nil {
+		t.Fatalf("profile: %v", err)
+	}
+
+	setNew, err := svc.activeSettings(cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Pre-ASSESSMENT-10 resolver: same region vocabulary (including new state aliases) but
+	// only the two hardcoded separators and three hardcoded qualifiers; no prefix stripping.
+	// This isolates the ASSESSMENT-10 splitting delta from every other rule.
+	rulesOld := setNew.rules
+	rulesOld.Separators = []string{"/", ","}
+	rulesOld.TrailingQualifiers = []string{" only", "-based", " based"}
+	rulesOld.WrapperPrefixes = nil
+
+	snap := profile.QuickMatchSnapshot(cur)
+	t.Logf("profile: authorizations=%d currentLocation=%v", len(snap.Authorizations), snap.CurrentLocation)
+	t.Logf("config: regions=%d separators(new)=%q qualifiers(new)=%q prefixes(new)=%q",
+		len(setNew.rules.Regions), setNew.rules.Separators, setNew.rules.TrailingQualifiers, setNew.rules.WrapperPrefixes)
+
+	// restrictionVerdict extracts the CriterionGeographyRemoteRestriction reason from a
+	// FitResult. Returns "absent" when no such line is present in any list.
+	restrictionVerdict := func(r matchcontract.FitResult) string {
+		ls := map[string][]matchcontract.FitLine{
+			"Matches": r.Lists.Matches, "Mismatches": r.Lists.Mismatches,
+			"Missing": r.Lists.Missing, "ToClarify": r.Lists.ToClarify,
+		}
+		for name, lines := range ls {
+			for _, l := range lines {
+				if l.Criterion == matchcontract.CriterionGeographyRemoteRestriction {
+					return l.Reason + " (" + name + ")"
+				}
+			}
+		}
+		return "absent"
+	}
+
+	// otherLines collects goal-origin verdict lines, excluding the restriction criterion,
+	// so that any unintended side-effect of the ASSESSMENT-10 changes is visible.
+	otherLines := func(r matchcontract.FitResult) map[string]bool {
+		m := map[string]bool{}
+		ls := map[string][]matchcontract.FitLine{
+			"Matches": r.Lists.Matches, "Mismatches": r.Lists.Mismatches,
+			"Missing": r.Lists.Missing, "ToClarify": r.Lists.ToClarify,
+		}
+		for name, lines := range ls {
+			for _, l := range lines {
+				if l.Origin != matchcontract.OriginGoal {
+					continue
+				}
+				if l.Criterion == matchcontract.CriterionGeographyRemoteRestriction {
+					continue
+				}
+				m[name+" "+string(l.Criterion)+" "+l.Reason] = true
+			}
+		}
+		return m
+	}
+
+	allJobs, err := st.List("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	type changeRecord struct {
+		id         int64
+		company    string
+		title      string
+		verdictOld string
+		verdictNew string
+		label      string
+		quote      string
+		otherDiff  []string
+	}
+
+	evaluated := 0
+	unknownToCovered, unknownToNotCovered := 0, 0
+	var changes []changeRecord
+	var pureOtherChanges []string // verdict unchanged, other lines changed
+
+	const (
+		verdictUnknown   = "remote_restricted_unknown (ToClarify)"
+		verdictCovered   = "remote_restricted_covered (Matches)"
+		verdictNotCovered = "remote_restricted_not_covered (Mismatches)"
+	)
+
+	for _, j := range allJobs {
+		src := matchcontract.RetainedSource{
+			JobID: j.ID, Title: j.Title, Company: j.Company, Tags: j.Tags,
+			Description: j.Description, DescriptionStatus: j.DescriptionStatus,
+		}
+		if jobextract.SourceStateOf(src) != matchcontract.SourceUsable {
+			continue
+		}
+		hash := matchcontract.HashDescription(j.Description)
+		ext, extErr := st.GetVacancyExtraction(j.ID, hash, vacancyai.ExtractorVersion())
+		if extErr != nil {
+			t.Logf("job %d extraction error: %v", j.ID, extErr)
+			continue
+		}
+		if ext == nil {
+			continue // only model-read labels are affected by ASSESSMENT-10
+		}
+
+		facts, factsErr := svc.factsFor(j.ID, setNew)
+		if factsErr != nil || facts == nil {
+			t.Logf("job %d facts: %v", j.ID, factsErr)
+			continue
+		}
+
+		evalWith := func(rules matchcontract.Rules) (matchcontract.FitResult, error) {
+			merged, conflicts, mergeErr := jobextract.MergeModelConditions(*facts, ext.Conditions, rules.RestrictionPhrases)
+			if mergeErr != nil {
+				return matchcontract.FitResult{}, fmt.Errorf("merge: %w", mergeErr)
+			}
+			return quickmatch.EvaluateFit(matchcontract.FitInput{
+				Profile: snap, Source: matchcontract.SourceUsable,
+				Facts: &merged, DescriptionHash: hash, Rules: rules,
+				ConditionConflicts: conflicts,
+			})
+		}
+
+		resOld, err := evalWith(rulesOld)
+		if err != nil {
+			t.Logf("job %d old eval error: %v", j.ID, err)
+			continue
+		}
+		resNew, err := evalWith(setNew.rules)
+		if err != nil {
+			t.Logf("job %d new eval error: %v", j.ID, err)
+			continue
+		}
+		evaluated++
+
+		vOld := restrictionVerdict(resOld)
+		vNew := restrictionVerdict(resNew)
+
+		lOld := otherLines(resOld)
+		lNew := otherLines(resNew)
+		var diff []string
+		for k := range lOld {
+			if !lNew[k] {
+				diff = append(diff, "-"+k)
+			}
+		}
+		for k := range lNew {
+			if !lOld[k] {
+				diff = append(diff, "+"+k)
+			}
+		}
+		sort.Strings(diff)
+
+		var label, quote string
+		if ext.Conditions.Location != nil {
+			label = ext.Conditions.Location.Value
+			quote = ext.Conditions.Location.Quote
+		}
+
+		if vOld != vNew {
+			changes = append(changes, changeRecord{
+				id: j.ID, company: j.Company, title: j.Title,
+				verdictOld: vOld, verdictNew: vNew,
+				label: label, quote: quote, otherDiff: diff,
+			})
+			if vOld == verdictUnknown && vNew == verdictCovered {
+				unknownToCovered++
+			} else if vOld == verdictUnknown && vNew == verdictNotCovered {
+				unknownToNotCovered++
+			}
+		} else if len(diff) > 0 {
+			pureOtherChanges = append(pureOtherChanges,
+				fmt.Sprintf("job %d %s / %s: label=%q restriction unchanged %q; otherDiff=%v",
+					j.ID, j.Company, j.Title, label, vOld, diff))
+		}
+	}
+
+	sort.Slice(changes, func(a, b int) bool { return changes[a].id < changes[b].id })
+	sort.Strings(pureOtherChanges)
+
+	t.Logf("=== evaluated (usable text + stored model extraction): %d ===", evaluated)
+	t.Logf("=== restriction verdict changes: total=%d  ?→✓=%d  ?→✕=%d ===",
+		len(changes), unknownToCovered, unknownToNotCovered)
+	for _, c := range changes {
+		t.Logf("  job %d %s / %s: verdict %q → %q",
+			c.id, c.company, c.title, c.verdictOld, c.verdictNew)
+		t.Logf("    label=%q", c.label)
+		t.Logf("    quote=%q", c.quote)
+		if len(c.otherDiff) > 0 {
+			t.Logf("    OTHER lines also changed (unexpected): %v", c.otherDiff)
+		}
+	}
+	t.Logf("=== vacancies where restriction unchanged but other lines changed (expected none): %d ===",
+		len(pureOtherChanges))
+	for _, s := range pureOtherChanges {
+		t.Log(" ", s)
+	}
+
+	// Vacancy 1136 (Relevant Healthcare) must stay "not covered" — it has a known US-only
+	// restriction and the owner is not US-authorised. ASSESSMENT-10 must not change it.
+	const targetID = 1136
+	found1136 := false
+	for _, c := range changes {
+		if c.id == targetID {
+			t.Logf("=== vacancy %d CHANGED (unexpected): %s / %s: verdict %q → %q label=%q ===",
+				targetID, c.company, c.title, c.verdictOld, c.verdictNew, c.label)
+			found1136 = true
+			break
+		}
+	}
+	if !found1136 {
+		t.Logf("=== vacancy %d: verdict unchanged by ASSESSMENT-10 (expected) ===", targetID)
+	}
+}

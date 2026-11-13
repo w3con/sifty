@@ -13,6 +13,9 @@ var defaultRegionsYAML []byte
 // defaultVocabulary is the shape of regions.default.yaml: the same keys as the quick_match block.
 type defaultVocabulary struct {
 	RestrictionPhrases []string           `yaml:"restriction_phrases"`
+	WrapperPrefixes    []string           `yaml:"wrapper_prefixes"`
+	TrailingQualifiers []string           `yaml:"trailing_qualifiers"`
+	Separators         []string           `yaml:"separators"`
 	Regions            []QuickMatchRegion `yaml:"regions"`
 }
 
@@ -61,4 +64,58 @@ func (q QuickMatch) EffectiveRestrictionPhrases() ([]string, error) {
 		return q.RestrictionPhrases, nil
 	}
 	return DefaultRestrictionPhrases()
+}
+
+// DefaultWrapperPrefixes returns the built-in wrapper prefixes shipped with the binary.
+func DefaultWrapperPrefixes() ([]string, error) {
+	v, err := loadDefaultVocabulary()
+	if err != nil {
+		return nil, err
+	}
+	return v.WrapperPrefixes, nil
+}
+
+// DefaultTrailingQualifiers returns the built-in trailing qualifiers shipped with the binary.
+func DefaultTrailingQualifiers() ([]string, error) {
+	v, err := loadDefaultVocabulary()
+	if err != nil {
+		return nil, err
+	}
+	return v.TrailingQualifiers, nil
+}
+
+// DefaultSeparators returns the built-in label separators shipped with the binary.
+func DefaultSeparators() ([]string, error) {
+	v, err := loadDefaultVocabulary()
+	if err != nil {
+		return nil, err
+	}
+	return v.Separators, nil
+}
+
+// EffectiveWrapperPrefixes returns the configured wrapper prefixes when
+// quick_match.wrapper_prefixes is non-empty, and the built-in default otherwise.
+func (q QuickMatch) EffectiveWrapperPrefixes() ([]string, error) {
+	if len(q.WrapperPrefixes) > 0 {
+		return q.WrapperPrefixes, nil
+	}
+	return DefaultWrapperPrefixes()
+}
+
+// EffectiveTrailingQualifiers returns the configured trailing qualifiers when
+// quick_match.trailing_qualifiers is non-empty, and the built-in default otherwise.
+func (q QuickMatch) EffectiveTrailingQualifiers() ([]string, error) {
+	if len(q.TrailingQualifiers) > 0 {
+		return q.TrailingQualifiers, nil
+	}
+	return DefaultTrailingQualifiers()
+}
+
+// EffectiveSeparators returns the configured separators when quick_match.separators is non-empty,
+// and the built-in default otherwise.
+func (q QuickMatch) EffectiveSeparators() ([]string, error) {
+	if len(q.Separators) > 0 {
+		return q.Separators, nil
+	}
+	return DefaultSeparators()
 }

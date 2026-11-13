@@ -50,6 +50,33 @@ func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
 			r.RestrictionPhrases = append(r.RestrictionPhrases, p)
 		}
 	}
+	prefixes, err := q.EffectiveWrapperPrefixes()
+	if err != nil {
+		return matchcontract.Rules{}, fmt.Errorf("quick match wrapper prefixes: %w", err)
+	}
+	for _, p := range prefixes {
+		if p = strings.TrimSpace(p); p != "" {
+			r.WrapperPrefixes = append(r.WrapperPrefixes, p)
+		}
+	}
+	qualifiers, err := q.EffectiveTrailingQualifiers()
+	if err != nil {
+		return matchcontract.Rules{}, fmt.Errorf("quick match trailing qualifiers: %w", err)
+	}
+	for _, qual := range qualifiers {
+		if qual = strings.TrimSpace(qual); qual != "" {
+			r.TrailingQualifiers = append(r.TrailingQualifiers, qual)
+		}
+	}
+	separators, err := q.EffectiveSeparators()
+	if err != nil {
+		return matchcontract.Rules{}, fmt.Errorf("quick match separators: %w", err)
+	}
+	for _, s := range separators {
+		if s = strings.TrimSpace(s); s != "" {
+			r.Separators = append(r.Separators, s)
+		}
+	}
 	if err := r.Validate(); err != nil {
 		return matchcontract.Rules{}, fmt.Errorf("quick match configuration: %w", err)
 	}

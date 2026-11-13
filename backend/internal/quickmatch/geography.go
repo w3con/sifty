@@ -1,6 +1,7 @@
 package quickmatch
 
 import (
+	"regexp"
 	"sort"
 	"strings"
 
@@ -38,7 +39,7 @@ func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontrac
 	}
 
 	// Path 2 only: no preferred locations; restriction check is the only geography member.
-	restriction := classifyRemoteRestriction(facts, rules.Regions)
+	restriction := classifyRemoteRestriction(facts, rules)
 	if restriction == remoteUnrestricted || restriction == remoteNoRemote {
 		return g // not applicable; vacancy is unrestricted or has no remote
 	}
@@ -47,7 +48,7 @@ func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontrac
 		return g // owner has no data to compare against; not applicable
 	}
 	g.applicability = matchcontract.Applicable
-	g.members = append(g.members, evaluateRemoteRestriction(facts, rules.Regions, ownerCountries))
+	g.members = append(g.members, evaluateRemoteRestriction(facts, rules, ownerCountries))
 	return g
 }
 
@@ -55,7 +56,7 @@ func evaluateGeography(profile matchcontract.ProfileSnapshot, facts matchcontrac
 // restriction and the owner has authorizations or a current location to compare against.
 // Returns the member and ok=true only when both conditions hold.
 func buildRestrictionMember(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts, rules matchcontract.Rules) (member, bool) {
-	restriction := classifyRemoteRestriction(facts, rules.Regions)
+	restriction := classifyRemoteRestriction(facts, rules)
 	if restriction == remoteUnrestricted || restriction == remoteNoRemote {
 		return member{}, false
 	}
@@ -63,7 +64,7 @@ func buildRestrictionMember(profile matchcontract.ProfileSnapshot, facts matchco
 	if !ownerPresent {
 		return member{}, false
 	}
-	return evaluateRemoteRestriction(facts, rules.Regions, ownerCountries), true
+	return evaluateRemoteRestriction(facts, rules, ownerCountries), true
 }
 
 // remoteRestriction classifies the vacancy's remote work restriction status.
@@ -86,8 +87,8 @@ const (
 //
 // When the vocabulary is empty the function always returns remoteNoRemote, so the
 // new code path is inactive until the owner adds regions to the configuration.
-func classifyRemoteRestriction(facts matchcontract.VacancyFacts, regions []matchcontract.RegionEntry) remoteRestriction {
-	if len(regions) == 0 {
+func classifyRemoteRestriction(facts matchcontract.VacancyFacts, rules matchcontract.Rules) remoteRestriction {
+	if len(rules.Regions) == 0 {
 		return remoteNoRemote
 	}
 	hasRemote := false
@@ -109,11 +110,11 @@ func classifyRemoteRestriction(facts matchcontract.VacancyFacts, regions []match
 	if len(labels) == 0 {
 		return remoteUnrestricted
 	}
-	// Resolve each label (and its slash-separated parts) through the vocabulary.
+	// Resolve each label through the vocabulary.
 	// A single unresolvable label makes the whole restriction unknown.
 	allWorldwide := true
 	for _, label := range labels {
-		kind, _ := resolveRestrictionLabel(label, regions)
+		kind, _ := resolveRestrictionLabel(label, rules)
 		switch kind {
 		case labelWorldwide:
 			// worldwide label: does not restrict, skip
@@ -138,23 +139,60 @@ const (
 	labelRestricted                  // label found and maps to a specific country set
 )
 
-// resolveRestrictionLabel looks up one location label in the vocabulary, handling
-// slash-separated compound labels (e.g. "US/Canada"). Returns the aggregate kind and the
-// union of all resolved country codes. If any part is unknown the whole label is unknown.
-func resolveRestrictionLabel(label string, regions []matchcontract.RegionEntry) (labelKind, []string) {
-	// Try the full label first.
-	if kind, countries := lookupRegion(label, regions); kind != labelUnknown {
+// resolveRestrictionLabel looks up one location label in the vocabulary. It tries the full
+// label first (protecting vocabulary names that contain "and"), then uses paren-aware
+// decomposition and the configured separators to split compound labels. Every part must
+// resolve; a single unresolvable part makes the whole label unknown.
+func resolveRestrictionLabel(label string, rules matchcontract.Rules) (labelKind, []string) {
+	// Step 1: Try the full label. This ensures a vocabulary name that contains "and" or "or"
+	// is never accidentally split.
+	if kind, countries := lookupRegion(label, rules); kind != labelUnknown {
 		return kind, countries
 	}
-	// Try splitting on common separators: "/" and ",".
-	parts := splitRestrictionParts(label)
-	if len(parts) <= 1 {
-		return labelUnknown, nil
+
+	// Step 2: Build the parts list, using paren-aware decomposition when parens are present.
+	var parts []string
+	if strings.ContainsRune(label, '(') {
+		// Extract content inside each paren group and the concatenated outside text.
+		inside, outside := extractParenSegments(label)
+		// Split each paren group on separators (handles nested comma-separated content).
+		for _, g := range inside {
+			parts = append(parts, splitOnSeparators(g, rules.Separators)...)
+		}
+		// Split the outside-paren text on separators (may include word separators like "or").
+		parts = append(parts, splitOnSeparators(outside, rules.Separators)...)
+	} else {
+		// No parens: split the whole label on the configured separators.
+		parts = splitOnSeparators(label, rules.Separators)
 	}
+
+	// Filter to non-empty, deduplicating by case-insensitive value.
+	var nonEmpty []string
+	seen := map[string]bool{}
+	for _, p := range parts {
+		if p = strings.TrimSpace(p); p != "" {
+			low := strings.ToLower(p)
+			if !seen[low] {
+				seen[low] = true
+				nonEmpty = append(nonEmpty, p)
+			}
+		}
+	}
+	if len(nonEmpty) <= 1 {
+		return labelUnknown, nil // no progress from splitting
+	}
+
+	// All parts must resolve; one unknown makes the whole label unknown.
+	return resolveAllParts(nonEmpty, rules)
+}
+
+// resolveAllParts resolves every part through the vocabulary and returns the aggregate kind.
+// Returns unknown if any single part is unknown.
+func resolveAllParts(parts []string, rules matchcontract.Rules) (labelKind, []string) {
 	var allCountries []string
 	anyRestricted := false
 	for _, part := range parts {
-		kind, countries := lookupRegion(part, regions)
+		kind, countries := lookupRegion(part, rules)
 		if kind == labelUnknown {
 			return labelUnknown, nil
 		}
@@ -169,11 +207,86 @@ func resolveRestrictionLabel(label string, regions []matchcontract.RegionEntry) 
 	return labelWorldwide, nil
 }
 
+// extractParenSegments extracts the content of each top-level paren group and the
+// concatenated outside-paren text. For "Remote (US only)" it returns
+// inside=["US only"], outside="Remote". For "REMOTE (US only) or NYC/Dallas" it
+// returns inside=["US only"], outside="REMOTE  or NYC/Dallas".
+func extractParenSegments(label string) (inside []string, outside string) {
+	var outsideBuf strings.Builder
+	i, n := 0, len(label)
+	for i < n {
+		if label[i] == '(' {
+			j, depth := i+1, 1
+			for j < n && depth > 0 {
+				switch label[j] {
+				case '(':
+					depth++
+				case ')':
+					depth--
+				}
+				j++
+			}
+			if depth == 0 {
+				content := strings.TrimSpace(label[i+1 : j-1])
+				if content != "" {
+					inside = append(inside, content)
+				}
+				i = j
+				continue
+			}
+		}
+		outsideBuf.WriteByte(label[i])
+		i++
+	}
+	outside = strings.TrimSpace(outsideBuf.String())
+	return inside, outside
+}
+
+// splitOnSeparators splits label on the configured separators. Character-only separators
+// (e.g. "/", ",", "&", ";") are matched literally; letter-containing separators (e.g.
+// "and", "or") are matched at case-insensitive word boundaries so "Florida" is not split
+// on "or". Returns a list of trimmed, non-empty tokens.
+func splitOnSeparators(label string, separators []string) []string {
+	re := buildSeparatorRegex(separators)
+	if re == nil {
+		if s := strings.TrimSpace(label); s != "" {
+			return []string{s}
+		}
+		return nil
+	}
+	var out []string
+	for _, part := range re.Split(label, -1) {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// buildSeparatorRegex compiles a regex from the configured separators. Character-only
+// separators are escaped; letter-containing separators are wrapped in \b word boundaries.
+// Returns nil when the separator list is empty.
+func buildSeparatorRegex(separators []string) *regexp.Regexp {
+	if len(separators) == 0 {
+		return nil
+	}
+	hasLetter := regexp.MustCompile(`[a-zA-Z]`)
+	var alts []string
+	for _, sep := range separators {
+		if hasLetter.MatchString(sep) {
+			alts = append(alts, `(?i:\b`+regexp.QuoteMeta(sep)+`\b)`)
+		} else {
+			alts = append(alts, regexp.QuoteMeta(sep))
+		}
+	}
+	return regexp.MustCompile(strings.Join(alts, "|"))
+}
+
 // lookupRegion matches one label token against the region vocabulary, trying
-// progressively stripped forms (trailing "only", "-based", "based").
-func lookupRegion(label string, regions []matchcontract.RegionEntry) (labelKind, []string) {
-	for _, stripped := range strippedForms(label) {
-		for _, r := range regions {
+// progressively stripped forms (wrapper prefixes and trailing qualifiers from Rules).
+func lookupRegion(label string, rules matchcontract.Rules) (labelKind, []string) {
+	for _, stripped := range strippedForms(label, rules.WrapperPrefixes, rules.TrailingQualifiers) {
+		for _, r := range rules.Regions {
 			if strings.EqualFold(r.Name, stripped) {
 				return regionKind(r), r.Countries
 			}
@@ -194,28 +307,60 @@ func regionKind(r matchcontract.RegionEntry) labelKind {
 	return labelRestricted
 }
 
-// strippedForms returns the label and common qualifier-stripped variants to try in order.
-func strippedForms(label string) []string {
+// strippedForms returns the label and qualifier/prefix-stripped variants to try in lookup order.
+// It first applies trailing qualifiers, then wrapper prefixes (longest first), then prefix +
+// qualifier combinations. The original label is always the first form tried.
+func strippedForms(label string, prefixes, qualifiers []string) []string {
 	s := strings.TrimSpace(label)
-	forms := []string{s}
-	for _, suffix := range []string{" only", "-based", " based"} {
-		if lower := strings.ToLower(s); strings.HasSuffix(lower, suffix) {
-			forms = append(forms, strings.TrimSpace(s[:len(s)-len(suffix)]))
-		}
-	}
-	return forms
-}
 
-// splitRestrictionParts splits a label by "/" and "," for compound labels like "US/Canada".
-func splitRestrictionParts(label string) []string {
-	var out []string
-	for _, part := range strings.FieldsFunc(label, func(r rune) bool { return r == '/' || r == ',' }) {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			out = append(out, part)
+	// Sort prefixes longest-first so the most specific prefix is tried before shorter ones.
+	sortedPfx := make([]string, len(prefixes))
+	copy(sortedPfx, prefixes)
+	sort.Slice(sortedPfx, func(i, j int) bool { return len(sortedPfx[i]) > len(sortedPfx[j]) })
+
+	seen := map[string]bool{}
+	var forms []string
+	add := func(f string) {
+		f = strings.TrimSpace(f)
+		if f != "" && !seen[strings.ToLower(f)] {
+			seen[strings.ToLower(f)] = true
+			forms = append(forms, f)
 		}
 	}
-	return out
+
+	add(s)
+
+	// Apply trailing qualifiers to the original.
+	sLow := strings.ToLower(s)
+	for _, q := range qualifiers {
+		if strings.HasSuffix(sLow, strings.ToLower(q)) {
+			add(s[:len(s)-len(q)])
+		}
+	}
+
+	// Apply wrapper prefixes (longest first), then qualifier-strip the result.
+	for _, pfx := range sortedPfx {
+		pfxLow := strings.ToLower(pfx)
+		if !strings.HasPrefix(sLow, pfxLow) {
+			continue
+		}
+		after := s[len(pfx):]
+		// The character immediately after the prefix must be whitespace or end-of-string.
+		if len(after) > 0 && after[0] != ' ' && after[0] != '\t' {
+			continue
+		}
+		stripped := strings.TrimSpace(after)
+		add(stripped)
+		// Also try with trailing qualifiers applied to the prefix-stripped form.
+		strippedLow := strings.ToLower(stripped)
+		for _, q := range qualifiers {
+			if strings.HasSuffix(strippedLow, strings.ToLower(q)) {
+				add(stripped[:len(stripped)-len(q)])
+			}
+		}
+	}
+
+	return forms
 }
 
 // ownerCoverageCountries returns the ISO country codes from the owner's eligible work
@@ -238,7 +383,7 @@ func ownerCoverageCountries(profile matchcontract.ProfileSnapshot) ([]string, bo
 }
 
 // evaluateRemoteRestriction produces the geography.remote_restriction comparison member.
-func evaluateRemoteRestriction(facts matchcontract.VacancyFacts, regions []matchcontract.RegionEntry, ownerCountries []string) member {
+func evaluateRemoteRestriction(facts matchcontract.VacancyFacts, rules matchcontract.Rules, ownerCountries []string) member {
 	base := member{
 		group:        matchcontract.GroupGeography,
 		criterion:    matchcontract.CriterionGeographyRemoteRestriction,
@@ -282,7 +427,7 @@ func evaluateRemoteRestriction(facts matchcontract.VacancyFacts, regions []match
 	}
 
 	// Collect the full restriction country set from usable location facts.
-	restrictionCountries, allResolved := collectRestrictionCountries(facts.Geography.HiringLocations, regions)
+	restrictionCountries, allResolved := collectRestrictionCountries(facts.Geography.HiringLocations, rules)
 	if !allResolved {
 		base.reason = matchcontract.ReasonRemoteRestrictedUnknown
 		return base
@@ -320,13 +465,13 @@ func evaluateRemoteRestriction(facts matchcontract.VacancyFacts, regions []match
 
 // collectRestrictionCountries resolves only the usable location facts to country codes.
 // Returns the country set and whether all usable labels were resolvable.
-func collectRestrictionCountries(locs []matchcontract.LocationFact, regions []matchcontract.RegionEntry) ([]string, bool) {
+func collectRestrictionCountries(locs []matchcontract.LocationFact, rules matchcontract.Rules) ([]string, bool) {
 	var countries []string
 	for _, loc := range locs {
 		if loc.Evidence.Reliability != matchcontract.ReliabilityUsable {
 			continue
 		}
-		kind, cs := resolveRestrictionLabel(loc.Label, regions)
+		kind, cs := resolveRestrictionLabel(loc.Label, rules)
 		if kind == labelUnknown {
 			return nil, false
 		}
@@ -356,11 +501,11 @@ func appendUnique(dst []string, values ...string) []string {
 // hasRemoteWithRestriction reports whether the vacancy offers a remote work mode and has
 // any hiring location facts (of any reliability). Used by the conditions evaluator to
 // suppress the plain remote match when restrictions exist.
-func hasRemoteWithRestriction(facts matchcontract.VacancyFacts, regions []matchcontract.RegionEntry) bool {
-	if len(regions) == 0 {
+func hasRemoteWithRestriction(facts matchcontract.VacancyFacts, rules matchcontract.Rules) bool {
+	if len(rules.Regions) == 0 {
 		return false
 	}
-	r := classifyRemoteRestriction(facts, regions)
+	r := classifyRemoteRestriction(facts, rules)
 	return r == remoteRestricted || r == remoteUnknownLabel
 }
 

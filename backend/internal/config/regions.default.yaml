@@ -20,12 +20,96 @@ restriction_phrases:
   - authorized to work in
   - authorised to work in
   - within
+# wrapper_prefixes: leading words stripped before a region name token is looked up.
+# Sorted longest-first so the most specific prefix is tried before shorter ones.
+wrapper_prefixes:
+  - remote within the
+  - within the
+  - remote
+# trailing_qualifiers: suffixes stripped from a token before region lookup.
+trailing_qualifiers:
+  - " only"
+  - "-based"
+  - " based"
+  - " time zones"
+  - " time zone"
+  - " timezone"
+# separators: strings that split a compound label into individual region tokens.
+# Single-character separators are matched literally; letter-only separators are
+# matched at word boundaries (case-insensitive) so "or" does not split "Florida".
+separators:
+  - /
+  - ","
+  - "&"
+  - ";"
+  - and
+  - or
 regions:
   - name: worldwide
     aliases: [anywhere, global, international, remote]
     countries: []
   - name: US
-    aliases: ["United States", "United States of America", USA, "U.S.", "U.S.A.", "US only", "United States only"]
+    aliases:
+      - "United States"
+      - "United States of America"
+      - USA
+      - "U.S."
+      - "U.S.A."
+      - "US only"
+      - "United States only"
+      # US states and DC — each maps to the US country code.
+      - Alabama
+      - Alaska
+      - Arizona
+      - Arkansas
+      - California
+      - Colorado
+      - Connecticut
+      - Delaware
+      - Florida
+      - Georgia
+      - Hawaii
+      - Idaho
+      - Illinois
+      - Indiana
+      - Iowa
+      - Kansas
+      - Kentucky
+      - Louisiana
+      - Maine
+      - Maryland
+      - Massachusetts
+      - Michigan
+      - Minnesota
+      - Mississippi
+      - Missouri
+      - Montana
+      - Nebraska
+      - Nevada
+      - "New Hampshire"
+      - "New Jersey"
+      - "New Mexico"
+      - "New York"
+      - "North Carolina"
+      - "North Dakota"
+      - Ohio
+      - Oklahoma
+      - Oregon
+      - Pennsylvania
+      - "Rhode Island"
+      - "South Carolina"
+      - "South Dakota"
+      - Tennessee
+      - Texas
+      - Utah
+      - Vermont
+      - Virginia
+      - Washington
+      - "West Virginia"
+      - Wisconsin
+      - Wyoming
+      - "District of Columbia"
+      - DC
     countries: [US]
   - name: Canada
     aliases: [CA, "Canada only"]
@@ -67,7 +151,7 @@ regions:
     aliases: [FR]
     countries: [FR]
   - name: Netherlands
-    aliases: [NL, Holland]
+    aliases: [NL, Holland, "The Netherlands"]
     countries: [NL]
   - name: Spain
     aliases: [ES]

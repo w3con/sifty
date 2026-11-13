@@ -155,6 +155,18 @@ type QuickMatch struct {
 	// RestrictionPhrases is the wording that states a hiring restriction explicitly; when absent,
 	// EffectiveRestrictionPhrases returns the built-in default (regions.default.yaml).
 	RestrictionPhrases []string `yaml:"restriction_phrases,omitempty" json:"restrictionPhrases,omitempty"`
+	// WrapperPrefixes are leading words stripped before a region name token is looked up
+	// (e.g. "remote", "remote within the"). When absent, EffectiveWrapperPrefixes returns the
+	// built-in default from regions.default.yaml.
+	WrapperPrefixes []string `yaml:"wrapper_prefixes,omitempty" json:"wrapperPrefixes,omitempty"`
+	// TrailingQualifiers are suffixes stripped from a token before region lookup
+	// (e.g. " only", "-based", " time zones"). When absent, EffectiveTrailingQualifiers returns
+	// the built-in default from regions.default.yaml.
+	TrailingQualifiers []string `yaml:"trailing_qualifiers,omitempty" json:"trailingQualifiers,omitempty"`
+	// Separators are strings that split a compound label into individual region tokens. Single-
+	// character separators match literally; letter-only separators match at word boundaries.
+	// When absent, EffectiveSeparators returns the built-in default from regions.default.yaml.
+	Separators []string `yaml:"separators,omitempty" json:"separators,omitempty"`
 }
 
 // QuickMatchModelPasses tunes the two model passes (requirement extraction and profile matching).

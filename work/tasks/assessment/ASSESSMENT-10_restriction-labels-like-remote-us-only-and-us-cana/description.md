@@ -23,7 +23,9 @@ After ASSESSMENT-9 (released 2026-11-13), 38 model-read locations became usable,
 
 Owner, 2026-11-13, on the order of work: «1» (wait for the INBOX-2 release before COLLECTION-2 and do ASSESSMENT-10 meanwhile).
 
-## Plan (coordinator, 2026-11-13; awaiting the owner's approval)
+## Plan (coordinator, 2026-11-13)
+
+Approved by the owner 2026-11-13: «да, запускай ASSESSMENT-10 на Sonnet 4.6».
 
 **Outcome.** A remote vacancy whose usable location label names the allowed countries in a common compound form gets a definite "covered" / "not covered" verdict instead of "?". The owner sees it in triage as the Fits you score and a Matches or Mismatches line for geography. It is demonstrated on a fresh production copy with the list of every changed vacancy.
 

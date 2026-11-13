@@ -1,3 +1,7 @@
+---
+estimate: 13
+---
+
 # SETTINGS-5 — User data and role profiles
 
 Approved by the owner on 2026-11-12 (plan.md §Approval); starts after INBOX-2 is released; spec docs/specs/profiles.md.
@@ -120,6 +124,16 @@ Owner, 2026-11-12: «и еще - пора сделать возможность 
 - [ ] **S.6 — Owner review on a copy** (30 min): two profiles (Blockchain — today's; General engineering — seeded from the 2026-11-10 search backup), switching, scores, decisions.
 
 Out of this card: detailed assessment and application preparation per profile (the detailed queue is off; design §5–6 kept for later); You fit per profile (ASSESSMENT-5).
+
+## Acceptance criteria
+
+- Two profiles are stored and independently maintained on the server (S.1).
+- Switching the active profile in the header switcher reads that profile's stored scores without calling the model (S.3).
+- Each profile has its own search expressions; sources are shared; a collection run records which profile's expression matched each vacancy; a vacancy appears in the Inbox of the profile that found it and is reachable from other profiles via search (S.2).
+- Inbox, Shortlist, and Archive views show only the active profile's vacancies and decisions; a vacancy rejected in one profile can be shortlisted in another (S.4, S.5).
+- My data (identity, skills, "Skills you do not have", confirmed facts, experience, languages, documents) is shared across all profiles; a change there is visible in every profile (S.1).
+- Geography editor shows "not set" when no structured location is set, even when a legacy free-text location exists (absorbed from SETTINGS-9, S.1).
+- Owner review (S.6): two profiles load correctly on a copy of production data, switching and decisions work, no model calls fire on switch.
 
 ### Estimate
 

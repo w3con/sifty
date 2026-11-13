@@ -18,3 +18,11 @@ Verdict: **accepted by the coordinator**; owner acceptance and release approval 
 Owner: «да, выпускай. Исполнители — Sonnet 5.5. если он отказывает в работе - Sonnet 4.6»
 
 Release plan: one Sonnet 5.5 executor merges main into `work/ASSESSMENT-9` (expected conflict only on the `**Status:**` line of `description.md`; keep `review`), changes the two spec markers "ASSESSMENT-9, on the branch, not released" in `docs/specs/quick-match.md` to "released 2026-11-13", commits, then runs `bin/work-finish ASSESSMENT-9 --approve <that HEAD> -m "fix(quickmatch): use model location when its quote states the restriction"` with `legacy/app/shoot-L57.mjs` moved aside and restored. The coordinator then checks production 8080 (version, health, vacancy 1136) and records the result here.
+
+## Release result, 2026-11-13
+
+- Executor (Sonnet 5.5; transcript: 23 turns `claude-sonnet-5-5`) merged main into the branch (`3da2528`, no conflict), marked the spec as released (`1d0aa9f`), ran `bin/work-finish ASSESSMENT-9 --approve 1d0aa9ffa26731be82a4477ad8f54f6874d98de6` with exit 0; `legacy/app/shoot-L57.mjs` was moved aside and restored.
+- Main: one squash commit `66ae60d` "fix(quickmatch): use model location when its quote states the restriction". Production: `1d0aa9ffa267-20261113T010118.090433Z` on 8080 (before: `38f4837075e0-20261113T001154.253753Z`).
+- Coordinator check on 8080: `/api/health` 200; `GET /api/jobs/1136` fit scored 39 (was 50), geography group utility 0, Mismatches line `remote_restricted_not_covered` with quote "Remote (US/Canada only)".
+- Kept: worktree `.worktrees/ASSESSMENT-9` and branch (work-finish preserved them because of ignored material: `scratch/data/` production copy and `__pycache__`). Remove when the owner agrees.
+- Follow-up: ASSESSMENT-10 (restriction labels not resolved).

@@ -84,7 +84,7 @@ Employer page lookup (stage 1):
 Questions (stage 2):
 
 26. Form questions are read where the form is readable without signing in: applicant-tracking-system data (Greenhouse and Ashby publish question lists; Lever serves a plain form page) and plain form pages. [not implemented]
-27. Forms behind a sign-in (LinkedIn, Wellfound) are handled as decided in §5 question 9. [owner decision needed]
+27. Forms behind a sign-in (LinkedIn, Wellfound): in stage 2 the owner opens the form, copies its whole text and pastes it into Sifty; the model extracts the questions and proposes answers, and pasted questions are added to the catalogue of typical questions. In stage 3 the browser extension reads the form in the owner's signed-in browser and replaces pasting. Sifty never stores the owner's credentials or session for another site. Owner decision, 2026-11-13 (§5 question 9). [not implemented]
 
 Answers (stage 2):
 
@@ -101,7 +101,7 @@ Answers (stage 2):
 - The assessment queue is enabled or disabled in Settings, Assessment queue; while off, the worker does nothing, including after "Assess now" (the row is queued but never claimed). [implemented; known defect: the "Assess now" notice does not reflect the off state]
 - Browser automation timing (`browser_interval_ms`, `browser_jitter_ms`, `browser_concurrency`, `browser_cooldown_ms`) lives in `runtime.yaml`; defaults are 5 000 ms interval, 3 000 ms jitter, concurrency 1, cooldown 300 000 ms. [not implemented — APP-5]
 - Candidate evidence sources and their scope are listed in `candidate.yaml`.
-- Web search for the employer lookup (rule 21) uses an ordered chain of providers set in YAML for now; fields that prove necessary move into Settings later (owner: keys for Tavily, Brave or any search engine, and the fallbacks, must be settable; "for now, for simplicity, in yaml"). Each provider entry names the environment variable or secret file that holds its key; keys are never written into the YAML itself. Default order recommended by the coordinator: Tavily, then Brave when a key exists, then DuckDuckGo's HTML page without a key, with a pause between requests; SearXNG is added only if DuckDuckGo starts refusing. Expected volume is two or three queries per shortlisted vacancy. [not implemented — APP-9]
+- Web search for the employer lookup (rule 21) uses an ordered chain of providers set in YAML for now; fields that prove necessary move into Settings later (owner: keys for Tavily, Brave or any search engine, and the fallbacks, must be settable; "for now, for simplicity, in yaml"). Each provider entry names the environment variable or secret file that holds its key; keys are never written into the YAML itself. Default order recommended by the coordinator: Tavily, then Brave when a key exists, then DuckDuckGo's HTML page without a key, with a pause between requests; SearXNG is added only if DuckDuckGo starts refusing. Expected volume is two or three queries per shortlisted vacancy. Web search is part of stage 1 (owner confirmed, 2026-11-13; the owner has a Tavily key). [not implemented — APP-9]
 
 ## 5. Questions for the owner
 
@@ -115,7 +115,7 @@ Design questions that must be answered before answer drafting can be built. Ques
 6. When exactly does drafting trigger? Partly answered: the employer lookup runs on shortlist and on Apply (rule 21). Drafting trigger is open: when the Application tab opens, on an explicit "Prepare" press, or as a low-priority background pre-warm.
 7. What is the shape of the "think" modal: a separate overlay or inline in the Application tab, and what happens to any existing stub answer while the conversation runs?
 8. For the stronger-model shortlist re-run (ASSESSMENT-6): should it run automatically on every shortlist entry, or only when the owner requests it, and what is the recommended default model?
-9. Forms behind a sign-in (LinkedIn, Wellfound). The coordinator's options: (a) Sifty signs in with the owner's stored credentials or session — not recommended, LinkedIn blocks accounts for automated access and stored credentials are a risk; (b) a catalogue of the fixed part of each aggregator's form (contacts, résumé, work authorisation, sponsorship, a short note) — covers only the fixed part, employer-added questions differ per vacancy; (c) the owner pastes the form's text into Sifty and the model extracts the questions — works on any site, and pasted questions grow the catalogue; (d) the stage 3 extension reads the form in the owner's signed-in browser. Recommendation: (b) and (c) in stage 2, (d) replaces (c) in stage 3.
+9. Forms behind a sign-in (LinkedIn, Wellfound). The coordinator's options: (a) Sifty signs in with the owner's stored credentials or session — not recommended, LinkedIn blocks accounts for automated access and stored credentials are a risk; (b) a catalogue of the fixed part of each aggregator's form (contacts, résumé, work authorisation, sponsorship, a short note) — covers only the fixed part, employer-added questions differ per vacancy; (c) the owner pastes the form's text into Sifty and the model extracts the questions — works on any site, and pasted questions grow the catalogue; (d) the stage 3 extension reads the form in the owner's signed-in browser. **Answered 2026-11-13:** the owner chose (c) in stage 2 and (d) in stage 3 (rule 27).
 
 ## 6. Open cards
 

@@ -55,3 +55,5 @@ Search providers: «у меня есть Tavily, но вообще это тож
 Open: forms behind sign-in (LinkedIn, Wellfound) — owner asked «что мы можем сделать? ... предлагать пользователю залогиниться ... или же - держать у себя справочник вопросов разных агрегаторов? что-то еще?»; coordinator recommends a catalogue of the fixed form part plus pasting the form text in stage 2, and the extension in stage 3 (spec §5 question 9). Not part of stage 1.
 
 Stage 1 scope for the plan: form link at parse time; employer lookup (aggregator page → ATS boards → web search → careers page); search provider chain in YAML; Apply opens the direct link in a separate window. Estimate 5–7 h. Plan to be written after the INBOX-2 release.
+
+Owner, later on 2026-11-13: web search in stage 1 — «Подтверждаю». Forms behind sign-in — «Так ты сам уже написал, как с ними быть» quoting options 3 (paste the form text, stage 2) and 4 (extension, stage 3); recorded as `docs/specs/application.md` rule 27.

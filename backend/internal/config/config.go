@@ -127,9 +127,21 @@ type QuickMatchSourceField struct {
 	Location string `yaml:"location,omitempty" json:"location,omitempty"`
 }
 
+// QuickMatchRegion maps one region name (and its aliases) to a set of ISO 3166-1 alpha-2
+// country codes. An empty Countries list means worldwide / unrestricted. These entries live
+// in the quick_match.regions section of runtime.yaml; no country list may be hard-coded in
+// Go logic.
+type QuickMatchRegion struct {
+	Name      string   `yaml:"name"               json:"name"`
+	Aliases   []string `yaml:"aliases,omitempty"  json:"aliases,omitempty"`
+	Countries []string `yaml:"countries"          json:"countries"`
+}
+
 // QuickMatch is the extractor/evaluator configuration extension. SourceFields maps a saved
 // source name to field usability declarations. Weights and requirement weights are the
-// approved v1 defaults, still uncalibrated.
+// approved v1 defaults, still uncalibrated. Regions is the vocabulary for restricted-remote
+// detection; when absent, EffectiveRegions returns the built-in default (regions.default.yaml),
+// so restricted-remote detection works without any explicit runtime.yaml configuration.
 type QuickMatch struct {
 	Version             int                              `yaml:"version"              json:"version"`
 	RulesVersion        string                           `yaml:"rules_version"        json:"rulesVersion"`
@@ -139,6 +151,7 @@ type QuickMatch struct {
 	PreferredWeight     float64                          `yaml:"preferred_weight"     json:"preferredWeight"`
 	SourceFields        map[string]QuickMatchSourceField `yaml:"source_fields"        json:"sourceFields"`
 	ModelPasses         QuickMatchModelPasses            `yaml:"model_passes"         json:"modelPasses"`
+	Regions             []QuickMatchRegion               `yaml:"regions,omitempty"    json:"regions,omitempty"`
 }
 
 // QuickMatchModelPasses tunes the two model passes (requirement extraction and profile matching).

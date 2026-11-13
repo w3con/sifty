@@ -409,3 +409,340 @@ func TestEvaluateGeographyAndConditionsHonesty(t *testing.T) {
 }
 
 func floatPtr(v float64) *float64 { return &v }
+
+// testRegions is a minimal region vocabulary for restricted-remote tests.
+func testRegions() []matchcontract.RegionEntry {
+	return []matchcontract.RegionEntry{
+		{Name: "worldwide", Aliases: []string{"anywhere", "global"}, Countries: []string{}},
+		{Name: "US", Aliases: []string{"United States", "USA"}, Countries: []string{"US"}},
+		{Name: "Canada", Aliases: []string{"CA"}, Countries: []string{"CA"}},
+		{Name: "EU", Aliases: []string{"European Union"}, Countries: []string{
+			"AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
+			"DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
+			"PL", "PT", "RO", "SK", "SI", "ES", "SE",
+		}},
+		{Name: "UK", Aliases: []string{"United Kingdom", "GB"}, Countries: []string{"GB"}},
+		{Name: "New Zealand", Aliases: []string{"NZ"}, Countries: []string{"NZ"}},
+		{Name: "Australia", Aliases: []string{"AU"}, Countries: []string{"AU"}},
+	}
+}
+
+func rulesWithRegions() matchcontract.Rules {
+	r := defaultRules()
+	r.Regions = testRegions()
+	return r
+}
+
+// remoteRestrictedFacts builds a vacancy with remote work mode and hiring location restrictions.
+func remoteRestrictedFacts(t *testing.T, hiringLocations []matchcontract.LocationFact) matchcontract.VacancyFacts {
+	t.Helper()
+	return mustFacts(t, matchcontract.VacancyFacts{
+		Role: matchcontract.RoleFacts{Title: &matchcontract.TitleFact{
+			Value:    "Lead Engineer",
+			Evidence: evidence("title", "", matchcontract.SectionUnknown, matchcontract.ReliabilityUsable),
+		}},
+		Conditions: matchcontract.ConditionsFacts{WorkModes: []matchcontract.WorkModeFact{{
+			Mode:     matchcontract.WorkRemote,
+			Evidence: evidence("", "Remote (US/Canada only)", matchcontract.SectionUnknown, matchcontract.ReliabilityUsable),
+		}}},
+		Geography: matchcontract.GeographyFacts{HiringLocations: hiringLocations},
+	})
+}
+
+func usableLocation(label string) matchcontract.LocationFact {
+	return matchcontract.LocationFact{
+		Label: label,
+		Evidence: matchcontract.Evidence{
+			Quote: label, Section: matchcontract.SectionUnknown,
+			Reliability: matchcontract.ReliabilityUsable,
+		},
+	}
+}
+
+func needsCorroborationLocation(label string) matchcontract.LocationFact {
+	return matchcontract.LocationFact{
+		Label: label,
+		Evidence: matchcontract.Evidence{
+			Quote: label, Section: matchcontract.SectionUnknown,
+			Reliability: matchcontract.ReliabilityNeedsCorroboration,
+		},
+	}
+}
+
+func findRestrictionComparison(res matchcontract.Result) (matchcontract.Comparison, bool) {
+	for _, c := range res.Comparisons {
+		if c.Criterion == matchcontract.CriterionGeographyRemoteRestriction {
+			return c, true
+		}
+	}
+	return matchcontract.Comparison{}, false
+}
+
+func findWorkModeComparison(res matchcontract.Result) (matchcontract.Comparison, bool) {
+	return findComparison(res, matchcontract.CriterionConditionsWorkMode)
+}
+
+// TestEvaluateRestrictedRemote verifies the restricted-remote evaluation against three cases:
+// covered (owner authorized in restriction region), not covered (owner authorized elsewhere),
+// and unknown (location label unresolvable or needs corroboration only).
+// It also verifies that the work mode does not show as a plain compatible match when restricted.
+func TestEvaluateRestrictedRemote(t *testing.T) {
+	rules := rulesWithRegions()
+
+	t.Run("not covered — owner authorized in EU and NZ, vacancy US/Canada only", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes: []string{matchcontract.WorkRemote},
+			// US and Canada are not in EU or NZ
+			Authorizations: []matchcontract.ProfileAuthorization{
+				{Country: "NZ", Status: "eligible"},
+				{Country: "FR", Status: "eligible"}, // FR is in EU
+			},
+		}
+		// Compound label "US/Canada" should resolve to {US, CA}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("US/Canada")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// Geography group must be applicable
+		if res.Applicability[matchcontract.GroupGeography] != matchcontract.Applicable {
+			t.Fatalf("geography must be applicable with authorizations: %+v", res.Applicability)
+		}
+		// Restriction comparison must exist and show not covered
+		rc, ok := findRestrictionComparison(res)
+		if !ok {
+			t.Fatalf("restriction comparison missing: %+v", res.Comparisons)
+		}
+		if !rc.Comparable || rc.Utility == nil || *rc.Utility != 0 || rc.Reason != matchcontract.ReasonRemoteRestrictedNotCovered {
+			t.Fatalf("not-covered verdict = %+v", rc)
+		}
+		// Work mode must NOT show as a plain compatible match
+		wm, _ := findWorkModeComparison(res)
+		if wm.Reason == matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("work mode must not be compatible when restricted: %+v", wm)
+		}
+		if wm.Reason != matchcontract.ReasonWorkModeRemoteRestricted {
+			t.Fatalf("work mode must have remote_restricted reason, got: %q", wm.Reason)
+		}
+	})
+
+	t.Run("covered — owner authorized in US, vacancy US/Canada only", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes: []string{matchcontract.WorkRemote},
+			Authorizations: []matchcontract.ProfileAuthorization{
+				{Country: "US", Status: "eligible"},
+			},
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("US/Canada")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		rc, ok := findRestrictionComparison(res)
+		if !ok {
+			t.Fatalf("restriction comparison missing")
+		}
+		if !rc.Comparable || rc.Utility == nil || *rc.Utility != 1 || rc.Reason != matchcontract.ReasonRemoteRestrictedCovered {
+			t.Fatalf("covered verdict = %+v", rc)
+		}
+		// Work mode still must not be compatible (geography handles it)
+		wm, _ := findWorkModeComparison(res)
+		if wm.Reason == matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("work mode must not be compatible when restricted even when covered: %+v", wm)
+		}
+	})
+
+	t.Run("current location alone does not cover — owner in Canada, no authorizations, vacancy US/Canada only", func(t *testing.T) {
+		// Spec §6.2: residence is not a work right. Current location makes the restriction
+		// check applicable (owner data is present) but does not cover the restriction itself.
+		// Without any eligible authorization the verdict must be unknown (not covered / not not-covered).
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes:       []string{matchcontract.WorkRemote},
+			CurrentLocation: &matchcontract.ProfileLocation{Country: "CA"},
+			// Authorizations deliberately absent.
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{
+			usableLocation("US"), usableLocation("Canada"),
+		})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// Geography group must be applicable because current location is present.
+		if res.Applicability[matchcontract.GroupGeography] != matchcontract.Applicable {
+			t.Fatalf("geography must be applicable with current location: %+v", res.Applicability)
+		}
+		// Restriction comparison must exist but must not be comparable.
+		rc, ok := findRestrictionComparison(res)
+		if !ok {
+			t.Fatalf("restriction comparison missing")
+		}
+		if rc.Comparable {
+			t.Fatalf("current location alone must not produce a comparable verdict: %+v", rc)
+		}
+		if rc.Reason != matchcontract.ReasonRemoteRestrictedUnknown {
+			t.Fatalf("expected remote_restricted_unknown, got: %q", rc.Reason)
+		}
+	})
+
+	t.Run("current location plus non-covering authorization is not covered", func(t *testing.T) {
+		// Owner is physically in Canada (which is in the restriction), but their only eligible
+		// authorization is NZ. Current location must not substitute for work authorization;
+		// only the NZ authorization is used for coverage and NZ is not in {US, CA}.
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes:       []string{matchcontract.WorkRemote},
+			CurrentLocation: &matchcontract.ProfileLocation{Country: "CA"},
+			Authorizations:  []matchcontract.ProfileAuthorization{{Country: "NZ", Status: "eligible"}},
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("US/Canada")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		rc, ok := findRestrictionComparison(res)
+		if !ok {
+			t.Fatalf("restriction comparison missing")
+		}
+		if !rc.Comparable || rc.Utility == nil || *rc.Utility != 0 || rc.Reason != matchcontract.ReasonRemoteRestrictedNotCovered {
+			t.Fatalf("NZ authorization with CA current location must be not-covered for US/Canada: %+v", rc)
+		}
+	})
+
+	t.Run("unknown — location label not in vocabulary", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes:      []string{matchcontract.WorkRemote},
+			Authorizations: []matchcontract.ProfileAuthorization{{Country: "NZ", Status: "eligible"}},
+		}
+		// "EMEA" is not in testRegions
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("EMEA")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// Geography group not applicable when restriction is unknown (can't compare)
+		if res.Applicability[matchcontract.GroupGeography] == matchcontract.Applicable {
+			t.Logf("geography applicability: %v", res.Applicability[matchcontract.GroupGeography])
+		}
+		// If geography IS applicable, the restriction comparison must be unknown (no utility)
+		rc, ok := findRestrictionComparison(res)
+		if ok && rc.Comparable {
+			t.Fatalf("unknown label must not produce a comparable verdict: %+v", rc)
+		}
+		// Work mode must not be a plain compatible match
+		wm, _ := findWorkModeComparison(res)
+		if wm.Reason == matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("work mode must not be compatible with unknown restriction: %+v", wm)
+		}
+	})
+
+	t.Run("unknown — needs-corroboration location only", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes:      []string{matchcontract.WorkRemote},
+			Authorizations: []matchcontract.ProfileAuthorization{{Country: "NZ", Status: "eligible"}},
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{needsCorroborationLocation("US")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// Restriction must not be a definitive verdict (no usable location)
+		rc, ok := findRestrictionComparison(res)
+		if ok && rc.Comparable {
+			t.Fatalf("needs-corroboration location must not produce a comparable verdict: %+v", rc)
+		}
+		// Work mode must not be a plain compatible match
+		wm, _ := findWorkModeComparison(res)
+		if wm.Reason == matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("work mode must not be compatible with needs-corroboration restriction: %+v", wm)
+		}
+	})
+
+	t.Run("unrestricted — worldwide location, plain remote match works", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes: []string{matchcontract.WorkRemote},
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("worldwide")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// No restriction, so geography group must not apply (no preferred locations either)
+		if res.Applicability[matchcontract.GroupGeography] == matchcontract.Applicable {
+			t.Fatalf("worldwide location must not trigger geography group: %+v", res.Applicability)
+		}
+		// Work mode must be a plain compatible match
+		wm, ok := findWorkModeComparison(res)
+		if !ok || wm.Reason != matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("worldwide remote should be a plain match: %+v", wm)
+		}
+	})
+
+	t.Run("no restriction — no vocabulary, old behaviour preserved", func(t *testing.T) {
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes:      []string{matchcontract.WorkRemote},
+			Authorizations: []matchcontract.ProfileAuthorization{{Country: "NZ", Status: "eligible"}},
+		}
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("US/Canada")})
+		// No regions in rules → no restriction check → plain remote match as before
+		res, err := quickmatch.Evaluate(profile, facts, defaultRules())
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		wm, ok := findWorkModeComparison(res)
+		if !ok || wm.Reason != matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("without vocabulary, remote must still be a plain match: %+v", wm)
+		}
+	})
+
+	t.Run("preferred location set, restricted remote not covered — both members in geography group", func(t *testing.T) {
+		// Owner has a preferred location (DE) and work authorizations (NZ, FR).
+		// Vacancy is remote, restricted to US/Canada.
+		// Geography group must contain both the preferred-location member and the restriction member.
+		profile := matchcontract.ProfileSnapshot{
+			ProfileID: "local", ProfileRevision: 1,
+			WorkModes: []string{matchcontract.WorkRemote},
+			Locations: []matchcontract.ProfileLocation{{Country: "DE"}},
+			Authorizations: []matchcontract.ProfileAuthorization{
+				{Country: "NZ", Status: "eligible"},
+				{Country: "FR", Status: "eligible"},
+			},
+		}
+		// Vacancy: remote (US/Canada only), no location facts matching DE.
+		facts := remoteRestrictedFacts(t, []matchcontract.LocationFact{usableLocation("US/Canada")})
+		res, err := quickmatch.Evaluate(profile, facts, rules)
+		if err != nil {
+			t.Fatalf("evaluate: %v", err)
+		}
+		// Geography group must be applicable.
+		if res.Applicability[matchcontract.GroupGeography] != matchcontract.Applicable {
+			t.Fatalf("geography must be applicable: %+v", res.Applicability)
+		}
+		// Location comparison must be present (from path 1).
+		locC, ok := findComparison(res, matchcontract.CriterionGeographyLocation)
+		if !ok {
+			t.Fatalf("location comparison must be present alongside restriction: %+v", res.Comparisons)
+		}
+		_ = locC
+		// Restriction comparison must also be present (not covered: NZ, FR not in {US, CA}).
+		rc, ok := findRestrictionComparison(res)
+		if !ok {
+			t.Fatalf("restriction comparison missing: %+v", res.Comparisons)
+		}
+		if !rc.Comparable || rc.Utility == nil || *rc.Utility != 0 || rc.Reason != matchcontract.ReasonRemoteRestrictedNotCovered {
+			t.Fatalf("not-covered verdict = %+v", rc)
+		}
+		// Work mode must not be a plain compatible match.
+		wm, _ := findWorkModeComparison(res)
+		if wm.Reason == matchcontract.ReasonWorkModeCompatible {
+			t.Fatalf("work mode must not be compatible when restricted: %+v", wm)
+		}
+	})
+}

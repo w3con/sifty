@@ -409,6 +409,9 @@ type ProfileSnapshot struct {
 	Locations       []ProfileLocation      `json:"locations,omitempty"`
 	Authorizations  []ProfileAuthorization `json:"authorizations,omitempty"`
 	Timezones       []string               `json:"timezones,omitempty"`
+	// CurrentLocation is the owner's current residence, used to compare remote work
+	// restrictions when no preferred locations are set. It carries no demographics.
+	CurrentLocation *ProfileLocation `json:"currentLocation,omitempty"`
 }
 
 // ProfileProvenance identifies the saved source of a confirmed profile fact. It is
@@ -459,9 +462,20 @@ type ProfileAuthorization struct {
 	Status  string `json:"status,omitempty"`
 }
 
+// RegionEntry maps one named region (and its aliases) to a set of ISO 3166-1 alpha-2 country
+// codes. An empty Countries list means worldwide / unrestricted. The vocabulary is configuration
+// data: no country list may be hard-coded in evaluator logic.
+type RegionEntry struct {
+	Name      string   `json:"name"`
+	Aliases   []string `json:"aliases,omitempty"`
+	Countries []string `json:"countries"`
+}
+
 // Rules is the validated numerical policy supplied to the evaluator. Weights hold exactly the four
 // goal groups; Fits you divides by the sum of the weights of the groups it uses, so the weights
 // need not add up to 1. RequiredWeight and PreferredWeight weigh requirements in You fit.
+// Regions is the optional region vocabulary for restricted-remote detection; when empty the
+// restriction check is skipped and remote works as before.
 type Rules struct {
 	SchemaVersion      string            `json:"schemaVersion"`
 	RulesVersion       string            `json:"rulesVersion"`
@@ -470,6 +484,7 @@ type Rules struct {
 	PreferredWeight    float64           `json:"preferredWeight"`
 	UnknownGoalUtility float64           `json:"unknownGoalUtility"`
 	VerdictUtility     VerdictUtilities  `json:"verdictUtility"`
+	Regions            []RegionEntry     `json:"regions,omitempty"`
 }
 
 // ResultStatus distinguishes a numeric score, no usable evidence, and a stale saved result.
@@ -508,15 +523,16 @@ type ReliabilityCounts struct {
 type Criterion string
 
 const (
-	CriterionRoleTitle               Criterion = "role.title"
-	CriterionProfessionalRequirement Criterion = "professional.requirement"
-	CriterionCompensationCash        Criterion = "compensation.cash"
-	CriterionGeographyLocation       Criterion = "geography.location"
-	CriterionGeographyAuthorization  Criterion = "geography.authorization"
-	CriterionConditionsWorkMode      Criterion = "conditions.work_mode"
-	CriterionConditionsEngagement    Criterion = "conditions.engagement"
-	CriterionConditionsHours         Criterion = "conditions.hours"
-	CriterionConditionsTimezone      Criterion = "conditions.timezone"
+	CriterionRoleTitle                  Criterion = "role.title"
+	CriterionProfessionalRequirement    Criterion = "professional.requirement"
+	CriterionCompensationCash           Criterion = "compensation.cash"
+	CriterionGeographyLocation          Criterion = "geography.location"
+	CriterionGeographyAuthorization     Criterion = "geography.authorization"
+	CriterionGeographyRemoteRestriction Criterion = "geography.remote_restriction"
+	CriterionConditionsWorkMode         Criterion = "conditions.work_mode"
+	CriterionConditionsEngagement       Criterion = "conditions.engagement"
+	CriterionConditionsHours            Criterion = "conditions.hours"
+	CriterionConditionsTimezone         Criterion = "conditions.timezone"
 )
 
 // Stable reason codes. They drive deterministic UI templates and are never free text.
@@ -549,6 +565,16 @@ const (
 	ReasonLocationMappingUnsupported = "location_mapping_unsupported"
 	ReasonLocationMissing            = "location_missing"
 	ReasonLocationUnusable           = "location_unusable"
+
+	// Remote restriction verdicts. A vacancy saying "Remote (US/Canada only)" is restricted;
+	// these codes say whether the owner's authorizations or current location cover the restriction.
+	ReasonRemoteRestrictedCovered    = "remote_restricted_covered"
+	ReasonRemoteRestrictedNotCovered = "remote_restricted_not_covered"
+	ReasonRemoteRestrictedUnknown    = "remote_restricted_unknown"
+
+	// ReasonWorkModeRemoteRestricted means the work mode is remote but a regional restriction
+	// applies; the geography group carries the coverage verdict instead.
+	ReasonWorkModeRemoteRestricted = "work_mode_remote_restricted"
 
 	ReasonAuthorizationCompatible     = "authorization_compatible"
 	ReasonAuthorizationDisjoint       = "authorization_disjoint"

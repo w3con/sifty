@@ -7,7 +7,7 @@ import (
 	"github.com/w3con/sifty/internal/matchcontract"
 )
 
-func evaluateConditions(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts) *groupEval {
+func evaluateConditions(profile matchcontract.ProfileSnapshot, facts matchcontract.VacancyFacts, rules matchcontract.Rules) *groupEval {
 	g := &groupEval{group: matchcontract.GroupConditions, applicability: matchcontract.NotApplicable}
 	hasWorkModes := len(profile.WorkModes) > 0
 	hasEngagement := len(profile.EngagementTypes) > 0
@@ -20,7 +20,8 @@ func evaluateConditions(profile matchcontract.ProfileSnapshot, facts matchcontra
 	g.applicability = matchcontract.Applicable
 
 	if hasWorkModes {
-		g.members = append(g.members, evaluateWorkModes(profile.WorkModes, facts))
+		restricted := hasRemoteWithRestriction(facts, rules.Regions)
+		g.members = append(g.members, evaluateWorkModes(profile.WorkModes, facts, restricted))
 	}
 	if hasEngagement {
 		g.members = append(g.members, evaluateEngagement(profile.EngagementTypes, facts))
@@ -34,7 +35,11 @@ func evaluateConditions(profile matchcontract.ProfileSnapshot, facts matchcontra
 	return g
 }
 
-func evaluateWorkModes(profileModes []string, facts matchcontract.VacancyFacts) member {
+// evaluateWorkModes compares the owner's preferred work modes against the vacancy.
+// When restricted is true, the vacancy offers remote work but with a regional restriction;
+// in that case a plain "remote matches remote" verdict is suppressed and the reason code
+// ReasonWorkModeRemoteRestricted is returned with no utility (geography carries the verdict).
+func evaluateWorkModes(profileModes []string, facts matchcontract.VacancyFacts, restricted bool) member {
 	base := member{
 		group: matchcontract.GroupConditions, criterion: matchcontract.CriterionConditionsWorkMode,
 		profileField: "workModes", profileValue: joinNonEmpty(profileModes),
@@ -105,6 +110,14 @@ func evaluateWorkModes(profileModes []string, facts matchcontract.VacancyFacts) 
 		fillWorkModeEvidence(&base, *unreliable)
 		base.reason = matchcontract.ReasonWorkModeUnusable
 		return base
+	}
+	// When the vacancy has a regional remote restriction and the owner wants remote, suppress
+	// the plain match: the geography group carries the actual coverage verdict, so it is not
+	// correct to show "✓ remote" here. The work mode fact is still present and applicable; it
+	// just has no utility until geography resolves whether the owner is covered.
+	if matched && restricted && want[normalizeWorkMode(matchcontract.WorkRemote)] {
+		base.reason = matchcontract.ReasonWorkModeRemoteRestricted
+		return base // no utility set → midpoint in Fits you
 	}
 	utility := 0.0
 	base.reason = matchcontract.ReasonWorkModeDisjoint

@@ -75,3 +75,12 @@ quick_match:
   source_fields:
     Wellfound:
       location: needs_corroboration
+  # Regions vocabulary: omitted here; the binary ships a built-in default (regions.default.yaml).
+  # To override, uncomment and edit:
+  # regions:
+  #   - name: worldwide
+  #     aliases: [anywhere, global]
+  #     countries: []
+  #   - name: US
+  #     aliases: ["United States"]
+  #     countries: [US]

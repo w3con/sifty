@@ -84,6 +84,13 @@ func QuickMatchSnapshot(p *Profile) matchcontract.ProfileSnapshot {
 			out.Authorizations = append(out.Authorizations, matchcontract.ProfileAuthorization{Country: country, Status: status})
 		}
 	}
+	if d.Geography.CurrentLocationSet && d.Geography.CurrentLocation != nil {
+		country := strings.ToUpper(strings.TrimSpace(d.Geography.CurrentLocation.Country))
+		city := strings.TrimSpace(d.Geography.CurrentLocation.City)
+		if country != "" || city != "" {
+			out.CurrentLocation = &matchcontract.ProfileLocation{Country: country, City: city}
+		}
+	}
 	if d.Geography.TimezonesSet || len(d.Geography.TimezoneIDs) > 0 {
 		for _, tz := range d.Geography.TimezoneIDs {
 			if tz = strings.TrimSpace(tz); tz != "" {

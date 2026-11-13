@@ -2,7 +2,7 @@
 
 **Epic:** assessment
 **Created:** 2026-11-12
-**Status:** backlog
+**Status:** in progress
 **Kind:** bug
 
 ## Owner's words

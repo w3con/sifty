@@ -103,18 +103,20 @@ const (
 // numeric utility alone cannot tell a weak title overlap (a match) from pay just under the
 // minimum (a mismatch).
 var goalReasonSection = map[string]listSection{
-	matchcontract.ReasonRoleTitleAligned:     sectionMatches,
-	matchcontract.ReasonCompensationAligned:  sectionMatches,
-	matchcontract.ReasonLocationCompatible:   sectionMatches,
-	matchcontract.ReasonWorkModeCompatible:   sectionMatches,
-	matchcontract.ReasonEngagementCompatible: sectionMatches,
-	matchcontract.ReasonHoursCompatible:      sectionMatches,
-	matchcontract.ReasonRoleTitleNoOverlap:   sectionMismatches,
-	matchcontract.ReasonCompensationBelowMin: sectionMismatches,
-	matchcontract.ReasonLocationDisjoint:     sectionMismatches,
-	matchcontract.ReasonWorkModeDisjoint:     sectionMismatches,
-	matchcontract.ReasonEngagementDisjoint:   sectionMismatches,
-	matchcontract.ReasonHoursDisjoint:        sectionMismatches,
+	matchcontract.ReasonRoleTitleAligned:          sectionMatches,
+	matchcontract.ReasonCompensationAligned:       sectionMatches,
+	matchcontract.ReasonLocationCompatible:        sectionMatches,
+	matchcontract.ReasonWorkModeCompatible:        sectionMatches,
+	matchcontract.ReasonEngagementCompatible:      sectionMatches,
+	matchcontract.ReasonHoursCompatible:           sectionMatches,
+	matchcontract.ReasonRemoteRestrictedCovered:   sectionMatches,
+	matchcontract.ReasonRoleTitleNoOverlap:        sectionMismatches,
+	matchcontract.ReasonCompensationBelowMin:      sectionMismatches,
+	matchcontract.ReasonLocationDisjoint:          sectionMismatches,
+	matchcontract.ReasonWorkModeDisjoint:          sectionMismatches,
+	matchcontract.ReasonEngagementDisjoint:        sectionMismatches,
+	matchcontract.ReasonHoursDisjoint:             sectionMismatches,
+	matchcontract.ReasonRemoteRestrictedNotCovered: sectionMismatches,
 }
 
 func addGoalLines(lists *matchcontract.FitLists, goals matchcontract.Result) {

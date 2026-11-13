@@ -35,3 +35,86 @@ Executor: Claude Sonnet 4.6, branch work/ASSESSMENT-8, worktree .worktrees/ASSES
 **Probe results (location-only profile):** 1936 vacancies evaluated, 387 changed. Vacancy 1136: 59→50. Same change count and same score for 1136 as the authorization profile because (a) work mode changes from compatible to restricted for all 387 restricted vacancies regardless of coverage verdict, and (b) for vacancy 1136, the scratch profile has a preferred location incompatible with US/Canada, making geography utility 0 in both runs — the restriction member (unknown vs not-covered) is the second member of a two-member group that is already driven to 0 by the location mismatch.
 
 **Tests (all):** `go build ./...`, `go vet ./...`, `go test -count=1 ./internal/quickmatch/ ./internal/matchcontract/ ./internal/config/ ./internal/matchsvc/` — all clean and passing.
+
+## 2026-11-13 — build and vet after corrections
+
+Check: `cd /Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/backend && go build ./... && go vet ./... && echo 'build and vet clean'`
+Exit: 0
+
+```
+build and vet clean
+```
+
+## 2026-11-13 — targeted tests after corrections
+
+Check: `cd /Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/backend && go test ./internal/quickmatch/ ./internal/matchcontract/ ./internal/config/ ./internal/matchsvc/ -timeout 60s`
+Exit: 0
+
+```
+ok  	github.com/w3con/sifty/internal/quickmatch	(cached)
+ok  	github.com/w3con/sifty/internal/matchcontract	(cached)
+ok  	github.com/w3con/sifty/internal/config	(cached)
+ok  	github.com/w3con/sifty/internal/matchsvc	(cached)
+```
+
+## 2026-11-13 — live probe after corrections
+
+Check: `cd /Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/backend && SIFTY_PROBE_DATA_DIR=/Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/scratch/data go test ./internal/matchsvc/ -run TestLiveRemoteRestriction -v -timeout 120s 2>&1 | grep -E '(profile:|config:|vacancies evaluated|vacancy 1136|score:|status:|--- PASS|--- FAIL)'`
+Exit: 0
+
+```
+    live_restriction_test.go:71: profile: authorizations=2 currentLocation=&{NZ }
+    live_restriction_test.go:73: config: regions=26
+    live_restriction_test.go:161: === vacancies evaluated: 1936, changed: 387 ===
+    live_restriction_test.go:171: === vacancy 1136: Relevant Healthcare / Lead Engineer ===
+    live_restriction_test.go:172:   score: 59 → 50
+    live_restriction_test.go:173:   status: scored → scored
+--- PASS: TestLiveRemoteRestriction (2.57s)
+```
+
+## 2026-11-13 — Correction: current location does not cover a restriction (spec §6.2)
+
+**Rule change:** `ownerCoverageCountries` removed the current location country from the coverage set. Only eligible work authorizations determine covered/not-covered. Current location still contributes to `present` (group applicability). An owner with only a current location and no authorizations gets unknown (midpoint) rather than not-covered.
+
+**Test:** Rewrote "covered via current location" sub-test → "current location alone does not cover". Added "current location plus non-covering authorization is not covered". 9 sub-tests in `TestEvaluateRestrictedRemote`, all pass.
+
+**Spec:** §4.1 Covered bullet — authorizations only. Unknown bullet — extended with "owner has no eligible authorizations even when a current location is known". Applicability paragraph — current location makes check applicable but does not cover. §14.1 — same clarification.
+
+**New probe test:** `TestLiveRemoteRestrictionCurrentLocationOnly` — location-only profile override (no authorizations, NZ current location), old-vs-new comparison.
+
+## 2026-11-13 — build, vet, tests after §6.2 correction
+
+Check: `cd /Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/backend && go build ./... && go vet ./... && go test -count=1 ./internal/quickmatch/ ./internal/matchcontract/ ./internal/config/ ./internal/matchsvc/`
+Exit: 0
+
+```
+ok  	github.com/w3con/sifty/internal/quickmatch	0.175s
+ok  	github.com/w3con/sifty/internal/matchcontract	0.428s
+ok  	github.com/w3con/sifty/internal/config	0.816s
+ok  	github.com/w3con/sifty/internal/matchsvc	0.948s
+```
+
+## 2026-11-13 — live probe after §6.2 correction (both profiles)
+
+Check: `cd /Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/backend && SIFTY_PROBE_DATA_DIR=/Volumes/SSD/Dev/tknff/sifty/.worktrees/ASSESSMENT-8/scratch/data go test -count=1 -v ./internal/matchsvc/ -run 'TestLiveRemoteRestriction$|TestLiveRemoteRestrictionCurrentLocationOnly' -timeout 300s 2>&1 | grep -E '(authorizations|regions|vacancies evaluated|vacancy 1136|score:|status:|--- PASS|--- FAIL)'`
+Exit: 0
+
+```
+    live_restriction_test.go:71: profile: authorizations=2 currentLocation=&{NZ }
+    live_restriction_test.go:73: config: regions=26
+    live_restriction_test.go:161: === vacancies evaluated: 1936, changed: 387 ===
+    live_restriction_test.go:171: === vacancy 1136: Relevant Healthcare / Lead Engineer ===
+    live_restriction_test.go:172:   score: 59 → 50
+    live_restriction_test.go:173:   status: scored → scored
+--- PASS: TestLiveRemoteRestriction (2.72s)
+    live_restriction_test.go:233: profile override: authorizations=0 currentLocation=NZ
+    live_restriction_test.go:234: config: regions=26
+    live_restriction_test.go:319: === vacancies evaluated: 1936, changed: 387 (location-only profile) ===
+    live_restriction_test.go:331: === vacancy 1136 (location-only): Relevant Healthcare / Lead Engineer ===
+    live_restriction_test.go:332:   score: 59 → 50
+    live_restriction_test.go:333:   status: scored → scored
+--- PASS: TestLiveRemoteRestrictionCurrentLocationOnly (2.30s)
+```
+
+Authorization profile: 1936 evaluated, 387 changed, vacancy 1136: 59→50 (unchanged — fix did not affect profile with explicit authorizations, current location was redundant).
+Location-only profile: 1936 evaluated, 387 changed, vacancy 1136: 59→50. Same score because (a) work mode changes from compatible to restricted for all 387 restricted vacancies regardless of coverage verdict, and (b) for vacancy 1136 the scratch profile has a preferred location incompatible with US/Canada, so the geography group is already driven to 0 by the location mismatch; the restriction member (unknown vs not-covered) is the second member of a two-member group whose first member is 0.

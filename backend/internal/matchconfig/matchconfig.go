@@ -30,6 +30,17 @@ func Rules(q config.QuickMatch) (matchcontract.Rules, error) {
 			matchcontract.GroupConditions:   q.Weights.Conditions,
 		},
 	}
+	regions, err := q.EffectiveRegions()
+	if err != nil {
+		return matchcontract.Rules{}, fmt.Errorf("quick match regions: %w", err)
+	}
+	for _, re := range regions {
+		r.Regions = append(r.Regions, matchcontract.RegionEntry{
+			Name:      re.Name,
+			Aliases:   append([]string(nil), re.Aliases...),
+			Countries: append([]string(nil), re.Countries...),
+		})
+	}
 	if err := r.Validate(); err != nil {
 		return matchcontract.Rules{}, fmt.Errorf("quick match configuration: %w", err)
 	}

@@ -26,7 +26,9 @@ Out of scope for this feature: detailed assessment and application preparation p
 
 ### Skills
 
-4. Each confirmed skill has a name and a level (Beginner, Proficient, Expert, or not set). Skill names contribute to Fits you as search signals; levels are used in detailed assessment and preparation. [implemented — SETTINGS-3]
+4. Each confirmed skill has a name and a level (Beginner, Proficient, Expert, or not set). Skills do not contribute to Fits you, which weighs goals only (quick-match.md §14.1); they decide requirement rows in the vacancy view and are an input of You fit (off by default, quick-match.md §14.14); levels are used in detailed assessment and preparation. A skill is matched against requirements by the skill vocabulary with aliases and whole words, so one skill answers differently worded requirements in every vacancy; that is the difference from a "Confirmed by you" fact (rule 41). [implemented — SETTINGS-3; the Fits you sentence corrected 2026-11-13]
+
+4a. A skill's key keeps the characters that distinguish names: C, C++, C# and F# have different keys. Owner, 2026-11-13: «С# и С++ совсем разные языки.» Stored keys are recomputed when the profile is loaded. [not implemented — INBOX-2 (decided 2026-11-13); today `skillKeyOf` in `backend/internal/profile/service.go` drops + and #, so C, C++ and C# share the key "c"]
 
 5. The profile keeps a separate "Skills you do not have" list (absent skills). A requirement for an absent skill counts as not met. Absent skills suppress those requirements from future offers. [implemented]
 
@@ -126,11 +128,11 @@ Out of scope for this feature: detailed assessment and application preparation p
 
 39. When the owner marks ✓ on a non-skill requirement in the vacancy view, the fact "You have: <requirement text>" is added to the "Confirmed by you" list in the profile. When the owner marks ✕, "You do not have: <requirement text>" is added to the same list. [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
 
-40. Classification rule (2026-11-13): a known technology, tool, or short name (at most three words, no verb forms ending in -ing) from the skills vocabulary is added as a confirmed skill; a list of such names is split into separate skills. Anything else (activities, phrases, experience statements) goes to "Confirmed by you" as "You have: …". [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
+40. Classification rule (owner, 2026-11-13: «Может все, что не прописано ЯВНО пользователем как Skill - держать как Facts?»): a requirement goes to Skills (+) or "Skills you do not have" (−) only when its name is in the skill vocabulary; a list of such names is split into separate skills, and alternatives ("Go or Rust", "C++ or C") are offered to choose from on + and recorded separately on −. Anything else (activities, phrases, experience statements) goes to "Confirmed by you" as "You have: …" or "You do not have: …". This replaces the earlier rule of the same day that treated any name of at most three words without an -ing form as a skill; it made skills of "Hands-on observability", "background jobs" and "communication". The action buttons on an undecided requirement row are + ("I have this") and − ("I don't have this"); there is no Dismiss for now (ASSESSMENT-4). [not implemented — INBOX-2 (decided 2026-11-13)]
 
-41. The same normalised requirement text in other vacancies is decided ✓/✕ without asking the owner again. [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
+41. The same normalised requirement text (case and spacing ignored) in other vacancies is decided ✓/✕ without asking the owner again. Limitation: vacancies word the same requirement differently, so this exact-text reuse rarely fires; owner, 2026-11-13: «кажется это бесполезно, потому что каждая вакансия использует свой язык описаний.» Matching facts by meaning belongs to the model's matching pass (You fit) when it is on; matching by shared words without a model is a possible later card, not planned. [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
 
-42. The "Confirmed by you" list appears in About me next to "Skills you do not have"; each entry is removable. [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
+42. The "Confirmed by you" list appears in About me next to "Skills you do not have"; each entry is removable. Each fact has "Move to skills"; each skill and each "Skills you do not have" entry has "Move to facts". The owner decides the kind; a moved name that is not in the vocabulary is matched as a skill by whole words. Owner, 2026-11-13: «у фактов (у каждого) должна быть кнопочка "move to skill" ... пользователь сам перемещает факты в скиллы, а скиллы в факты.» [not implemented — INBOX-2; list and removal on branch work/INBOX-2, move buttons decided 2026-11-13]
 
 43. A change to the confirmed-facts list increments the profile revision, which triggers Fits you recalculation. [not implemented — INBOX-2 L.5r6, implemented on branch work/INBOX-2]
 

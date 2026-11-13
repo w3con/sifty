@@ -295,7 +295,7 @@ Every canonical card ID appears exactly once. State links point at the outcome e
 | [INBOX-3](../work/tasks/inbox/INBOX-3_sticky-fetch-error/description.md) | R-SEARCH | backlog; fixed within INBOX-2 (L.4b); spec [Catalogue and search](specs/catalogue.md) | INBOX-2 |
 | [OPS-9](../work/tasks/ops/OPS-9_finish-process-defects/description.md) | R-HARNESS, R-REL | backlog (scope agreed, estimate in the card) | found at the ASSESSMENT-3 finish |
 | [OPS-10](../work/tasks/ops/OPS-10_production-db-hang/description.md) | R-REL, R-ASM | done; in main `f7190bf`, released to production 2026-11-12 | follow-up: INBOX-2 L.4d (jobs list polling) |
-| [OPS-11](../work/tasks/ops/OPS-11_spec-coverage/description.md) | R-COL, R-SEARCH, R-TRI, R-APP, R-DATA, R-SET | in progress (coordinator); feature specs reviewed, owner decisions of 2026-11-13 applied in `work/OPS-11` | every product feature has a spec |
+| [OPS-11](../work/tasks/ops/OPS-11_spec-coverage/description.md) | R-COL, R-SEARCH, R-TRI, R-APP, R-DATA, R-SET | done; in main `62c2f4b`, released 2026-11-13 | follow-up: move vacancy-view.md into docs/specs after INBOX-2 |
 | [COLLECTION-4](../work/tasks/collection/COLLECTION-4_collection-run-feedback-failed-sources-on-off-swit/description.md) | R-COL | backlog (captured 2026-11-13 from OPS-11); spec [Collection](specs/collection.md) | not planned |
 | [TRIAGE-3](../work/tasks/triage/TRIAGE-3_applied-tab-promises-30-day-deletion-owner-chose-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11); spec [Triage](specs/triage.md) | not planned |
 | [TRIAGE-4](../work/tasks/triage/TRIAGE-4_small-interface-fixes-n-and-a-keys-on-any-layout-n/description.md) | R-TRI | backlog (captured 2026-11-13 from OPS-11); spec [Triage](specs/triage.md) | not planned |

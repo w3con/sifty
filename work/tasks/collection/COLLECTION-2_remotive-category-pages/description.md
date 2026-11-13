@@ -32,3 +32,7 @@ This card records an incoming bug or idea. It does not authorize implementation,
 Estimate: complexity 3, AI time about 1 h. Can follow INBOX-2 right away (same release mechanics).
 
 - [ ] **R.4 — We Work Remotely foreign salary blocks** (found by INBOX-2 L.5r0): 195 stored texts contain salary blocks of other jobs from the page; keep only the job's own content block (RSS description preferred). (20–30 min)
+
+## Coordinator (2026-11-13): depends on INBOX-2
+
+Owner: «дальше COLLECTION-2». Before planning, the coordinator found that the INBOX-2 branch (not yet released, live executor session) already rewrites the collection layer this card touches: `backend/internal/collect/` (converter, normaliser, sections, parse), `backend/internal/source/` (new `remote3.go`, `web3careers.go`, We Work Remotely description from RSS in L.2b, helpers in every adapter) and `background/collect.go`; the removal script R.2 is meant to reuse is INBOX-2's `release-steps/remote3_cleanup.py`, which exists only on that branch. R.4 (We Work Remotely foreign salary blocks) may be partly solved for new collection by INBOX-2 L.2b; the 195 stored rows remain. Starting from main now means rewriting the same files twice and a conflicting merge. Question to the owner: wait for the INBOX-2 release (and do ASSESSMENT-10 meanwhile), or branch from INBOX-2's current commit and release after INBOX-2.
